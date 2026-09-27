@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soléria — Gestão de Insumos & Matérias-Primas</title>
+  <link rel="icon" type="image/png" href="assets/images/logo-simbolo.png">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- Top Header Admin -->
+  <header class="admin-header">
+    <div class="container admin-header-content">
+      <div class="admin-header-brand">
+        <a href="admin.html" class="admin-brand-link" title="Painel Soléria">
+          <img src="assets/images/logo-simbolo.png" alt="Soléria" class="admin-logo-icon">
+          <span class="brand-title" style="color: #FAF8F5; font-size: 1.45rem;">Soléria</span>
+        </a>
+        <span class="admin-badge-label">Backoffice</span>
+      </div>
+
+      <nav class="admin-nav">
+        <a href="admin.html" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          Estoque & Financeiro
+        </a>
+        <a href="admin-produto.html" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="16"></line>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+          </svg>
+          Novo Produto
+        </a>
+        <a href="admin-insumos.html" class="admin-nav-item active">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          </svg>
+          Insumos
+        </a>
+        <a href="index.html" target="_blank" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          Ver Catálogo
+        </a>
+      </nav>
+
+      <div class="admin-user-menu">
+        <span class="admin-user-email" id="admin-user-email">Carregando...</span>
+        <button id="btn-logout" class="btn-logout">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main class="container">
+    <div class="admin-page-header">
+      <div>
+        <h1 class="admin-page-title">Cadastro de Insumos & Matérias-Primas</h1>
+        <p class="admin-page-subtitle">Gerencie os custos de banhos de ouro, pedras preciosas, fechos, embalagens e estojos.</p>
+      </div>
+      <div>
+        <button id="btn-open-new-supply" class="btn-primary">
+          + Cadastrar Insumo
+        </button>
+      </div>
+    </div>
+
+    <!-- Formulário de Criação/Edição de Insumo (Card Colapsável ou Inline) -->
+    <div id="supply-form-card" class="form-card" style="display: none;">
+      <h3 class="form-section-title" id="form-supply-title">Novo Insumo</h3>
+      <p class="form-section-desc">Defina o nome do insumo, seu custo unitário e a unidade de fracionamento.</p>
+
+      <form id="supply-form">
+        <input type="hidden" id="supply-edit-id">
+
+        <div class="form-grid">
+          <div class="form-group col-6">
+            <label class="form-label" for="supply-name">Nome do Insumo <span class="required">*</span></label>
+            <input type="text" id="supply-name" class="form-input" placeholder="Ex: Banho de Ouro 18k (10 milésimos)" required>
+          </div>
+
+          <div class="form-group col-3">
+            <label class="form-label" for="supply-cost">Custo Unitário (R$) <span class="required">*</span></label>
+            <input type="number" step="0.01" min="0" id="supply-cost" class="form-input" placeholder="0.00" required>
+          </div>
+
+          <div class="form-group col-3">
+            <label class="form-label" for="supply-unit">Unidade de Medida <span class="required">*</span></label>
+            <input type="text" id="supply-unit" list="unit-suggestions" class="form-input" placeholder="Ex: un, g, ml, par..." required>
+            <datalist id="unit-suggestions">
+              <option value="un">
+              <option value="g">
+              <option value="mg">
+              <option value="ml">
+              <option value="cm">
+              <option value="par">
+              <option value="kit">
+              <option value="cx">
+            </datalist>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem;">
+          <button type="button" id="btn-cancel-supply" class="btn-secondary">Cancelar</button>
+          <button type="submit" id="btn-save-supply" class="btn-primary">Salvar Insumo</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Tabela de Insumos -->
+    <section class="table-card">
+      <div class="table-toolbar">
+        <input type="text" id="search-supplies-input" class="table-search-input" placeholder="Buscar por insumo ou unidade...">
+        <div style="font-size: 0.8rem; color: var(--text-secondary);" id="supplies-count">
+          0 insumos cadastrados
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nome do Insumo</th>
+              <th style="text-align: right;">Custo Unitário</th>
+              <th style="text-align: center;">Unidade de Medida</th>
+              <th style="text-align: center; width: 140px;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="supplies-tbody">
+            <!-- Linhas preenchidas via admin-insumos.js -->
+          </tbody>
+        </table>
+      </div>
+
+      <div id="supplies-loading" class="spinner" style="margin: 3rem auto;"></div>
+      <div id="supplies-empty" class="empty-state" style="display: none; padding: 3rem 1rem;">
+        <div class="empty-state-icon">📦</div>
+        <h3 class="empty-state-title">Nenhum insumo cadastrado</h3>
+        <p class="empty-state-desc">Cadastre matérias-primas e embalagens para calcular os custos reais das joias automaticamente.</p>
+        <button type="button" class="btn-primary" onclick="document.getElementById('btn-open-new-supply').click()">Cadastrar Primeiro Insumo</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="assets/js/supabase.js"></script>
+  <script src="assets/js/admin-insumos.js"></script>
+</body>
+</html>

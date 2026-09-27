@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soléria — Painel de Gestão e Estoque</title>
+  <link rel="icon" type="image/png" href="assets/images/logo-simbolo.png">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- Card de Autenticação / Login (Exibido quando não logado) -->
+  <div id="auth-section" class="auth-wrapper" style="display: none;">
+    <div class="auth-card">
+      <div class="auth-brand-logo">
+        <img src="assets/images/logo-sem-fundo.png" alt="Soléria — Joias que contam sua luz" class="auth-brand-logo-img">
+        <div class="brand-subtitle">Gestão & Controle Financeiro</div>
+      </div>
+      
+      <h2 class="auth-title">Acesso Restrito</h2>
+      <p class="auth-subtitle">Informe suas credenciais para gerenciar catálogo e insumos.</p>
+
+      <form id="login-form">
+        <div class="form-group" style="text-align: left; margin-bottom: 1.25rem;">
+          <label class="form-label" for="login-email">E-mail corporativo</label>
+          <input type="email" id="login-email" class="form-input" placeholder="seuemail@soleria.com" required autocomplete="email">
+        </div>
+
+        <div class="form-group" style="text-align: left; margin-bottom: 1.75rem;">
+          <label class="form-label" for="login-password">Senha de acesso</label>
+          <input type="password" id="login-password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" id="btn-login-submit" class="btn-primary" style="width: 100%;">
+          Entrar no Painel
+        </button>
+      </form>
+
+      <div style="margin-top: 1.5rem; font-size: 0.78rem; color: var(--text-muted);">
+        <a href="index.html" style="text-decoration: underline;">&larr; Voltar para o Catálogo Público</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Painel Interno (Exibido apenas quando autenticado) -->
+  <div id="admin-app" style="display: none;">
+    
+    <!-- Top Header Admin -->
+    <header class="admin-header">
+      <div class="container admin-header-content">
+        <div class="admin-header-brand">
+          <a href="admin.html" class="admin-brand-link" title="Painel Soléria">
+            <img src="assets/images/logo-simbolo.png" alt="Soléria" class="admin-logo-icon">
+            <span class="brand-title" style="color: #FAF8F5; font-size: 1.45rem;">Soléria</span>
+          </a>
+          <span class="admin-badge-label">Backoffice</span>
+        </div>
+
+        <!-- Navegação Interna -->
+        <nav class="admin-nav">
+          <a href="admin.html" class="admin-nav-item active">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            Estoque & Financeiro
+          </a>
+          <a href="admin-produto.html" class="admin-nav-item">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="16"></line>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+            Novo Produto
+          </a>
+          <a href="admin-insumos.html" class="admin-nav-item">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            </svg>
+            Insumos
+          </a>
+          <a href="index.html" target="_blank" class="admin-nav-item" title="Abrir catálogo público em nova aba">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+            Ver Catálogo
+          </a>
+        </nav>
+
+        <!-- Informações do Usuário & Logout -->
+        <div class="admin-user-menu">
+          <span class="admin-user-email" id="admin-user-email">operador@soleria.com</span>
+          <button id="btn-logout" class="btn-logout" title="Encerrar Sessão">Sair</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="container">
+      
+      <!-- Cabeçalho da Página -->
+      <div class="admin-page-header">
+        <div>
+          <h2 class="admin-page-title">Dashboard & Posição de Estoque</h2>
+          <p class="admin-page-subtitle">Visão consolidada de custos de produção, estoque e margens de lucro.</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <a href="admin-produto.html" class="btn-primary">
+            + Cadastrar Produto
+          </a>
+        </div>
+      </div>
+
+      <!-- Cards de Resumo Financeiro (KPIs) -->
+      <section class="metrics-grid">
+        <div class="metric-card accent-terracotta">
+          <div class="metric-card-label">Capital Investido em Estoque</div>
+          <div class="metric-card-value" id="kpi-capital-investido">R$ 0,00</div>
+          <div class="metric-card-footer">Custo Total (produto + insumos) &times; Unidades em estoque</div>
+        </div>
+
+        <div class="metric-card accent-green">
+          <div class="metric-card-label">Lucro Total Projetado</div>
+          <div class="metric-card-value" id="kpi-lucro-projetado" style="color: #216E39;">R$ 0,00</div>
+          <div class="metric-card-footer">Lucro Unitário &times; Unidades em estoque</div>
+        </div>
+
+        <div class="metric-card accent-blue">
+          <div class="metric-card-label">Total de Itens em Acervo</div>
+          <div class="metric-card-value" id="kpi-total-itens">0 peças</div>
+          <div class="metric-card-footer" id="kpi-skus-count">0 modelos cadastrados</div>
+        </div>
+      </section>
+
+      <!-- Tabela de Produtos & Dados Financeiros -->
+      <section class="table-card">
+        <div class="table-toolbar">
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <input type="text" id="admin-search-input" class="table-search-input" placeholder="Filtrar por SKU, nome ou categoria...">
+            <select id="admin-status-filter" class="form-select" style="width: auto; padding: 0.5rem 0.75rem; font-size: 0.82rem;">
+              <option value="todos">Todos os Status</option>
+              <option value="ativo">Apenas Ativos</option>
+              <option value="inativo">Apenas Inativos</option>
+            </select>
+          </div>
+          <div>
+            <button id="btn-refresh-table" class="btn-secondary-action" style="padding: 0.55rem 0.9rem;">
+              Atualizar Dados
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="financials-table">
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th style="text-align: right;">Custo Produto</th>
+                <th style="text-align: right;">Custo Insumos</th>
+                <th style="text-align: right;">Custo Total</th>
+                <th style="text-align: right;">Preço de Venda</th>
+                <th style="text-align: right;">Lucro Unitário</th>
+                <th style="text-align: center;">Estoque</th>
+                <th style="text-align: right;">Lucro Total Item</th>
+                <th style="text-align: center;">Status</th>
+                <th style="text-align: center;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="financials-tbody">
+              <!-- Linhas preenchidas via admin.js -->
+            </tbody>
+          </table>
+        </div>
+
+        <div id="table-loading-spinner" class="spinner" style="margin: 3rem auto;"></div>
+        <div id="table-empty-msg" class="empty-state" style="display: none; padding: 3rem 1rem;">
+          <div class="empty-state-icon">📋</div>
+          <h3 class="empty-state-title">Nenhum registro encontrado</h3>
+          <p class="empty-state-desc">Cadastre produtos e vincule seus insumos para visualizar a posição de estoque e lucro.</p>
+          <a href="admin-produto.html" class="btn-primary">+ Cadastrar Primeiro Produto</a>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="assets/js/supabase.js"></script>
+  <script src="assets/js/admin.js"></script>
+</body>
+</html>

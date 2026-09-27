@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soléria — Cadastro de Produto & Insumos</title>
+  <link rel="icon" type="image/png" href="assets/images/logo-simbolo.png">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- Top Header Admin -->
+  <header class="admin-header">
+    <div class="container admin-header-content">
+      <div class="admin-header-brand">
+        <a href="admin.html" class="admin-brand-link" title="Painel Soléria">
+          <img src="assets/images/logo-simbolo.png" alt="Soléria" class="admin-logo-icon">
+          <span class="brand-title" style="color: #FAF8F5; font-size: 1.45rem;">Soléria</span>
+        </a>
+        <span class="admin-badge-label">Backoffice</span>
+      </div>
+
+      <nav class="admin-nav">
+        <a href="admin.html" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          Estoque & Financeiro
+        </a>
+        <a href="admin-produto.html" class="admin-nav-item active">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="16"></line>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+          </svg>
+          Produto & Insumos
+        </a>
+        <a href="admin-insumos.html" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          </svg>
+          Insumos
+        </a>
+        <a href="index.html" target="_blank" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          Ver Catálogo
+        </a>
+      </nav>
+
+      <div class="admin-user-menu">
+        <span class="admin-user-email" id="admin-user-email">Carregando...</span>
+        <button id="btn-logout" class="btn-logout">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main class="container-narrow">
+    <div class="admin-page-header">
+      <div>
+        <a href="admin.html" style="font-size: 0.8rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 0.3rem; margin-bottom: 0.5rem;">
+          &larr; Voltar para Dashboard
+        </a>
+        <h1 class="admin-page-title" id="page-title">Cadastrar Novo Produto</h1>
+        <p class="admin-page-subtitle">Preencha os dados da peça, imagens e relacione os insumos utilizados na produção.</p>
+      </div>
+    </div>
+
+    <form id="product-form" class="form-card">
+      
+      <!-- Seção 1: Identificação & Classificação -->
+      <h3 class="form-section-title">1. Informações Básicas</h3>
+      <p class="form-section-desc">Identificação da peça, categoria e código de catálogo.</p>
+
+      <div class="form-grid">
+        <div class="form-group col-8">
+          <label class="form-label" for="prod-name">Nome do Produto <span class="required">*</span></label>
+          <input type="text" id="prod-name" class="form-input" placeholder="Ex: Anel Éclat Solitaire Ouro 18k" required>
+        </div>
+
+        <div class="form-group col-4">
+          <label class="form-label" for="prod-status">Status no Catálogo <span class="required">*</span></label>
+          <select id="prod-status" class="form-select" required>
+            <option value="ativo" selected>Ativo (Visível ao público)</option>
+            <option value="inativo">Inativo (Oculto no catálogo)</option>
+          </select>
+        </div>
+
+        <div class="form-group col-6">
+          <label class="form-label" for="prod-category">Categoria <span class="required">*</span></label>
+          <input type="text" id="prod-category" list="category-suggestions" class="form-input" placeholder="Ex: Anéis, Colares, Brincos..." required>
+          <datalist id="category-suggestions">
+            <option value="Anéis">
+            <option value="Brincos">
+            <option value="Colares">
+            <option value="Pulseiras">
+            <option value="Gargantilhas">
+            <option value="Pingentes">
+            <option value="Conjuntos">
+            <option value="Braceletes">
+          </datalist>
+          <span class="form-help-text">Altera o prefixo padrão do SKU automaticamente.</span>
+        </div>
+
+        <div class="form-group col-6">
+          <label class="form-label" for="prod-sku">SKU Gerado <span class="required">*</span></label>
+          <div class="input-with-button">
+            <input type="text" id="prod-sku" class="form-input" placeholder="Ex: ANL-0001" required>
+            <button type="button" id="btn-generate-sku" class="btn-secondary-action" title="Gerar novo código com base na categoria">
+              Gerar SKU
+            </button>
+          </div>
+          <span class="form-help-text">Formato: PREFIXO-0000 (3 primeiras letras + sequência numérica).</span>
+        </div>
+
+        <div class="form-group col-12">
+          <label class="form-label" for="prod-description">Descrição Completa</label>
+          <textarea id="prod-description" rows="4" class="form-textarea" placeholder="Descreva os materiais nobres, acabamento, detalhes da pedra, dimensões e cuidados com a joia..."></textarea>
+        </div>
+      </div>
+
+      <!-- Seção 2: Imagens do Produto -->
+      <h3 class="form-section-title" style="margin-top: 2.5rem;">2. Imagens do Produto</h3>
+      <p class="form-section-desc">Faça upload direto para o Supabase Storage ou insira links diretos de imagens.</p>
+
+      <div class="form-grid">
+        <div class="form-group col-12">
+          <label class="form-label">Upload de Fotos (Supabase Storage)</label>
+          <div class="image-upload-zone" id="upload-zone">
+            <input type="file" id="image-file-input" accept="image/*" multiple style="display: none;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 0.5rem; color: var(--gold-primary);">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            <p style="font-size: 0.82rem; font-weight: 500;">Clique ou arraste imagens aqui para enviar ao storage</p>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Suporta JPG, PNG e WEBP</span>
+          </div>
+        </div>
+
+        <div class="form-group col-12">
+          <label class="form-label">Ou Insira os Links Diretos das Imagens (Até 6 Fotos)</label>
+          <span class="form-help-text" style="display: block; margin-bottom: 0.75rem;">
+            A <strong>Foto 1</strong> é a foto de capa oficial no catálogo. Campos que ficarem em branco serão <strong>ignorados automaticamente</strong>.
+          </span>
+          <div class="photo-inputs-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.75rem;">
+            <div class="photo-input-item">
+              <label class="form-label" for="prod-img-1" style="font-size: 0.7rem; color: var(--gold-primary);">★ Foto 1 (Capa Principal)</label>
+              <input type="url" id="prod-img-1" class="form-input prod-img-slot" placeholder="https://exemplo.com/foto1.jpg">
+            </div>
+            <div class="photo-input-item">
+              <label class="form-label" for="prod-img-2" style="font-size: 0.7rem;">Foto 2</label>
+              <input type="url" id="prod-img-2" class="form-input prod-img-slot" placeholder="https://exemplo.com/foto2.jpg">
+            </div>
+            <div class="photo-input-item">
+              <label class="form-label" for="prod-img-3" style="font-size: 0.7rem;">Foto 3</label>
+              <input type="url" id="prod-img-3" class="form-input prod-img-slot" placeholder="https://exemplo.com/foto3.jpg">
+            </div>
+            <div class="photo-input-item">
+              <label class="form-label" for="prod-img-4" style="font-size: 0.7rem;">Foto 4</label>
+              <input type="url" id="prod-img-4" class="form-input prod-img-slot" placeholder="https://exemplo.com/foto4.jpg">
+            </div>
+            <div class="photo-input-item">
+              <label class="form-label" for="prod-img-5" style="font-size: 0.7rem;">Foto 5</label>
+              <input type="url" id="prod-img-5" class="form-input prod-img-slot" placeholder="https://exemplo.com/foto5.jpg">
+            </div>
+            <div class="photo-input-item">
+              <label class="form-label" for="prod-img-6" style="font-size: 0.7rem;">Foto 6</label>
+              <input type="url" id="prod-img-6" class="form-input prod-img-slot" placeholder="https://exemplo.com/foto6.jpg">
+            </div>
+          </div>
+        </div>
+
+        <!-- Miniaturas de Preview -->
+        <div class="form-group col-12">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <label class="form-label">Preview das Fotos (<span id="img-count-badge">0</span> de 6)</label>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Clique no × da miniatura para remover a foto</span>
+          </div>
+          <div class="image-preview-grid" id="image-previews"></div>
+        </div>
+      </div>
+
+      <!-- Seção 3: Precificação Direta & Estoque -->
+      <h3 class="form-section-title" style="margin-top: 2.5rem;">3. Valores Diretos & Estoque</h3>
+      <p class="form-section-desc">Custo do produto bruto, preço de venda sugerido e unidades disponíveis.</p>
+
+      <div class="form-grid">
+        <div class="form-group col-4">
+          <label class="form-label" for="prod-cost">Custo Direto do Produto (R$) <span class="required">*</span></label>
+          <input type="number" step="0.01" min="0" id="prod-cost" class="form-input" placeholder="0.00" value="0.00" required>
+          <span class="form-help-text">Custo base da peça / fabricação</span>
+        </div>
+
+        <div class="form-group col-4">
+          <label class="form-label" for="prod-price">Preço de Venda (R$) <span class="required">*</span></label>
+          <input type="number" step="0.01" min="0" id="prod-price" class="form-input" placeholder="0.00" value="0.00" required>
+          <span class="form-help-text">Preço cobrado do cliente final</span>
+        </div>
+
+        <div class="form-group col-4">
+          <label class="form-label" for="prod-stock">Estoque Disponível (unidades) <span class="required">*</span></label>
+          <input type="number" step="1" min="0" id="prod-stock" class="form-input" placeholder="0" value="1" required>
+          <span class="form-help-text" id="stock-help-text">Unidades totais disponíveis</span>
+        </div>
+
+        <!-- Grade Especial de Tamanhos para Anéis (Exibida dinamicamente quando a categoria for Anéis) -->
+        <div class="form-group col-12" id="ring-sizes-wrapper" style="display: none;">
+          <div class="ring-sizes-box">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.35rem;">
+              <span class="modal-sizes-title" style="margin-bottom: 0; font-size: 0.78rem;">
+                💍 Grade de Tamanhos em Estoque (Aro 10 ao 20)
+              </span>
+              <span style="font-size: 0.72rem; color: var(--text-secondary);">
+                Tamanhos com <strong>0 ou vazios</strong> não aparecem para os clientes no catálogo.
+              </span>
+            </div>
+            <p class="form-help-text" style="margin-bottom: 0.85rem; color: var(--text-secondary);">
+              Preencha o número de peças disponíveis em cada aro. O estoque total acima será somado automaticamente.
+            </p>
+            <div class="ring-sizes-grid" id="ring-sizes-grid">
+              <div class="ring-size-item">
+                <span class="ring-size-label">Aro 10</span>
+                <input type="number" min="0" step="1" class="ring-size-input" data-size="10" placeholder="0">
+              </div>
+              <div class="ring-size-item">
+                <span class="ring-size-label">Aro 11</span>
+                <input type="number" min="0" step="1" class="ring-size-input" data-size="11" placeholder="0">
+              </div>
+              <div class="ring-size-item">
+                <span class="ring-size-label">Aro 12</span>
+                <input type="number" min="0" step="1" class="ring-size-input" data-size="12" placeholder="0">
+              </div>
+              <div class="ring-size-item">
+                <span class="ring-size-label">Aro 13</span>
+                <input type="number" min="0" step="1" class="ring-size-input" data-size="13" placeholder="0">
+              </div>
+              <div class="ring-size-item">
+                <span class="ring-size-label">Aro 14</span>
+                <input type="number" min="0" step="1" class="ring-size-input" data-size="14" placeholder="0">
+              </div>
+              <div class="ring-size-item">
+                <span class="ring-size-label">Aro 15</span>
+                <input type="number" min="0" step="1" class="ring-size-input" data-size="15" placeholder="0">
+              </div>
+              <div class="ring-size-item">
+                <span class="ring-size-label">Aro 16</span>
+                <input type="number" min="0" step="1" class="ring-size-input" data-size="16" placeholder="0">
+              </div>
+              <div class="ring-size-item">
+                <span class="ring-size-label">Aro 17</span>
+                <input type="number" min="0" step="1" class="ring-size-input" data-size="17" placeholder="0">
+              </div>
+              <div class="ring-size-item">
+                <span class="ring-size-label">Aro 18</span>
+                <input type="number" min="0" step="1" class="ring-size-input" data-size="18" placeholder="0">
+              </div>
+              <div class="ring-size-item">
+                <span class="ring-size-label">Aro 19</span>
+                <input type="number" min="0" step="1" class="ring-size-input" data-size="19" placeholder="0">
+              </div>
+              <div class="ring-size-item">
+                <span class="ring-size-label">Aro 20</span>
+                <input type="number" min="0" step="1" class="ring-size-input" data-size="20" placeholder="0">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção 4: Vínculo com Insumos -->
+      <h3 class="form-section-title" style="margin-top: 2.5rem;">4. Insumos Vinculados (Matéria-Prima / Embalagens)</h3>
+      <p class="form-section-desc">Adicione os insumos consumidos por esta peça (banho, zircônias, caixas de veludo, sacolas de seda).</p>
+
+      <div class="supplies-linker-box">
+        <div class="supplies-add-bar">
+          <div class="form-group">
+            <label class="form-label" for="supply-select">Selecionar Insumo Cadastrado</label>
+            <select id="supply-select" class="form-select">
+              <option value="">Carregando insumos...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="supply-qty">Quantidade Usada</label>
+            <input type="number" step="0.01" min="0.01" id="supply-qty" class="form-input" placeholder="Ex: 1" value="1">
+          </div>
+
+          <button type="button" id="btn-add-supply" class="btn-primary" style="height: 40px;">
+            + Vincular Insumo
+          </button>
+        </div>
+
+        <!-- Tabela de Insumos Vinculados -->
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Insumo</th>
+                <th style="text-align: right;">Custo Unitário</th>
+                <th style="text-align: center;">Qtd. Utilizada</th>
+                <th style="text-align: right;">Subtotal</th>
+                <th style="text-align: center; width: 60px;">Remover</th>
+              </tr>
+            </thead>
+            <tbody id="linked-supplies-tbody">
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                  Nenhum insumo vinculado a esta peça ainda.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Card de Resumo de Lucro em Tempo Real -->
+      <div class="calc-summary-card">
+        <div class="calc-summary-item">
+          <span class="calc-summary-label">Custo do Produto</span>
+          <span class="calc-summary-val" id="calc-prod-cost">R$ 0,00</span>
+        </div>
+        <div class="calc-summary-item">
+          <span class="calc-summary-label">(+) Custo dos Insumos</span>
+          <span class="calc-summary-val" id="calc-supplies-cost">R$ 0,00</span>
+        </div>
+        <div class="calc-summary-item">
+          <span class="calc-summary-label">(=) Custo Total</span>
+          <span class="calc-summary-val highlight-gold" id="calc-total-cost">R$ 0,00</span>
+        </div>
+        <div class="calc-summary-item">
+          <span class="calc-summary-label">Preço de Venda</span>
+          <span class="calc-summary-val" id="calc-sale-price">R$ 0,00</span>
+        </div>
+        <div class="calc-summary-item">
+          <span class="calc-summary-label">(=) Lucro Unitário</span>
+          <span class="calc-summary-val highlight-green" id="calc-unit-profit">R$ 0,00</span>
+        </div>
+      </div>
+
+      <!-- Barra de Ações -->
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-subtle);">
+        <a href="admin.html" class="btn-secondary">Cancelar</a>
+        <button type="submit" id="btn-save-product" class="btn-primary">
+          Salvar Produto & Insumos
+        </button>
+      </div>
+
+    </form>
+  </main>
+
+  <!-- Scripts -->
+  <script src="assets/js/supabase.js"></script>
+  <script src="assets/js/admin-produto.js"></script>
+</body>
+</html>

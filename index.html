@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soléria — Haute Joaillerie & Accessoires</title>
+  <meta name="description" content="Coleções exclusivas de joias e acessórios finos com design autoral e acabamento impecável.">
+  <link rel="icon" type="image/png" href="assets/images/logo-simbolo.png">
+  
+  <!-- Estilos Compartilhados -->
+  <link rel="stylesheet" href="assets/css/style.css">
+  
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- Header Público -->
+  <header class="site-header">
+    <div class="container header-top">
+      <div class="header-brand">
+        <a href="index.html" class="header-brand-link" title="Soléria — Joias que contam sua luz">
+          <img src="assets/images/logo-simbolo.png" alt="Símbolo Soléria" class="header-brand-symbol">
+          <div>
+            <span class="brand-title">Soléria</span>
+            <span class="brand-subtitle">Joias que contam sua luz</span>
+          </div>
+        </a>
+      </div>
+
+      <nav class="header-nav">
+        <a href="#colecoes" class="nav-link active">Coleções</a>
+        <a href="#sobre" class="nav-link">Sobre</a>
+        <a href="admin.html" class="btn-header-admin" title="Acesso Restrito à Equipe">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          Área Interna
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="catalog-hero container">
+    <div class="hero-emblem-wrap">
+      <img src="assets/images/logo-simbolo.png" alt="Soléria Emblema" class="hero-emblem-img">
+    </div>
+    <span class="catalog-hero-eyebrow">Edição Limitada & Joalheria Autoral</span>
+    <h1 class="catalog-hero-title">O Fascínio da Luz e dos Detalhes</h1>
+    <p class="catalog-hero-desc">
+      Peças concebidas com matérias-primas nobres, banhos minuciosos e curvas que celebram a sofisticação atemporal.
+    </p>
+  </section>
+
+  <!-- Barra de Filtros e Busca -->
+  <section class="container filter-bar-wrapper" id="colecoes">
+    <div class="filter-search-container">
+      <svg class="filter-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input type="text" id="catalog-search" class="filter-search-input" placeholder="Buscar por nome ou estilo...">
+    </div>
+
+    <div class="category-pills" id="category-filters">
+      <button class="category-pill active" data-category="todas">Todas as Peças</button>
+      <!-- Categorias adicionais injetadas dinamicamente via JS -->
+    </div>
+  </section>
+
+  <!-- Grid de Produtos -->
+  <main class="container">
+    <div id="loading-spinner" class="spinner"></div>
+
+    <div class="product-grid" id="product-grid" style="display: none;">
+      <!-- Cards de produtos injetados via catalogo.js -->
+    </div>
+
+    <!-- Estado Vazio -->
+    <div id="empty-state" class="empty-state" style="display: none;">
+      <div class="empty-state-icon">✦</div>
+      <h3 class="empty-state-title">Nenhuma peça encontrada</h3>
+      <p class="empty-state-desc">Tente ajustar seus filtros de busca ou conferir nossas outras categorias.</p>
+      <button class="btn-secondary" id="btn-reset-filter">Ver Todas as Peças</button>
+    </div>
+  </main>
+
+  <!-- Modal de Detalhes do Produto -->
+  <div class="modal-overlay" id="product-modal" aria-hidden="true" role="dialog">
+    <div class="modal-window">
+      <button class="modal-close-btn" id="modal-close-btn" aria-label="Fechar modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="6"></line>
+        </svg>
+      </button>
+
+      <div class="modal-product-layout">
+        <!-- Galeria de Imagens -->
+        <div class="modal-gallery">
+          <div class="modal-main-image-wrap">
+            <img id="modal-main-img" class="modal-main-image" src="" alt="Imagem do Produto">
+          </div>
+          <div class="modal-thumbnails" id="modal-thumbnails">
+            <!-- Miniaturas injetadas dinamicamente -->
+          </div>
+        </div>
+
+        <!-- Informações e Ações -->
+        <div class="modal-details">
+          <span class="modal-category-tag" id="modal-category">Categoria</span>
+          <h2 class="modal-product-name" id="modal-title">Nome da Joia</h2>
+          
+          <div class="modal-price-box">
+            <div class="modal-price-val" id="modal-price">R$ 0,00</div>
+            <div class="modal-price-installment" id="modal-installment">Até 6x sem juros no cartão de crédito</div>
+          </div>
+
+          <!-- Seleção de Aros Disponíveis (Visível apenas quando houver tamanhos em estoque) -->
+          <div class="modal-sizes-box" id="modal-sizes-wrapper" style="display: none;">
+            <div class="modal-sizes-title">
+              <span>💍</span> Aros Disponíveis em Estoque:
+            </div>
+            <div class="modal-sizes-list" id="modal-sizes-list"></div>
+          </div>
+
+          <div class="modal-description-title">Detalhes da Peça</div>
+          <div class="modal-description-text" id="modal-description">
+            Descrição detalhada da peça.
+          </div>
+
+          <div class="modal-actions">
+            <a id="modal-whatsapp-btn" href="#" target="_blank" rel="noopener noreferrer" class="btn-whatsapp-concierge">
+              <svg viewBox="0 0 24 24">
+                <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.63c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.12-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.78 2.71 4.3 3.8 2.53 1.09 2.53.73 2.99.69.45-.05 1.47-.6 1.68-1.18.21-.59.21-1.09.15-1.19-.06-.1-.23-.17-.48-.29z"/>
+              </svg>
+              Solicitar Atendimento Exclusivo
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer Público -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <img src="assets/images/logo-simbolo.png" alt="Soléria" class="footer-brand-logo-img">
+          <div>
+            <div class="brand-title" style="color: #FAF8F5; font-size: 1.7rem;">Soléria</div>
+            <div class="brand-subtitle" style="color: var(--gold-primary);">Joias que contam sua luz</div>
+          </div>
+        </div>
+        <p style="max-width: 420px; font-size: 0.85rem; color: #B3ADA3; font-weight: 300;">
+          Peças de alta joalheria com curadoria minuciosa. Confeccionadas sob rígidos padrões de acabamento para clientes que valorizam a exclusividade.
+        </p>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; <span id="current-year"></span> Soléria. Todos os direitos reservados.</span>
+        <span>Atendimento Personalizado & Concierge Privado</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="assets/js/supabase.js"></script>
+  <script src="assets/js/catalogo.js"></script>
+</body>
+</html>
