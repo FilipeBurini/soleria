@@ -414,6 +414,34 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCatalog();
   });
 
+  // Navegação e estado ativo dos links do cabeçalho (Coleções & Sobre)
+  const navLinks = document.querySelectorAll('.header-nav .nav-link');
+  navLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      navLinks.forEach(l => l.classList.remove('active'));
+      link.classList.add('active');
+    });
+  });
+
+  const sobreSection = document.getElementById('sobre');
+  const colecoesSection = document.getElementById('colecoes');
+  if ('IntersectionObserver' in window && sobreSection && colecoesSection) {
+    const navObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.getAttribute('id');
+          navLinks.forEach(link => {
+            const matches = link.getAttribute('href') === `#${id}`;
+            link.classList.toggle('active', matches);
+          });
+        }
+      });
+    }, { threshold: 0.25 });
+
+    navObserver.observe(colecoesSection);
+    navObserver.observe(sobreSection);
+  }
+
   // Inicializa carregando os dados
   fetchProducts();
 });
