@@ -25,6 +25,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const searchInput = document.getElementById('admin-search-input');
   const statusFilter = document.getElementById('admin-status-filter');
   const btnRefresh = document.getElementById('btn-refresh-table');
+  const btnViewVisual = document.getElementById('btn-view-visual');
+  const btnViewTable = document.getElementById('btn-view-table');
+  const adminVisualGrid = document.getElementById('admin-visual-grid');
+  const tableResponsiveContainer = document.getElementById('table-responsive-container');
 
   let rawFinancialsData = [];
 
@@ -98,75 +102,112 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ==========================================================================
-  // Carregamento da View products_financials
+  // Funções Auxiliares de Parsing
   // ==========================================================================
 
-  /**
-   * Normaliza os campos da view para suportar nomes em minúsculo ou com acentos
-   */
-  function normalizeFinancialRow(row) {
-    const sku = row.sku || row.SKU || 'N/A';
-    const name = row.name || row.Nome || 'Sem Nome';
-    const category = row.category || row.Categoria || 'Geral';
-    const productCost = Number(row.product_cost ?? row['Custo produto'] ?? row.cost ?? 0);
-    const suppliesCost = Number(row.supplies_cost ?? row['Custo insumos'] ?? 0);
-    const totalCost = Number(row.total_cost ?? row['Custo total'] ?? (productCost + suppliesCost));
-    const salePrice = Number(row.sale_price ?? row['Preço de venda'] ?? 0);
-    const unitProfit = Number(row.unit_profit ?? row['Lucro unitário'] ?? (salePrice - totalCost));
-    const stock = Number(row.stock ?? row['Estoque'] ?? 0);
-    const totalProfit = Number(row.total_profit ?? row['Lucro total do item'] ?? (unitProfit * stock));
-    const status = (row.status || row.Status || 'ativo').toLowerCase();
-    const id = row.id || row.product_id;
-
-    return {
-      id,
-      sku,
-      name,
-      category,
-      productCost,
-      suppliesCost,
-      totalCost,
-      salePrice,
-      unitProfit,
-      stock,
-      totalProfit,
-      status
-    };
+  function parseImages(imgField) {
+    if (!imgField) return ['assets/images/logo-simbolo.png'];
+    if (Array.isArray(imgField)) return imgField.filter(Boolean);
+    if (typeof imgField === 'string') {
+      try {
+        const parsed = JSON.parse(imgField);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean);
+      } catch (e) {
+        const list = imgField.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+        if (list.length > 0) return list;
+        return [imgField.trim()];
+      }
+    }
+    return ['assets/images/logo-simbolo.png'];
   }
+
+  function parseSizes(sizesField) {
+    if (!sizesField) return {};
+    if (typeof sizesField === 'object' && !Array.isArray(sizesField)) return sizesField;
+    if (typeof sizesField === 'string') {
+      try {
+        const parsed = JSON.parse(sizesField);
+        if (typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        return {};
+      }
+    }
+    return {};
+  }
+
+  // ==========================================================================
+  // Carregamento de Dados (Produtos + Indicadores Financeiros)
+  // ==========================================================================
 
   async function loadFinancials() {
     tableSpinner.style.display = 'block';
     financialsTableBody.innerHTML = '';
+    if (adminVisualGrid) adminVisualGrid.innerHTML = '';
     tableEmptyMsg.style.display = 'none';
 
     try {
-      // 1. Tenta carregar da view products_financials
-      let { data, error } = await db
-        .from('products_financials')
-        .select('*');
+      // 1. Busca os produtos diretamente da tabela products para garantir acesso a imagens e tamanhos
+      const { data: productsData, error: prodErr } = await db
+        .from('products')
+        .select('*')
+        .order('name');
 
-      // Se a view não existir ou retornar erro de permissão, fallback para tabela products
-      if (error) {
-        console.warn('View products_financials não encontrada ou inacessível. Tentando tabela products...', error);
-        const fallback = await db.from('products').select('*');
-        if (fallback.data) {
-          data = fallback.data;
-          error = null;
-        }
+      if (prodErr) {
+        console.warn('Erro ao consultar tabela products:', prodErr);
       }
 
-      if (error) {
-        console.error('Erro ao buscar dados:', error);
-        showToast('Erro ao carregar dados financeiros: ' + error.message, 'error');
-        tableEmptyMsg.style.display = 'block';
-      } else if (!data || data.length === 0) {
-        rawFinancialsData = [];
-        renderFinancialsTable();
-        tableEmptyMsg.style.display = 'block';
-      } else {
-        rawFinancialsData = data.map(normalizeFinancialRow);
-        renderFinancialsTable();
+      // 2. Tenta buscar da view products_financials para obter custos precisos de insumos
+      const financialsMap = new Map();
+      const { data: finData } = await db.from('products_financials').select('*');
+      if (finData && Array.isArray(finData)) {
+        finData.forEach(row => {
+          const id = row.id || row.product_id;
+          if (id) financialsMap.set(id, row);
+        });
       }
+
+      const productsList = productsData || [];
+
+      rawFinancialsData = productsList.map(prod => {
+        const finRow = financialsMap.get(prod.id) || {};
+        const productCost = Number(finRow.product_cost ?? finRow['Custo produto'] ?? prod.product_cost ?? 0);
+        const suppliesCost = Number(finRow.supplies_cost ?? finRow['Custo insumos'] ?? 0);
+        const totalCost = Number(finRow.total_cost ?? finRow['Custo total'] ?? (productCost + suppliesCost));
+        const salePrice = Number(finRow.sale_price ?? finRow['Preço de venda'] ?? prod.sale_price ?? 0);
+        const unitProfit = Number(finRow.unit_profit ?? finRow['Lucro unitário'] ?? (salePrice - totalCost));
+        
+        const sizes = parseSizes(prod.sizes);
+        const sizesValues = Object.values(sizes);
+        const totalStockFromSizes = sizesValues.length > 0 
+          ? sizesValues.reduce((a, b) => a + Number(b), 0)
+          : null;
+
+        const stock = totalStockFromSizes !== null 
+          ? totalStockFromSizes 
+          : Number(finRow.stock ?? finRow['Estoque'] ?? prod.stock ?? 0);
+
+        const totalProfit = Number(finRow.total_profit ?? finRow['Lucro total do item'] ?? (unitProfit * stock));
+        const status = (prod.status || finRow.status || 'ativo').toLowerCase();
+
+        return {
+          id: prod.id,
+          sku: prod.sku || finRow.sku || 'N/A',
+          name: prod.name || finRow.name || 'Sem Nome',
+          category: prod.category || finRow.category || 'Geral',
+          productCost,
+          suppliesCost,
+          totalCost,
+          salePrice,
+          unitProfit,
+          stock,
+          totalProfit,
+          status,
+          images: prod.images,
+          sizes: sizes
+        };
+      });
+
+      renderAllViews();
     } catch (err) {
       console.error('Erro geral ao processar dados:', err);
       showToast('Falha na comunicação com o banco de dados.', 'error');
@@ -176,10 +217,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ==========================================================================
-  // Renderização da Tabela e Cálculo dos KPIs
+  // Renderização Consolidada (Vitrine Visual & Planilha)
   // ==========================================================================
 
-  function renderFinancialsTable() {
+  function renderAllViews() {
     const q = (searchInput ? searchInput.value.trim().toLowerCase() : '');
     const selectedStatus = (statusFilter ? statusFilter.value : 'todos');
 
@@ -193,7 +234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return matchStatus && matchSearch;
     });
 
-    // 1. Atualiza KPIs Globais com base em todos os produtos ou filtrados
+    // 1. Atualiza KPIs Globais
     let totalInvested = 0;
     let totalProjectedProfit = 0;
     let totalStockPieces = 0;
@@ -209,15 +250,224 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (kpiTotalItens) kpiTotalItens.textContent = `${totalStockPieces} unidades`;
     if (kpiSkusCount) kpiSkusCount.textContent = `${rawFinancialsData.length} modelos cadastrados`;
 
-    // 2. Renderiza linhas da tabela
-    financialsTableBody.innerHTML = '';
-
     if (filtered.length === 0) {
       tableEmptyMsg.style.display = 'block';
+      if (adminVisualGrid) adminVisualGrid.innerHTML = '';
+      financialsTableBody.innerHTML = '';
       return;
     }
 
     tableEmptyMsg.style.display = 'none';
+
+    renderVisualGrid(filtered);
+    renderFinancialsTable(filtered);
+  }
+
+  // ==========================================================================
+  // 1. Vitrine Visual de Baixa Rápida
+  // ==========================================================================
+
+  function renderVisualGrid(items) {
+    if (!adminVisualGrid) return;
+    adminVisualGrid.innerHTML = '';
+
+    items.forEach(item => {
+      const images = parseImages(item.images);
+      const imgUrl = images[0] || 'assets/images/logo-simbolo.png';
+      const sizes = item.sizes || {};
+      const sizeEntries = Object.entries(sizes).sort((a, b) => Number(a[0]) - Number(b[0]));
+      const isRing = (item.category && item.category.toLowerCase().includes('an')) || sizeEntries.length > 0;
+
+      const card = document.createElement('div');
+      card.className = 'admin-visual-card';
+
+      // Monta HTML de Ações: Aros se for anel, botão simples se for outra categoria
+      let actionsHtml = '';
+      if (isRing) {
+        if (sizeEntries.length > 0) {
+          const arosChipsHtml = sizeEntries.map(([aro, qty]) => {
+            const count = Number(qty) || 0;
+            const isOutOfStock = count <= 0;
+            return `
+              <button type="button" 
+                class="admin-aro-chip ${isOutOfStock ? 'out-of-stock' : ''}" 
+                data-id="${item.id}" 
+                data-aro="${aro}"
+                ${isOutOfStock ? 'disabled' : ''}
+                title="${isOutOfStock ? 'Aro Esgotado' : `Clique para dar baixa de 1 unidade no Aro ${aro}`}">
+                Aro ${aro} <strong>(${count})</strong>
+              </button>
+            `;
+          }).join('');
+
+          actionsHtml = `
+            <div>
+              <div class="admin-visual-actions-title">💍 Baixa Rápida por Aro (clique para -1 un):</div>
+              <div class="admin-visual-aros-list">
+                ${arosChipsHtml}
+              </div>
+            </div>
+          `;
+        } else {
+          actionsHtml = `
+            <div>
+              <div class="admin-visual-actions-title">💍 Aros do Anel:</div>
+              <span style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">
+                Grade não configurada. <a href="admin-produto.html?id=${item.id}" style="color: var(--brand-terracotta);">Configurar &rarr;</a>
+              </span>
+            </div>
+          `;
+        }
+      } else {
+        const canDeduct = item.stock > 0;
+        actionsHtml = `
+          <div>
+            <div class="admin-visual-actions-title">⚡ Baixa Rápida de Estoque:</div>
+            <button type="button" 
+              class="btn-admin-deduct btn-deduct-simple" 
+              data-id="${item.id}"
+              ${!canDeduct ? 'disabled' : ''}
+              style="padding: 0.5rem 1rem; font-size: 0.78rem;">
+              <span>⚡ Registrar Venda (-1 un)</span>
+            </button>
+          </div>
+        `;
+      }
+
+      card.innerHTML = `
+        <div class="admin-visual-top">
+          <img src="${imgUrl}" alt="${item.name}" class="admin-visual-img" loading="lazy" onerror="this.src='assets/images/logo-simbolo.png'">
+          <div class="admin-visual-meta">
+            <span class="admin-visual-sku">${item.sku}</span>
+            <div class="admin-visual-name" title="${item.name}">${item.name}</div>
+            <span class="admin-visual-price">${formatBRL(item.salePrice)}</span>
+          </div>
+        </div>
+
+        <div class="admin-visual-body">
+          <div class="admin-visual-stock-row">
+            <span style="font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em;">
+              ${item.category}
+            </span>
+            <span class="admin-visual-stock-badge ${item.stock > 0 ? 'has-stock' : 'empty-stock'}">
+              ${item.stock > 0 ? `${item.stock} un disponíveis` : 'Esgotado'}
+            </span>
+          </div>
+
+          ${actionsHtml}
+        </div>
+
+        <div class="admin-visual-footer">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">
+            Lucro unit: <strong style="color: #216E39;">${formatBRL(item.unitProfit)}</strong>
+          </span>
+          <a href="admin-produto.html?id=${item.id}" class="btn-secondary-action" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Editar produto">
+            Editar Cadastro
+          </a>
+        </div>
+      `;
+
+      adminVisualGrid.appendChild(card);
+    });
+
+    // Event listeners para cliques nos aros (chips)
+    adminVisualGrid.querySelectorAll('.admin-aro-chip:not(.out-of-stock)').forEach(chip => {
+      chip.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const prodId = chip.dataset.id;
+        const aro = chip.dataset.aro;
+        await handleQuickDeduct(prodId, aro, chip);
+      });
+    });
+
+    // Event listeners para botão de baixa simples (não-anel)
+    adminVisualGrid.querySelectorAll('.btn-deduct-simple').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const prodId = btn.dataset.id;
+        await handleQuickDeduct(prodId, null, btn);
+      });
+    });
+  }
+
+  // ==========================================================================
+  // Processamento de Baixa Rápida de Estoque no Supabase
+  // ==========================================================================
+
+  async function handleQuickDeduct(productId, aro, triggerElem) {
+    const item = rawFinancialsData.find(p => p.id === productId);
+    if (!item) return;
+
+    if (triggerElem) {
+      triggerElem.disabled = true;
+      triggerElem.style.opacity = '0.6';
+    }
+
+    try {
+      if (aro) {
+        // Baixa em anel por aro específico
+        const currentSizes = { ...item.sizes };
+        const currentQty = Number(currentSizes[aro]) || 0;
+        if (currentQty <= 0) {
+          showToast(`Aro ${aro} já está esgotado!`, 'warning');
+          return;
+        }
+
+        currentSizes[aro] = currentQty - 1;
+        const newTotalStock = Object.values(currentSizes).reduce((a, b) => a + Number(b), 0);
+
+        const { error } = await db
+          .from('products')
+          .update({ sizes: currentSizes, stock: newTotalStock })
+          .eq('id', productId);
+
+        if (error) throw error;
+
+        item.sizes = currentSizes;
+        item.stock = newTotalStock;
+        item.totalProfit = item.unitProfit * newTotalStock;
+
+        showToast(`Baixa registrada com sucesso! Aro ${aro} agora possui ${item.sizes[aro]} un.`, 'success');
+        renderAllViews();
+      } else {
+        // Baixa em peça comum
+        const currentStock = Number(item.stock) || 0;
+        if (currentStock <= 0) {
+          showToast('Esta peça já está esgotada!', 'warning');
+          return;
+        }
+
+        const newTotalStock = currentStock - 1;
+        const { error } = await db
+          .from('products')
+          .update({ stock: newTotalStock })
+          .eq('id', productId);
+
+        if (error) throw error;
+
+        item.stock = newTotalStock;
+        item.totalProfit = item.unitProfit * newTotalStock;
+
+        showToast(`Venda registrada com sucesso! Restam ${newTotalStock} unidades.`, 'success');
+        renderAllViews();
+      }
+    } catch (err) {
+      console.error('Erro ao dar baixa:', err);
+      showToast('Erro ao atualizar estoque: ' + (err.message || err), 'error');
+    } finally {
+      if (triggerElem) {
+        triggerElem.disabled = false;
+        triggerElem.style.opacity = '';
+      }
+    }
+  }
+
+  // ==========================================================================
+  // 2. Renderização da Planilha Financeira
+  // ==========================================================================
+
+  function renderFinancialsTable(filtered) {
+    financialsTableBody.innerHTML = '';
 
     filtered.forEach(item => {
       const tr = document.createElement('tr');
@@ -257,16 +507,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // ==========================================================================
+  // Alternador de Visualização (Vitrine de Baixa vs Planilha)
+  // ==========================================================================
+
+  if (btnViewVisual && btnViewTable) {
+    btnViewVisual.addEventListener('click', () => {
+      btnViewVisual.classList.add('active');
+      btnViewTable.classList.remove('active');
+      if (adminVisualGrid) adminVisualGrid.style.display = 'grid';
+      if (tableResponsiveContainer) tableResponsiveContainer.style.display = 'none';
+    });
+
+    btnViewTable.addEventListener('click', () => {
+      btnViewTable.classList.add('active');
+      btnViewVisual.classList.remove('active');
+      if (adminVisualGrid) adminVisualGrid.style.display = 'none';
+      if (tableResponsiveContainer) tableResponsiveContainer.style.display = 'block';
+    });
+  }
+
   // Listeners de filtro e busca
   if (searchInput) {
     searchInput.addEventListener('input', () => {
-      renderFinancialsTable();
+      renderAllViews();
     });
   }
 
   if (statusFilter) {
     statusFilter.addEventListener('change', () => {
-      renderFinancialsTable();
+      renderAllViews();
     });
   }
 

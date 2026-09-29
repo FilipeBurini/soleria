@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestão de Pedidos — Painel Interno Soléria</title>
+  <meta name="robots" content="noindex, nofollow">
+  
+  <!-- Fontes Tipográficas de Luxo -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Estilos Globais -->
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="icon" type="image/png" href="assets/images/logo-simbolo.png">
+</head>
+<body class="admin-body">
+
+  <!-- Tela de Login / Autenticação -->
+  <div id="auth-section" class="auth-wrapper" style="display: flex;">
+    <div class="auth-card">
+      <div class="auth-header">
+        <img src="assets/images/logo-simbolo.png" alt="Soléria" class="auth-logo-img">
+        <h1 class="auth-title">Soléria Backoffice</h1>
+        <p class="auth-subtitle">Gestão de Pedidos & Atendimento Privado</p>
+      </div>
+
+      <form id="login-form">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="form-label" for="login-email">E-mail Corporativo</label>
+          <input type="email" id="login-email" class="form-input" placeholder="admin@soleria.com" required autocomplete="email">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label class="form-label" for="login-password">Senha de Acesso</label>
+          <input type="password" id="login-password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" class="btn-primary" id="btn-login-submit" style="width: 100%;">
+          Entrar no Painel
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Aplicação Administrativa -->
+  <div id="admin-app" style="display: none;">
+    <!-- Barra Superior de Navegação -->
+    <header class="admin-topbar">
+      <div class="container admin-topbar-content">
+        <div class="admin-brand-area">
+          <a href="admin.html" class="admin-brand-link">
+            <img src="assets/images/logo-simbolo.png" alt="Soléria" class="admin-brand-symbol">
+            <div>
+              <span class="admin-brand-name">Soléria</span>
+              <span class="admin-brand-badge">Gestão de Pedidos</span>
+            </div>
+          </a>
+        </div>
+
+        <!-- Menu de Navegação Administrativa -->
+        <nav class="admin-nav">
+          <a href="admin.html" class="admin-nav-item">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            Estoque
+          </a>
+          <a href="admin-pedidos.html" class="admin-nav-item active">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <path d="M16 10a4 4 0 0 1-8 0"></path>
+            </svg>
+            Pedidos
+          </a>
+          <a href="admin-produto.html" class="admin-nav-item">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="16"></line>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+            Novo Produto
+          </a>
+          <a href="admin-insumos.html" class="admin-nav-item">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            </svg>
+            Insumos
+          </a>
+          <a href="index.html" target="_blank" class="admin-nav-item" title="Abrir catálogo público">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+            Ver Catálogo
+          </a>
+        </nav>
+
+        <!-- Informações do Usuário & Logout -->
+        <div class="admin-user-menu">
+          <span class="admin-user-email" id="admin-user-email">operador@soleria.com</span>
+          <button id="btn-logout" class="btn-logout" title="Encerrar Sessão">Sair</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="container">
+      
+      <!-- Cabeçalho da Página -->
+      <div class="admin-page-header">
+        <div>
+          <h2 class="admin-page-title">Gestão de Pedidos das Clientes</h2>
+          <p class="admin-page-subtitle">Acompanhe novos pedidos, atualize status, cadastre código de rastreio e dê baixa no estoque.</p>
+        </div>
+      </div>
+
+      <!-- Cards de Métricas de Pedidos -->
+      <section class="metrics-grid">
+        <div class="metric-card accent-terracotta">
+          <div class="metric-card-label">Novos Pedidos (Recebidos)</div>
+          <div class="metric-card-value" id="kpi-orders-recebidos">0</div>
+          <div class="metric-card-footer">Aguardando confirmação de pagamento</div>
+        </div>
+
+        <div class="metric-card accent-blue">
+          <div class="metric-card-label">Em Preparação & Envio</div>
+          <div class="metric-card-value" id="kpi-orders-preparando">0</div>
+          <div class="metric-card-footer">Pagos / Sendo embalados ou a caminho</div>
+        </div>
+
+        <div class="metric-card accent-green">
+          <div class="metric-card-label">Faturamento dos Pedidos</div>
+          <div class="metric-card-value" id="kpi-orders-revenue">R$ 0,00</div>
+          <div class="metric-card-footer" id="kpi-orders-total-count">0 pedidos no total</div>
+        </div>
+      </section>
+
+      <!-- Painel de Pedidos & Filtros -->
+      <section class="table-card">
+        <div class="table-toolbar">
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <input type="text" id="admin-order-search" class="table-search-input" placeholder="Buscar por número (#SOL-...), cliente ou WhatsApp...">
+            <select id="admin-order-status-filter" class="form-select" style="width: auto; padding: 0.5rem 0.75rem; font-size: 0.82rem;">
+              <option value="todos">Todos os Status</option>
+              <option value="recebido">Apenas Recebidos</option>
+              <option value="confirmado">Pagamento Confirmado</option>
+              <option value="preparacao">Em Preparação</option>
+              <option value="enviado">Enviados / A Caminho</option>
+              <option value="entregue">Entregues</option>
+              <option value="cancelado">Cancelados</option>
+            </select>
+          </div>
+          <div>
+            <button id="btn-refresh-orders" class="btn-secondary-action" style="padding: 0.55rem 0.9rem;">
+              Atualizar Pedidos
+            </button>
+          </div>
+        </div>
+
+        <!-- Spinner e Mensagem Vazia -->
+        <div id="orders-spinner" class="spinner" style="margin: 3rem auto;"></div>
+        
+        <div id="orders-empty-state" class="empty-state" style="display: none; padding: 3rem 1rem;">
+          <div class="empty-state-icon">🛍️</div>
+          <h3 class="empty-state-title">Nenhum pedido encontrado</h3>
+          <p class="empty-state-desc">Quando as clientes realizarem pedidos na sacola do catálogo, eles aparecerão aqui instantaneamente.</p>
+        </div>
+
+        <!-- Lista de Pedidos -->
+        <div id="orders-list-container" style="padding: 1.25rem;">
+          <!-- Injetado dinamicamente via assets/js/admin-pedidos.js -->
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Modal de Gestão do Pedido -->
+  <div class="modal-overlay" id="order-manage-modal" role="dialog" aria-hidden="true">
+    <div class="modal-window" style="max-width: 640px;">
+      <button class="modal-close-btn" id="btn-close-manage-modal" aria-label="Fechar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="6"></line>
+        </svg>
+      </button>
+
+      <div id="order-manage-modal-content" style="padding: 1.5rem 1.75rem;">
+        <!-- Injetado dinamicamente -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="assets/js/supabase.js"></script>
+  <script src="assets/js/admin-pedidos.js"></script>
+</body>
+</html>

@@ -66,7 +66,15 @@
               <rect x="14" y="14" width="7" height="7"></rect>
               <rect x="3" y="14" width="7" height="7"></rect>
             </svg>
-            Estoque & Financeiro
+            Estoque
+          </a>
+          <a href="admin-pedidos.html" class="admin-nav-item">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <path d="M16 10a4 4 0 0 1-8 0"></path>
+            </svg>
+            Pedidos
           </a>
           <a href="admin-produto.html" class="admin-nav-item">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -141,6 +149,16 @@
       <section class="table-card">
         <div class="table-toolbar">
           <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <!-- Alternador de Visualização: Vitrine de Baixa vs Planilha -->
+            <div class="admin-view-toggle">
+              <button type="button" id="btn-view-visual" class="btn-view-toggle active" title="Visualização em cards com fotos para baixa rápida">
+                <span>⊞</span> Vitrine de Baixa Rápida
+              </button>
+              <button type="button" id="btn-view-table" class="btn-view-toggle" title="Visualização em tabela de planilha financeira">
+                <span>☰</span> Planilha Financeira
+              </button>
+            </div>
+
             <input type="text" id="admin-search-input" class="table-search-input" placeholder="Filtrar por SKU, nome ou categoria...">
             <select id="admin-status-filter" class="form-select" style="width: auto; padding: 0.5rem 0.75rem; font-size: 0.82rem;">
               <option value="todos">Todos os Status</option>
@@ -155,7 +173,12 @@
           </div>
         </div>
 
-        <div class="table-responsive">
+        <!-- Vitrine Visual para Baixa Rápida de Estoque (padrão) -->
+        <div id="admin-visual-grid" class="admin-visual-grid">
+          <!-- Cards com fotos e botões de aro injetados via admin.js -->
+        </div>
+
+        <div class="table-responsive" id="table-responsive-container" style="display: none;">
           <table class="data-table" id="financials-table">
             <thead>
               <tr>

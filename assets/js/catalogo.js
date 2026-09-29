@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let allProducts = [];
   let currentCategory = 'todas';
   let searchTerm = '';
+  let isAdmin = false;
 
   // Elementos DOM
   const grid = document.getElementById('product-grid');
@@ -20,6 +21,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const categoryFiltersContainer = document.getElementById('category-filters');
   const searchInput = document.getElementById('catalog-search');
   const resetFilterBtn = document.getElementById('btn-reset-filter');
+  const catalogAdminBar = document.getElementById('catalog-admin-bar');
+
+  // Checa se o usuário atual é um gestor autenticado no Supabase
+  async function checkAdminSession() {
+    try {
+      if (db && isSupabaseConfigured()) {
+        const { data: { session } } = await db.auth.getSession();
+        if (session && session.user) {
+          isAdmin = true;
+          if (catalogAdminBar) catalogAdminBar.style.display = 'block';
+        }
+      }
+    } catch (e) {
+      console.log('Sessão pública (cliente)');
+    }
+  }
+  checkAdminSession();
 
   // Modal DOM
   const modal = document.getElementById('product-modal');
@@ -65,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
       id: 'demo-3',
       name: 'Brincos Cascata de Pérolas Barrocas',
       category: 'Brincos',
-      description: 'Pérolas barrocas cultivadas de água doce, unidas por elos minimalistas em prata 925 com banho de ródio branco. Peça leve de caimento gracioso.',
+      description: 'Pérolas barrocas cultivadas de água doce, unidas por elos minimalistas banhados a Ouro 18k com acabamento polido. Peça leve de caimento gracioso.',
       sale_price: 490.00,
       images: [
         'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=800&q=80'
@@ -123,6 +141,49 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
+   * Calcula o preço promocional original ("De:") e a porcentagem de desconto.
+   * Se o item já tiver original_price no banco, utiliza ele; caso contrário,
+   * gera um valor acima realista (35% a 50% superior) e consistente baseado no item.
+   */
+  function calculatePromotionalPricing(product) {
+    const salePrice = Number(product.sale_price) || 0;
+    if (salePrice <= 0) {
+      return { salePrice: 0, oldPrice: 0, discountPct: 0, hasDiscount: false };
+    }
+
+    let oldPrice = 0;
+    const customOriginal = Number(product.original_price || product.compare_price);
+    if (!isNaN(customOriginal) && customOriginal > salePrice) {
+      oldPrice = customOriginal;
+    } else {
+      // Gera um valor acima consistente entre 35% e 50% acima
+      let seed = 0;
+      const str = String(product.id || product.name || 'soleria');
+      for (let i = 0; i < str.length; i++) {
+        seed = (seed + str.charCodeAt(i) * (i + 1)) % 100;
+      }
+      const factor = 1.35 + ((seed % 16) / 100); // Fator entre 1.35 e 1.50
+      const rawPrice = salePrice * factor;
+
+      // Arredonda para final .90 para aspecto de semijoia em oferta
+      const rounded = Math.ceil(rawPrice);
+      oldPrice = rounded - 0.10;
+      if (oldPrice <= salePrice) {
+        oldPrice = salePrice + 10 - 0.10;
+      }
+    }
+
+    const discountPct = Math.round(((oldPrice - salePrice) / oldPrice) * 100);
+
+    return {
+      salePrice,
+      oldPrice,
+      discountPct,
+      hasDiscount: oldPrice > salePrice && discountPct >= 5
+    };
+  }
+
+  /**
    * Carrega os produtos do Supabase onde status = 'ativo'
    */
   async function fetchProducts() {
@@ -134,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (db && isSupabaseConfigured()) {
         const { data, error } = await db
           .from('products')
-          .select('id, name, category, description, sale_price, images, status, sizes')
+          .select('id, name, category, description, sale_price, images, status, sizes, original_price, stock')
           .eq('status', 'ativo')
           .order('created_at', { ascending: false });
 
@@ -242,6 +303,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ? `<div class="card-sizes-preview">💍 Aros: ${availableSizesList.join(' · ')}</div>`
         : '';
 
+      const promo = calculatePromotionalPricing(product);
+
       const card = document.createElement('article');
       card.className = 'product-card';
       card.setAttribute('role', 'button');
@@ -252,15 +315,18 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="product-card-image-box">
           <img class="product-card-img" src="${mainImgUrl}" alt="${product.name}" loading="lazy">
           ${product.category ? `<span class="product-card-category-badge">${product.category}</span>` : ''}
+          ${promo.hasDiscount ? `<span class="product-card-discount-badge">-${promo.discountPct}% OFF</span>` : ''}
         </div>
         <div class="product-card-content">
           <h2 class="product-card-title">${product.name}</h2>
           <p class="product-card-desc">${product.description || ''}</p>
           ${sizesPreviewHtml}
           <div class="product-card-footer">
-            <div>
-              <span class="product-card-price-label">Preço</span>
-              <div class="product-card-price">${formatBRL(product.sale_price)}</div>
+            <div class="product-card-pricing-block">
+              ${promo.hasDiscount ? `<span class="product-price-old">De ${formatBRL(promo.oldPrice)}</span>` : ''}
+              <div class="product-card-price">
+                ${promo.hasDiscount ? '<span class="price-prefix">Por</span> ' : ''}${formatBRL(promo.salePrice)}
+              </div>
             </div>
             <span class="product-card-action-hint">
               Detalhes &rarr;
@@ -285,10 +351,28 @@ document.addEventListener('DOMContentLoaded', () => {
   function openProductModal(product) {
     const images = parseImages(product.images);
 
+    const promo = calculatePromotionalPricing(product);
+
     modalTitle.textContent = product.name;
-    modalCategory.textContent = product.category || 'Joalheria';
-    modalPrice.textContent = formatBRL(product.sale_price);
-    modalDesc.textContent = product.description || 'Peça confeccionada sob encomenda com acabamentos artesanais e seleção rigorosa de gemas.';
+    modalCategory.textContent = product.category || 'Semijoias';
+    modalDesc.textContent = product.description || 'Semijoia de alta qualidade com banho nobre, verniz protetor e acabamento primoroso de joia.';
+
+    // Exibe preços promocionais no modal
+    const modalPromoRow = document.getElementById('modal-promo-row');
+    const modalPriceOld = document.getElementById('modal-price-old');
+    const modalDiscountBadge = document.getElementById('modal-discount-badge');
+    const modalPricePrefix = document.getElementById('modal-price-prefix');
+
+    if (promo.hasDiscount) {
+      if (modalPromoRow) modalPromoRow.style.display = 'flex';
+      if (modalPriceOld) modalPriceOld.textContent = `De ${formatBRL(promo.oldPrice)}`;
+      if (modalDiscountBadge) modalDiscountBadge.textContent = `-${promo.discountPct}% OFF`;
+      if (modalPricePrefix) modalPricePrefix.style.display = 'inline';
+    } else {
+      if (modalPromoRow) modalPromoRow.style.display = 'none';
+      if (modalPricePrefix) modalPricePrefix.style.display = 'none';
+    }
+    modalPrice.textContent = formatBRL(promo.salePrice);
 
     // Define imagem principal
     modalMainImg.src = images[0];
@@ -322,6 +406,11 @@ document.addEventListener('DOMContentLoaded', () => {
       .filter(([_, qty]) => Number(qty) > 0)
       .sort((a, b) => Number(a[0]) - Number(b[0]));
 
+    // Se houver apenas 1 aro disponível, pré-seleciona para facilitar
+    if (availableSizes.length === 1) {
+      selectedSize = availableSizes[0][0];
+    }
+
     function updateWhatsappLink() {
       const phone = '5511999999999'; // Número da marca
       let text = `Olá! Gostaria de mais informações sobre a peça "${product.name}" (${formatBRL(product.sale_price)}) que visualizei no catálogo Soléria.`;
@@ -329,6 +418,55 @@ document.addEventListener('DOMContentLoaded', () => {
         text += ` Tenho interesse no Aro ${selectedSize}.`;
       }
       modalWhatsappBtn.href = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+    }
+
+    // Elementos de Gestão / Baixa Rápida de Estoque
+    const modalAdminActions = document.getElementById('modal-admin-actions');
+    const modalAdminStockInfo = document.getElementById('modal-admin-stock-info');
+    const modalAdminHelp = document.getElementById('modal-admin-help');
+    let btnAdminModalDeduct = document.getElementById('btn-admin-modal-deduct');
+
+    function updateAdminActionUI() {
+      if (!modalAdminActions || !isAdmin) return;
+
+      const currentSizes = parseSizes(product.sizes);
+      const currentAvailable = Object.entries(currentSizes).filter(([_, q]) => Number(q) > 0);
+      const totalStockCount = currentAvailable.length > 0 
+        ? Object.values(currentSizes).reduce((acc, q) => acc + Number(q), 0)
+        : (Number(product.stock) || 0);
+
+      if (modalAdminStockInfo) {
+        modalAdminStockInfo.textContent = `Estoque: ${totalStockCount} un`;
+      }
+
+      const isRing = (product.category && product.category.toLowerCase().includes('an')) || currentAvailable.length > 0;
+
+      if (!btnAdminModalDeduct) return;
+
+      if (isRing && currentAvailable.length > 0) {
+        if (selectedSize) {
+          const qtyAro = Number(currentSizes[selectedSize]) || 0;
+          btnAdminModalDeduct.disabled = qtyAro <= 0;
+          btnAdminModalDeduct.innerHTML = `<span>⚡ Registrar Venda: Aro ${selectedSize} (-1 peça)</span>`;
+          if (modalAdminHelp) {
+            modalAdminHelp.textContent = `Baixa imediata no Aro ${selectedSize} (${qtyAro} un disponíveis). O saldo será subtraído do banco.`;
+          }
+        } else {
+          btnAdminModalDeduct.disabled = true;
+          btnAdminModalDeduct.innerHTML = `<span>👉 Selecione um Aro acima para dar baixa</span>`;
+          if (modalAdminHelp) {
+            modalAdminHelp.textContent = `Clique em um dos aros disponíveis acima para indicar qual tamanho foi vendido e dar baixa.`;
+          }
+        }
+      } else {
+        btnAdminModalDeduct.disabled = totalStockCount <= 0;
+        btnAdminModalDeduct.innerHTML = `<span>⚡ Registrar Venda (-1 peça)</span>`;
+        if (modalAdminHelp) {
+          modalAdminHelp.textContent = totalStockCount > 0 
+            ? `Vendeu esta peça? Clique para abater 1 unidade do estoque no sistema.`
+            : `Peça sem estoque no momento.`;
+        }
+      }
     }
 
     if (modalSizesWrapper && modalSizesList) {
@@ -339,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
         availableSizes.forEach(([size, qty]) => {
           const pill = document.createElement('button');
           pill.type = 'button';
-          pill.className = 'modal-size-pill';
+          pill.className = `modal-size-pill ${selectedSize === size ? 'selected' : ''}`;
           pill.setAttribute('title', `${qty} peça(s) disponível(is) no Aro ${size}`);
           pill.innerHTML = `<span>Aro ${size}</span><span class="modal-size-stock">(${qty} un)</span>`;
 
@@ -353,6 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
               selectedSize = size;
             }
             updateWhatsappLink();
+            updateAdminActionUI();
           });
 
           modalSizesList.appendChild(pill);
@@ -365,6 +504,118 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Configura botão de atendimento WhatsApp Concierge
     updateWhatsappLink();
+
+    // Configura Ações de Administrador (se logado)
+    if (modalAdminActions) {
+      if (isAdmin) {
+        modalAdminActions.style.display = 'block';
+        updateAdminActionUI();
+
+        // Substitui listener do botão para evitar cliques duplicados
+        const freshBtn = btnAdminModalDeduct.cloneNode(true);
+        btnAdminModalDeduct.parentNode.replaceChild(freshBtn, btnAdminModalDeduct);
+        btnAdminModalDeduct = freshBtn;
+
+        freshBtn.addEventListener('click', async () => {
+          freshBtn.disabled = true;
+          freshBtn.innerHTML = `<span>Gravando baixa no estoque...</span>`;
+
+          try {
+            if (!db || !isSupabaseConfigured()) {
+              showToast('Supabase não conectado.', 'error');
+              updateAdminActionUI();
+              return;
+            }
+
+            const currentSizes = parseSizes(product.sizes);
+            const currentAvailable = Object.entries(currentSizes).filter(([_, q]) => Number(q) > 0);
+            const isRing = (product.category && product.category.toLowerCase().includes('an')) || currentAvailable.length > 0;
+
+            if (isRing && currentAvailable.length > 0) {
+              if (!selectedSize) {
+                showToast('Selecione um aro antes de registrar a venda.', 'warning');
+                updateAdminActionUI();
+                return;
+              }
+
+              const updatedSizes = { ...currentSizes };
+              const currentAroQty = Number(updatedSizes[selectedSize]) || 0;
+              if (currentAroQty <= 0) {
+                showToast(`Aro ${selectedSize} já está esgotado!`, 'warning');
+                updateAdminActionUI();
+                return;
+              }
+
+              updatedSizes[selectedSize] = currentAroQty - 1;
+              const newTotalStock = Object.values(updatedSizes).reduce((acc, q) => acc + Number(q), 0);
+
+              const { error: updErr } = await db
+                .from('products')
+                .update({ sizes: updatedSizes, stock: newTotalStock })
+                .eq('id', product.id);
+
+              if (updErr) throw updErr;
+
+              product.sizes = updatedSizes;
+              product.stock = newTotalStock;
+              showToast(`Baixa registrada! Restam ${updatedSizes[selectedSize]} un no Aro ${selectedSize}.`, 'success');
+
+              // Atualiza o objeto na lista em memória
+              const idx = allProducts.findIndex(p => p.id === product.id);
+              if (idx !== -1) allProducts[idx] = product;
+
+              openProductModal(product);
+              renderCatalog();
+            } else {
+              const currentStock = Number(product.stock) || 1;
+              const newTotalStock = Math.max(0, currentStock - 1);
+
+              const { error: updErr } = await db
+                .from('products')
+                .update({ stock: newTotalStock })
+                .eq('id', product.id);
+
+              if (updErr) throw updErr;
+
+              product.stock = newTotalStock;
+              showToast(`Baixa registrada! Restam ${newTotalStock} unidades.`, 'success');
+
+              const idx = allProducts.findIndex(p => p.id === product.id);
+              if (idx !== -1) allProducts[idx] = product;
+
+              openProductModal(product);
+              renderCatalog();
+            }
+          } catch (err) {
+            console.error('Erro ao dar baixa:', err);
+            showToast('Erro ao atualizar estoque: ' + (err.message || err), 'error');
+            updateAdminActionUI();
+          }
+        });
+      } else {
+        modalAdminActions.style.display = 'none';
+      }
+    }
+
+    // Configura Botão "Adicionar à Sacola"
+    const btnAddToCart = document.getElementById('btn-modal-add-cart');
+    if (btnAddToCart) {
+      const freshCartBtn = btnAddToCart.cloneNode(true);
+      btnAddToCart.parentNode.replaceChild(freshCartBtn, btnAddToCart);
+
+      const isRing = (product.category && product.category.toLowerCase().includes('an')) || availableSizes.length > 0;
+
+      freshCartBtn.addEventListener('click', () => {
+        if (isRing && availableSizes.length > 0 && !selectedSize) {
+          showToast('Por favor, selecione um Aro disponível acima antes de adicionar à sacola.', 'warning');
+          return;
+        }
+
+        if (window.SoleriaCart) {
+          window.SoleriaCart.add(product, selectedSize, 1);
+        }
+      });
+    }
 
     // Exibe modal
     modal.classList.add('active');
@@ -414,33 +665,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCatalog();
   });
 
-  // Navegação e estado ativo dos links do cabeçalho (Coleções & Sobre)
-  const navLinks = document.querySelectorAll('.header-nav .nav-link');
-  navLinks.forEach(link => {
-    link.addEventListener('click', () => {
-      navLinks.forEach(l => l.classList.remove('active'));
-      link.classList.add('active');
-    });
-  });
 
-  const sobreSection = document.getElementById('sobre');
-  const colecoesSection = document.getElementById('colecoes');
-  if ('IntersectionObserver' in window && sobreSection && colecoesSection) {
-    const navObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const id = entry.target.getAttribute('id');
-          navLinks.forEach(link => {
-            const matches = link.getAttribute('href') === `#${id}`;
-            link.classList.toggle('active', matches);
-          });
-        }
-      });
-    }, { threshold: 0.25 });
-
-    navObserver.observe(colecoesSection);
-    navObserver.observe(sobreSection);
-  }
 
   // Inicializa carregando os dados
   fetchProducts();

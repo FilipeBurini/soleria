@@ -3,9 +3,64 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Soléria — Haute Joaillerie & Accessoires</title>
-  <meta name="description" content="Coleções exclusivas de joias e acessórios finos com design autoral e acabamento impecável.">
+  
+  <!-- SEO Essencial & Google Indexing -->
+  <title>Soléria — Joias que contam sua luz</title>
+  <meta name="description" content="Semijoias de alta qualidade banhadas a Ouro 18k com acabamento refinado de joia, verniz protetor e brilho duradouro. Conheça o catálogo exclusivo da Soléria.">
+  <meta name="keywords" content="Soléria, semijoias, semijoias banhadas a ouro 18k, semijoias de alta qualidade, joias que contam sua luz, anéis banhados a ouro, colares, brincos, pulseiras, semijoias hipoalergênicas">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <link rel="canonical" href="https://soleria.carlamota.com.br/">
+  <meta name="author" content="Soléria">
+  <meta name="publisher" content="Soléria">
+
+  <!-- Open Graph / Redes Sociais / WhatsApp -->
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Soléria — Joias que contam sua luz">
+  <meta property="og:description" content="Semijoias de alta qualidade banhadas a Ouro 18k com acabamento refinado de joia, verniz protetor e brilho duradouro. Conheça o catálogo exclusivo da Soléria.">
+  <meta property="og:url" content="https://soleria.carlamota.com.br/">
+  <meta property="og:site_name" content="Soléria">
+  <meta property="og:image" content="https://soleria.carlamota.com.br/assets/images/logo-simbolo.png">
+
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Soléria — Joias que contam sua luz">
+  <meta name="twitter:description" content="Semijoias de alta qualidade banhadas a Ouro 18k com acabamento refinado de joia, verniz protetor e brilho duradouro.">
+  <meta name="twitter:image" content="https://soleria.carlamota.com.br/assets/images/logo-simbolo.png">
+
+  <!-- Favicon -->
   <link rel="icon" type="image/png" href="assets/images/logo-simbolo.png">
+  
+  <!-- Dados Estruturados Schema.org (Google Rich Snippets) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "JewelryStore",
+        "@id": "https://soleria.carlamota.com.br/#store",
+        "name": "Soléria",
+        "alternateName": "Soléria Semijoias",
+        "url": "https://soleria.carlamota.com.br/",
+        "logo": "https://soleria.carlamota.com.br/assets/images/logo-simbolo.png",
+        "image": "https://soleria.carlamota.com.br/assets/images/logo-simbolo.png",
+        "description": "Semijoias de alta qualidade banhadas a Ouro 18k com acabamento refinado de joia, camada nobre reforçada e verniz protetor.",
+        "priceRange": "$$",
+        "currenciesAccepted": "BRL",
+        "paymentAccepted": "Cartão de Crédito, PIX, Boleto"
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://soleria.carlamota.com.br/#website",
+        "url": "https://soleria.carlamota.com.br/",
+        "name": "Soléria — Joias que contam sua luz",
+        "publisher": {
+          "@id": "https://soleria.carlamota.com.br/#store"
+        }
+      }
+    ]
+  }
+  </script>
   
   <!-- Estilos Compartilhados -->
   <link rel="stylesheet" href="assets/css/style.css">
@@ -23,14 +78,23 @@
           <img src="assets/images/logo-simbolo.png" alt="Símbolo Soléria" class="header-brand-symbol">
           <div>
             <span class="brand-title">Soléria</span>
-            <span class="brand-subtitle">Joias que contam sua luz</span>
+            <span class="brand-subtitle">Semijoias que contam sua luz</span>
           </div>
         </a>
       </div>
 
       <nav class="header-nav">
         <a href="#colecoes" class="nav-link active">Coleções</a>
-        <a href="#sobre" class="nav-link">Sobre</a>
+        <a href="rastreio.html" class="nav-link">Acompanhar Pedido</a>
+        <button type="button" class="header-cart-btn" id="btn-open-cart" title="Ver Sacola de Compras">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          <span>Sacola</span>
+          <span class="header-cart-badge">0</span>
+        </button>
         <a href="admin.html" class="btn-header-admin" title="Acesso Restrito à Equipe">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
@@ -42,15 +106,28 @@
     </div>
   </header>
 
+  <!-- Barra de Administrador Ativo no Catálogo (Exibida dinamicamente se logado) -->
+  <div id="catalog-admin-bar" class="catalog-admin-bar" style="display: none;">
+    <div class="container admin-bar-content">
+      <div class="admin-bar-left">
+        <span class="admin-bar-dot"></span>
+        <span><strong>Modo Gestor Ativo:</strong> Você pode dar baixa de vendas direto no catálogo abrindo qualquer peça.</span>
+      </div>
+      <div>
+        <a href="admin.html" class="admin-bar-link">Ir para Painel de Controle &rarr;</a>
+      </div>
+    </div>
+  </div>
+
   <!-- Hero Section -->
   <section class="catalog-hero container">
     <div class="hero-emblem-wrap">
       <img src="assets/images/logo-simbolo.png" alt="Soléria Emblema" class="hero-emblem-img">
     </div>
-    <span class="catalog-hero-eyebrow">Edição Limitada & Joalheria Autoral</span>
+    <span class="catalog-hero-eyebrow">Semijoias Finas & Banhadas a Ouro 18k</span>
     <h1 class="catalog-hero-title">O Fascínio da Luz e dos Detalhes</h1>
     <p class="catalog-hero-desc">
-      Peças concebidas com matérias-primas nobres, banhos minuciosos e curvas que celebram a sofisticação atemporal.
+      Semijoias de alta qualidade banhadas a Ouro 18k, com camada nobre reforçada, verniz protetor italiano e acabamento refinado para brilhar todos os dias.
     </p>
   </section>
 
@@ -87,64 +164,6 @@
     </div>
   </main>
 
-  <!-- Seção Sobre a Marca (Manifesto & Valores) -->
-  <section class="about-section" id="sobre">
-    <div class="container">
-      <div class="about-grid">
-        <div class="about-content">
-          <span class="about-eyebrow">Manifesto & Curadoria</span>
-          <h2 class="about-title">Joias que contam a sua luz.</h2>
-          <p class="about-lead">
-            A <strong>Soléria</strong> nasceu do fascínio pelo equilíbrio entre as formas puras da joalheria clássica e a força expressiva do design contemporâneo.
-          </p>
-          <p class="about-text">
-            Cada criação em nosso acervo passa por uma curadoria minuciosa: ligas nobres selecionadas, banhos minuciosos de até 2 milésimos em Ouro 18k e Prata 925, além de acabamento com verniz protetor italiano que assegura brilho impecável, longa durabilidade e conforto hipoalergênico.
-          </p>
-          <div class="about-pillars">
-            <div class="about-pillar-item">
-              <div class="about-pillar-icon">✦</div>
-              <div>
-                <h4 class="about-pillar-title">Banhos Nobres & Alta Durabilidade</h4>
-                <p class="about-pillar-desc">Ouro 18k e Prata 925 com banho controlado e verniz protetor que resiste ao uso diário.</p>
-              </div>
-            </div>
-            <div class="about-pillar-item">
-              <div class="about-pillar-icon">💍</div>
-              <div>
-                <h4 class="about-pillar-title">Grade de Aros Sob Medida</h4>
-                <p class="about-pillar-desc">Anéis com numeração do aro 10 ao 20 com estoque individual transparente para você encontrar seu tamanho ideal.</p>
-              </div>
-            </div>
-            <div class="about-pillar-item">
-              <div class="about-pillar-icon">⚜️</div>
-              <div>
-                <h4 class="about-pillar-title">Concierge Privado</h4>
-                <p class="about-pillar-desc">Atendimento humanizado e atencioso via WhatsApp para assessoria na escolha de presentes e combinações.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="about-visual-card">
-          <div class="about-emblem-wrap">
-            <img src="assets/images/logo-simbolo.png" alt="Símbolo Soléria" class="about-emblem-img">
-          </div>
-          <div class="about-quote-box">
-            <p class="about-quote">
-              “A verdadeira sofisticação não busca aprovação efêmera — ela reflete com precisão e brilho a singularidade de quem a veste.”
-            </p>
-            <span class="about-quote-author">Soléria Haute Joaillerie</span>
-          </div>
-          <div class="about-badges-row">
-            <span class="about-badge">Hipoalergênico</span>
-            <span class="about-badge">Verniz Protetor</span>
-            <span class="about-badge">Edições Limitadas</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- Modal de Detalhes do Produto -->
   <div class="modal-overlay" id="product-modal" aria-hidden="true" role="dialog">
     <div class="modal-window">
@@ -172,7 +191,13 @@
           <h2 class="modal-product-name" id="modal-title">Nome da Joia</h2>
           
           <div class="modal-price-box">
-            <div class="modal-price-val" id="modal-price">R$ 0,00</div>
+            <div class="modal-price-promo-row" id="modal-promo-row" style="display: none;">
+              <span class="modal-price-old" id="modal-price-old">De R$ 0,00</span>
+              <span class="modal-discount-badge" id="modal-discount-badge">-35% OFF</span>
+            </div>
+            <div class="modal-price-val">
+              <span class="modal-price-prefix" id="modal-price-prefix" style="display: none;">Por </span><span id="modal-price">R$ 0,00</span>
+            </div>
             <div class="modal-price-installment" id="modal-installment">Até 6x sem juros no cartão de crédito</div>
           </div>
 
@@ -190,6 +215,15 @@
           </div>
 
           <div class="modal-actions">
+            <button type="button" class="btn-add-to-cart" id="btn-modal-add-cart">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <path d="M16 10a4 4 0 0 1-8 0"></path>
+              </svg>
+              Adicionar à Sacola
+            </button>
+
             <a id="modal-whatsapp-btn" href="#" target="_blank" rel="noopener noreferrer" class="btn-whatsapp-concierge">
               <svg viewBox="0 0 24 24">
                 <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.63c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.12-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.78 2.71 4.3 3.8 2.53 1.09 2.53.73 2.99.69.45-.05 1.47-.6 1.68-1.18.21-.59.21-1.09.15-1.19-.06-.1-.23-.17-.48-.29z"/>
@@ -197,9 +231,45 @@
               Solicitar Atendimento Exclusivo
             </a>
           </div>
+
+          <!-- Painel Exclusivo de Baixa Rápida de Estoque (Modo Gestor / Admin) -->
+          <div class="modal-admin-actions" id="modal-admin-actions" style="display: none;">
+            <div class="modal-admin-box">
+              <div class="modal-admin-header">
+                <span class="modal-admin-title">⚡ Baixa Rápida de Estoque</span>
+                <span class="modal-admin-stock-info" id="modal-admin-stock-info">Estoque: 0 un</span>
+              </div>
+              <p class="modal-admin-help" id="modal-admin-help">
+                Vendeu esta peça para uma cliente? Dê baixa instantânea no estoque com um clique.
+              </p>
+              <button type="button" class="btn-admin-deduct" id="btn-admin-modal-deduct">
+                <span>⚡ Registrar Venda (-1 peça)</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Drawer da Sacola de Compras -->
+  <div class="cart-drawer-overlay" id="cart-drawer-overlay">
+    <aside class="cart-drawer">
+      <div class="cart-drawer-header">
+        <div class="cart-drawer-title-wrap">
+          <h2 class="cart-drawer-title">Sua Sacola</h2>
+          <span class="cart-drawer-count" id="cart-drawer-count">0 peças</span>
+        </div>
+        <button type="button" class="cart-drawer-close" id="cart-drawer-close" aria-label="Fechar sacola">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="6"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="cart-drawer-body" id="cart-drawer-body"></div>
+      <div class="cart-drawer-footer" id="cart-drawer-footer"></div>
+    </aside>
   </div>
 
   <!-- Footer Público -->
@@ -210,22 +280,26 @@
           <img src="assets/images/logo-simbolo.png" alt="Soléria" class="footer-brand-logo-img">
           <div>
             <div class="brand-title" style="color: #FAF8F5; font-size: 1.7rem;">Soléria</div>
-            <div class="brand-subtitle" style="color: var(--gold-primary);">Joias que contam sua luz</div>
+            <div class="brand-subtitle" style="color: var(--gold-primary);">Semijoias que contam sua luz</div>
           </div>
         </div>
         <p style="max-width: 420px; font-size: 0.85rem; color: #B3ADA3; font-weight: 300;">
-          Peças de alta joalheria com curadoria minuciosa. Confeccionadas sob rígidos padrões de acabamento para clientes que valorizam a exclusividade.
+          Semijoias de alta qualidade banhadas a Ouro 18k com acabamento refinado de joia. Confeccionadas sob rígidos padrões para clientes que valorizam sofisticação, brilho duradouro e conforto hipoalergênico.
         </p>
       </div>
       <div class="footer-bottom">
         <span>&copy; <span id="current-year"></span> Soléria. Todos os direitos reservados.</span>
-        <span>Atendimento Personalizado & Concierge Privado</span>
+        <span>
+          <a href="rastreio.html" style="color: inherit; text-decoration: underline; margin-right: 1rem;">Acompanhar Pedido</a>
+          Atendimento Personalizado & Concierge Privado
+        </span>
       </div>
     </div>
   </footer>
 
   <!-- Scripts -->
   <script src="assets/js/supabase.js"></script>
+  <script src="assets/js/carrinho.js"></script>
   <script src="assets/js/catalogo.js"></script>
 </body>
 </html>

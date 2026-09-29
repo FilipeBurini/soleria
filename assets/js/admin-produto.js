@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const descInput = document.getElementById('prod-description');
   const costInput = document.getElementById('prod-cost');
   const priceInput = document.getElementById('prod-price');
+  const originalPriceInput = document.getElementById('prod-original-price');
   const stockInput = document.getElementById('prod-stock');
   const stockHelpText = document.getElementById('stock-help-text');
   const ringSizesWrapper = document.getElementById('ring-sizes-wrapper');
@@ -500,8 +501,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  function autoGenerateOriginalPrice() {
+    const sale = parseFloat(priceInput.value) || 0;
+    if (sale > 0 && originalPriceInput && (!originalPriceInput.value || originalPriceInput.dataset.autoFilled === 'true')) {
+      const randomFactor = 1.35 + Math.random() * 0.15; // 35% a 50% acima
+      const raw = sale * randomFactor;
+      const rounded = (Math.ceil(raw) - 0.10).toFixed(2);
+      originalPriceInput.value = rounded;
+      originalPriceInput.dataset.autoFilled = 'true';
+    }
+  }
+
   costInput.addEventListener('input', recalculateFinancials);
-  priceInput.addEventListener('input', recalculateFinancials);
+  priceInput.addEventListener('input', () => {
+    recalculateFinancials();
+    autoGenerateOriginalPrice();
+  });
+
+  if (originalPriceInput) {
+    originalPriceInput.addEventListener('input', () => {
+      delete originalPriceInput.dataset.autoFilled;
+    });
+  }
 
   // ==========================================================================
   // Modo Edição: Carregamento dos dados existentes
@@ -528,6 +549,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       descInput.value = prod.description || '';
       costInput.value = Number(prod.product_cost || 0).toFixed(2);
       priceInput.value = Number(prod.sale_price || 0).toFixed(2);
+      if (originalPriceInput) {
+        originalPriceInput.value = prod.original_price ? Number(prod.original_price).toFixed(2) : '';
+        delete originalPriceInput.dataset.autoFilled;
+      }
       stockInput.value = prod.stock ?? 0;
 
       // Aros / Tamanhos (se for anel)
@@ -625,6 +650,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isRing = isRingCategory(categoryInput.value);
     const ringSizes = isRing ? getRingSizesData() : {};
 
+    const originalPriceVal = originalPriceInput && parseFloat(originalPriceInput.value) > 0 
+      ? parseFloat(originalPriceInput.value) 
+      : null;
+
     const productPayload = {
       name: nameInput.value.trim(),
       status: statusInput.value,
@@ -633,6 +662,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       description: descInput.value.trim(),
       product_cost: parseFloat(costInput.value) || 0,
       sale_price: parseFloat(priceInput.value) || 0,
+      original_price: originalPriceVal,
       stock: parseInt(stockInput.value, 10) || 0,
       images: getValidImages(),
       sizes: ringSizes

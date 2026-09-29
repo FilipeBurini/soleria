@@ -212,6 +212,34 @@ WITH CHECK (auth.uid() IS NOT NULL);
 -- Permissões na view restritas aos administradores autenticados
 GRANT SELECT ON products_financials TO authenticated;
 REVOKE ALL ON products_financials FROM anon;
+
+-- 8. Tabela de Pedidos e Rastreamento sem Cadastro
+CREATE TABLE IF NOT EXISTS orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_number TEXT UNIQUE NOT NULL,
+  customer_name TEXT NOT NULL,
+  customer_phone TEXT NOT NULL,
+  customer_email TEXT,
+  delivery_type TEXT NOT NULL DEFAULT 'entrega',
+  customer_address JSONB DEFAULT '{}'::jsonb,
+  items JSONB NOT NULL DEFAULT '[]'::jsonb,
+  subtotal NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+  discount_amount NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+  total_amount NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+  status TEXT NOT NULL DEFAULT 'recebido',
+  payment_method TEXT DEFAULT 'a_combinar',
+  tracking_code TEXT,
+  customer_notes TEXT,
+  admin_notes TEXT,
+  stock_deducted BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_anon_insert_orders" ON orders FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "allow_anon_select_orders" ON orders FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "admin_all_orders" ON orders FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
 ```
 
 ---

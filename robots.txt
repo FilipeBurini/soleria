@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /admin-produto.html
+Disallow: /admin-insumos.html
+Disallow: /admin-pedidos.html
+
+Sitemap: https://soleria.carlamota.com.br/sitemap.xml
