@@ -14,38 +14,14 @@
   <!-- Estilos Globais -->
   <link rel="stylesheet" href="assets/css/style.css">
   <link rel="icon" type="image/png" href="assets/images/logo-simbolo.png">
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="admin-body">
 
-  <!-- Tela de Login / Autenticação -->
-  <div id="auth-section" class="auth-wrapper" style="display: flex;">
-    <div class="auth-card">
-      <div class="auth-header">
-        <img src="assets/images/logo-simbolo.png" alt="Soléria" class="auth-logo-img">
-        <h1 class="auth-title">Soléria Backoffice</h1>
-        <p class="auth-subtitle">Gestão de Pedidos & Atendimento Privado</p>
-      </div>
-
-      <form id="login-form">
-        <div class="form-group" style="margin-bottom: 1rem;">
-          <label class="form-label" for="login-email">E-mail Corporativo</label>
-          <input type="email" id="login-email" class="form-input" placeholder="admin@soleria.com" required autocomplete="email">
-        </div>
-
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-          <label class="form-label" for="login-password">Senha de Acesso</label>
-          <input type="password" id="login-password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
-        </div>
-
-        <button type="submit" class="btn-primary" id="btn-login-submit" style="width: 100%;">
-          Entrar no Painel
-        </button>
-      </form>
-    </div>
-  </div>
-
   <!-- Aplicação Administrativa -->
-  <div id="admin-app" style="display: none;">
+  <div id="admin-app">
     <!-- Barra Superior de Navegação -->
     <header class="admin-topbar">
       <div class="container admin-topbar-content">

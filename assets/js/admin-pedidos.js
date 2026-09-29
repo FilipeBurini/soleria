@@ -4,15 +4,19 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Elementos de Autenticação
-  const authSection = document.getElementById('auth-section');
-  const adminApp = document.getElementById('admin-app');
-  const loginForm = document.getElementById('login-form');
-  const loginEmailInput = document.getElementById('login-email');
-  const loginPasswordInput = document.getElementById('login-password');
-  const loginSubmitBtn = document.getElementById('btn-login-submit');
+  // Guarda de rota autenticada compartilhada com o Admin
+  const currentUser = await requireAuth();
+  if (!currentUser) return;
+
   const adminUserEmail = document.getElementById('admin-user-email');
+  if (adminUserEmail) adminUserEmail.textContent = currentUser.email || 'Operador Autenticado';
+
   const btnLogout = document.getElementById('btn-logout');
+  if (btnLogout) {
+    btnLogout.addEventListener('click', () => {
+      logoutAdmin();
+    });
+  }
 
   // Elementos de Pedidos e KPIs
   const kpiRecebidos = document.getElementById('kpi-orders-recebidos');
@@ -42,61 +46,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!iso) return 'Recente';
     const d = new Date(iso);
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  }
-
-  // ==========================================================================
-  // Fluxo de Autenticação
-  // ==========================================================================
-
-  async function checkAuthAndInit() {
-    if (!isSupabaseConfigured()) {
-      authSection.style.display = 'flex';
-      adminApp.style.display = 'none';
-      return;
-    }
-
-    const user = await getCurrentUser();
-    if (user) {
-      authSection.style.display = 'none';
-      adminApp.style.display = 'block';
-      adminUserEmail.textContent = user.email || 'Operador Autenticado';
-      loadOrders();
-    } else {
-      authSection.style.display = 'flex';
-      adminApp.style.display = 'none';
-    }
-  }
-
-  if (loginForm) {
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = loginEmailInput.value.trim();
-      const password = loginPasswordInput.value;
-
-      loginSubmitBtn.disabled = true;
-      loginSubmitBtn.textContent = 'Autenticando...';
-
-      try {
-        const { data, error } = await db.auth.signInWithPassword({ email, password });
-        if (error) {
-          showToast(`Erro de login: ${error.message}`, 'error', 4500);
-        } else if (data && data.user) {
-          showToast('Login realizado com sucesso!', 'success');
-          checkAuthAndInit();
-        }
-      } catch (err) {
-        showToast(`Falha ao conectar: ${err.message}`, 'error');
-      } finally {
-        loginSubmitBtn.disabled = false;
-        loginSubmitBtn.textContent = 'Entrar no Painel';
-      }
-    });
-  }
-
-  if (btnLogout) {
-    btnLogout.addEventListener('click', () => {
-      logoutAdmin();
-    });
   }
 
   // ==========================================================================
@@ -562,6 +511,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Inicializa autenticação
-  checkAuthAndInit();
+  // Inicializa carregando os pedidos
+  loadOrders();
 });
