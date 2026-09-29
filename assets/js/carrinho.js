@@ -358,9 +358,37 @@
       });
     }
 
-    // Busca de CEP via ViaCEP
+    // Máscara e validação do telefone WhatsApp
+    const phoneInput = document.getElementById('order-customer-phone');
+    if (phoneInput) {
+      phoneInput.addEventListener('input', (e) => {
+        let v = e.target.value.replace(/\D/g, '');
+        if (v.length > 11) v = v.slice(0, 11);
+        if (v.length > 6) {
+          e.target.value = `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`;
+        } else if (v.length > 2) {
+          e.target.value = `(${v.slice(0, 2)}) ${v.slice(2)}`;
+        } else if (v.length > 0) {
+          e.target.value = `(${v}`;
+        }
+      });
+    }
+
+    // Busca de CEP via ViaCEP com máscara
     const btnSearchCep = document.getElementById('btn-search-cep');
     const cepInput = document.getElementById('order-cep');
+    if (cepInput) {
+      cepInput.addEventListener('input', (e) => {
+        let v = e.target.value.replace(/\D/g, '');
+        if (v.length > 8) v = v.slice(0, 8);
+        if (v.length > 5) {
+          e.target.value = `${v.slice(0, 5)}-${v.slice(5)}`;
+        } else {
+          e.target.value = v;
+        }
+      });
+    }
+
     if (btnSearchCep && cepInput) {
       btnSearchCep.addEventListener('click', async () => {
         const cleanCep = cepInput.value.replace(/\D/g, '');
@@ -395,7 +423,7 @@
     if (btnSubmit) {
       btnSubmit.addEventListener('click', async () => {
         const nameInput = document.getElementById('order-customer-name');
-        const phoneInput = document.getElementById('order-customer-phone');
+        const phoneField = document.getElementById('order-customer-phone');
         const notesInput = document.getElementById('order-notes');
 
         if (!nameInput || !nameInput.value.trim()) {
@@ -404,9 +432,9 @@
           return;
         }
 
-        if (!phoneInput || !phoneInput.value.trim() || phoneInput.value.replace(/\D/g, '').length < 10) {
+        if (!phoneField || !phoneField.value.trim() || phoneField.value.replace(/\D/g, '').length < 10) {
           showToast('Por favor, informe um WhatsApp válido com DDD.', 'warning');
-          phoneInput.focus();
+          phoneField.focus();
           return;
         }
 
@@ -430,7 +458,7 @@
         const orderPayload = {
           order_number: orderNumber,
           customer_name: nameInput.value.trim(),
-          customer_phone: phoneInput.value.trim(),
+          customer_phone: phoneField.value.trim(),
           delivery_type: selectedDelivery,
           customer_address: addressData,
           items: itemsCopy,
@@ -441,27 +469,20 @@
           created_at: new Date().toISOString()
         };
 
+        const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db) ||
+                       (window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
+
         try {
-          if (typeof db !== 'undefined' && db && isSupabaseConfigured()) {
-            const { data, error } = await db.from('orders').insert([orderPayload]);
+          if (client && isSupabaseConfigured()) {
+            const { data, error } = await client.from('orders').insert([orderPayload]);
             if (error) {
               console.warn('Aviso ao gravar em orders (verifique se executou supabase_orders.sql):', error);
-              // Salva cópia de segurança em LocalStorage
-              saveOrderLocally(orderPayload);
             }
-          } else {
-            saveOrderLocally(orderPayload);
           }
-
-          // Limpa carrinho
-          cart = [];
-          saveCart();
-          closeCart();
-
-          // Exibe modal de confirmação de pedido
-          showOrderSuccessModal(orderPayload);
         } catch (err) {
-          console.error('Erro ao finalizar pedido:', err);
+          console.error('Erro ao registrar no Supabase:', err);
+        } finally {
+          // Sempre salva cópia de segurança em LocalStorage para garantir rastreio instantâneo no aparelho
           saveOrderLocally(orderPayload);
           cart = [];
           saveCart();
@@ -475,8 +496,9 @@
   function saveOrderLocally(order) {
     try {
       const existing = JSON.parse(localStorage.getItem('soleria_local_orders') || '[]');
-      existing.unshift(order);
-      localStorage.setItem('soleria_local_orders', JSON.stringify(existing));
+      const filtered = existing.filter(o => o.order_number !== order.order_number);
+      filtered.unshift(order);
+      localStorage.setItem('soleria_local_orders', JSON.stringify(filtered));
     } catch (e) {}
   }
 

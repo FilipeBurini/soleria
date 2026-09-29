@@ -12,12 +12,22 @@ const SUPABASE_ANON_KEY = 'sb_publishable_P-XdBQaYxckZYoussxYHFA_ZW_ZSgmq';
 
 // Inicialização do cliente Supabase via CDN global (@supabase/supabase-js@2)
 let db = null;
-try {
-  if (window.supabase && typeof window.supabase.createClient === 'function') {
-    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  } else {
-    console.warn('Biblioteca Supabase JS não encontrada no escopo global.');
+
+function getSupabaseClient() {
+  if (db) return db;
+  try {
+    if (window.supabase && typeof window.supabase.createClient === 'function' && isSupabaseConfigured()) {
+      db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      return db;
+    }
+  } catch (e) {
+    console.error('Erro ao inicializar Supabase:', e);
   }
+  return db;
+}
+
+try {
+  getSupabaseClient();
 } catch (err) {
   console.error('Erro ao inicializar Supabase:', err);
 }

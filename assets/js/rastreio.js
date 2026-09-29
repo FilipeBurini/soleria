@@ -47,6 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  let currentOrdersList = [];
+
   async function searchOrder(query) {
     if (!query) return;
 
@@ -57,56 +59,119 @@ document.addEventListener('DOMContentLoaded', () => {
     const cleanQ = query.toUpperCase().trim();
     const cleanDigits = query.replace(/\D/g, '');
 
-    let foundOrder = null;
+    let foundOrders = [];
+
+    // Garante que o cliente Supabase está instanciado mesmo com atraso de CDN
+    const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db) ||
+                   (window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
 
     try {
       // 1. Tenta buscar no Supabase
-      if (typeof db !== 'undefined' && db && isSupabaseConfigured()) {
-        // Tenta por order_number
-        let { data, error } = await db
+      if (client && isSupabaseConfigured()) {
+        const safeQ = cleanQ.replace(/[(),]/g, '').trim();
+
+        // Busca por código de pedido (ex: SOL-77620 ou apenas 77620)
+        if (safeQ && cleanDigits.length < 8) {
+          conditions.push(`order_number.ilike.*${safeQ}*`);
+        }
+        if (cleanDigits.length >= 4) {
+          conditions.push(`order_number.ilike.*${cleanDigits}*`);
+        }
+
+        // Se tem dígitos suficientes para ser telefone (com ou sem formatação)
+        if (cleanDigits.length >= 8) {
+          // Dígitos puros
+          conditions.push(`customer_phone.ilike.*${cleanDigits}*`);
+
+          // Com DDD padrão celular (11 dígitos, ex: 16997096789)
+          if (cleanDigits.length === 11) {
+            const ddd = cleanDigits.slice(0, 2);
+            const p1 = cleanDigits.slice(2, 7);
+            const p2 = cleanDigits.slice(7);
+            conditions.push(`customer_phone.ilike.*${ddd}*${p1}*${p2}*`);
+            conditions.push(`customer_phone.ilike.*${p1}*${p2}*`);
+          } else if (cleanDigits.length === 10) {
+            const ddd = cleanDigits.slice(0, 2);
+            const p1 = cleanDigits.slice(2, 6);
+            const p2 = cleanDigits.slice(6);
+            conditions.push(`customer_phone.ilike.*${ddd}*${p1}*${p2}*`);
+            conditions.push(`customer_phone.ilike.*${p1}*${p2}*`);
+          } else if (cleanDigits.length >= 12 && cleanDigits.startsWith('55')) {
+            const without55 = cleanDigits.slice(2);
+            conditions.push(`customer_phone.ilike.*${without55}*`);
+            if (without55.length === 11) {
+              const ddd = without55.slice(0, 2);
+              const p1 = without55.slice(2, 7);
+              const p2 = without55.slice(7);
+              conditions.push(`customer_phone.ilike.*${ddd}*${p1}*${p2}*`);
+            }
+          }
+
+          // Busca pelos últimos 8 ou 9 dígitos para casar independente de DDD ou prefixo
+          conditions.push(`customer_phone.ilike.*${cleanDigits.slice(-8)}*`);
+          conditions.push(`customer_phone.ilike.*${cleanDigits.slice(-9)}*`);
+        }
+
+        const uniqueConditions = Array.from(new Set(conditions));
+
+        const { data, error } = await client
           .from('orders')
           .select('*')
-          .ilike('order_number', cleanQ)
-          .maybeSingle();
+          .or(uniqueConditions.join(','))
+          .order('created_at', { ascending: false });
 
-        if (data) {
-          foundOrder = data;
-        } else if (cleanDigits.length >= 8) {
-          // Tenta buscar por telefone
-          const phoneRes = await db
-            .from('orders')
-            .select('*')
-            .ilike('customer_phone', `%${cleanDigits}%`)
-            .order('created_at', { ascending: false })
-            .limit(1);
-
-          if (phoneRes.data && phoneRes.data.length > 0) {
-            foundOrder = phoneRes.data[0];
-          }
+        if (data && data.length > 0) {
+          foundOrders = data;
         }
       }
 
       // 2. Se não encontrou no Supabase, tenta no LocalStorage local
-      if (!foundOrder) {
+      if (foundOrders.length === 0) {
         try {
           const localOrders = JSON.parse(localStorage.getItem('soleria_local_orders') || '[]');
-          foundOrder = localOrders.find(o => 
-            (o.order_number && o.order_number.toUpperCase() === cleanQ) ||
-            (cleanDigits && o.customer_phone && o.customer_phone.replace(/\D/g, '').includes(cleanDigits))
-          );
+          foundOrders = localOrders.filter(o => {
+            const numMatch = (o.order_number && (o.order_number.toUpperCase().includes(cleanQ) || (cleanDigits.length >= 4 && o.order_number.includes(cleanDigits))));
+            const oDigits = (o.customer_phone || '').replace(/\D/g, '');
+            const phoneMatch = cleanDigits.length >= 8 && (
+              oDigits.includes(cleanDigits) ||
+              cleanDigits.includes(oDigits) ||
+              (cleanDigits.length >= 8 && oDigits.endsWith(cleanDigits.slice(-8))) ||
+              (oDigits.length >= 8 && cleanDigits.endsWith(oDigits.slice(-8)))
+            );
+            return numMatch || phoneMatch;
+          });
         } catch (e) {}
       }
 
-      if (foundOrder) {
-        renderOrderDetails(foundOrder);
+      currentOrdersList = foundOrders;
+
+      if (foundOrders.length > 0) {
+        if (foundOrders.length === 1) {
+          renderOrderDetails(foundOrders[0], false);
+        } else {
+          renderMultipleOrdersList(foundOrders);
+        }
       } else {
         notFound.style.display = 'block';
         if (errorMsg) {
-          errorMsg.textContent = `Nenhum pedido encontrado com a identificação "${query}". Verifique se o código ou telefone está correto.`;
+          errorMsg.textContent = `Nenhum pedido encontrado com a identificação "${query}". Verifique se o código do pedido ou WhatsApp está correto.`;
         }
       }
     } catch (err) {
       console.error('Erro na consulta de rastreamento:', err);
+      // Fallback local caso haja falha temporária de rede
+      try {
+        const localOrders = JSON.parse(localStorage.getItem('soleria_local_orders') || '[]');
+        const matched = localOrders.filter(o => 
+          (o.order_number && o.order_number.toUpperCase().includes(cleanQ)) ||
+          (cleanDigits.length >= 8 && (o.customer_phone || '').replace(/\D/g, '').includes(cleanDigits.slice(-8)))
+        );
+        if (matched.length > 0) {
+          renderOrderDetails(matched[0], false);
+          return;
+        }
+      } catch (e) {}
+
       notFound.style.display = 'block';
       if (errorMsg) {
         errorMsg.textContent = 'Ocorreu um erro momentâneo ao conectar com o sistema. Tente novamente em instantes.';
@@ -114,6 +179,62 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       spinner.style.display = 'none';
     }
+  }
+
+  function renderMultipleOrdersList(orders) {
+    let listHtml = `
+      <div class="tracking-search-card" style="margin-top: 1.5rem;">
+        <div style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem; margin-bottom: 1.25rem;">
+          <h2 style="font-family: var(--font-serif); font-size: 1.4rem; color: var(--text-primary); margin-bottom: 0.35rem;">
+            Seus Pedidos Encontrados (${orders.length})
+          </h2>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+            Localizamos mais de um pedido para este contato. Selecione o pedido que deseja acompanhar abaixo:
+          </p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+    `;
+
+    orders.forEach((ord) => {
+      const st = getStatusLabel(ord.status);
+      const items = Array.isArray(ord.items) ? ord.items : [];
+      const totalPieces = items.reduce((acc, i) => acc + (i.quantity || 1), 0);
+
+      listHtml += `
+        <div class="order-card-summary" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 1.25rem; background: #FCFBF9; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.35rem;">
+              <span style="font-family: monospace; font-size: 1.15rem; font-weight: 700; color: var(--brand-terracotta);">${ord.order_number}</span>
+              <span class="order-badge ${st.class}">${st.label}</span>
+            </div>
+            <div style="font-size: 0.82rem; color: var(--text-secondary);">
+              <span>${formatDate(ord.created_at)}</span> • <span>${totalPieces} peça(s)</span> • <strong style="color: var(--gold-dark);">${formatMoney(ord.total_amount)}</strong>
+            </div>
+          </div>
+          <button type="button" class="btn-primary btn-view-single-order" data-ord="${ord.order_number}" style="padding: 0.6rem 1.2rem; font-size: 0.82rem;">
+            Acompanhar este Pedido &rarr;
+          </button>
+        </div>
+      `;
+    });
+
+    listHtml += `
+        </div>
+      </div>
+    `;
+
+    resultBox.innerHTML = listHtml;
+    resultBox.style.display = 'block';
+
+    resultBox.querySelectorAll('.btn-view-single-order').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ordNum = btn.dataset.ord;
+        const target = orders.find(o => o.order_number === ordNum);
+        if (target) {
+          renderOrderDetails(target, true);
+        }
+      });
+    });
   }
 
   function getStepIndex(status) {
@@ -140,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function renderOrderDetails(order) {
+  function renderOrderDetails(order, showBackBtn = false) {
     const statusInfo = getStatusLabel(order.status);
     const stepIdx = getStepIndex(order.status);
     const isCancelled = order.status === 'cancelado';
@@ -234,6 +355,12 @@ document.addEventListener('DOMContentLoaded', () => {
     resultBox.innerHTML = `
       <div class="tracking-search-card" style="margin-top: 1.5rem;">
         
+        ${showBackBtn ? `
+          <button type="button" class="btn-secondary-action" id="btn-back-to-orders-list" style="margin-bottom: 1.25rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+            &larr; Voltar para a lista com todos os seus pedidos (${currentOrdersList.length})
+          </button>
+        ` : ''}
+
         <!-- Topo com Número e Status -->
         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem;">
           <div>
@@ -310,5 +437,14 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
 
     resultBox.style.display = 'block';
+
+    if (showBackBtn) {
+      const btnBack = resultBox.querySelector('#btn-back-to-orders-list');
+      if (btnBack) {
+        btnBack.addEventListener('click', () => {
+          renderMultipleOrdersList(currentOrdersList);
+        });
+      }
+    }
   }
 });

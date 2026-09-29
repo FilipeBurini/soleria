@@ -115,12 +115,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const q = (searchInput ? searchInput.value.trim().toLowerCase() : '');
     const selectedStatus = (statusFilter ? statusFilter.value : 'todos');
 
-    const filtered = rawOrders.filter(order => {
-      const matchStatus = selectedStatus === 'todos' || (order.status && order.status.toLowerCase() === selectedStatus.toLowerCase());
+      const qDigits = q.replace(/\D/g, '');
+      const oDigits = (order.customer_phone || '').replace(/\D/g, '');
+      const matchPhone = (order.customer_phone && order.customer_phone.toLowerCase().includes(q)) ||
+                         (qDigits.length >= 4 && oDigits.includes(qDigits));
+
       const matchSearch = !q ||
         (order.order_number && order.order_number.toLowerCase().includes(q)) ||
         (order.customer_name && order.customer_name.toLowerCase().includes(q)) ||
-        (order.customer_phone && order.customer_phone.includes(q));
+        matchPhone;
 
       return matchStatus && matchSearch;
     });
