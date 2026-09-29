@@ -412,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateWhatsappLink() {
-      const phone = '5511999999999'; // Número da marca
+      const phone = '5516997990729'; // WhatsApp Soléria (Carla)
       let text = `Olá! Gostaria de mais informações sobre a peça "${product.name}" (${formatBRL(product.sale_price)}) que visualizei no catálogo Soléria.`;
       if (selectedSize) {
         text += ` Tenho interesse no Aro ${selectedSize}.`;

@@ -175,7 +175,7 @@
             </div>
             <div class="form-group" style="margin-bottom: 0.65rem;">
               <label class="form-label">WhatsApp para Atendimento <span class="required">*</span></label>
-              <input type="tel" id="order-customer-phone" class="form-input" placeholder="(11) 99999-9999" required>
+              <input type="tel" id="order-customer-phone" class="form-input" placeholder="(16) 99799-0729" required>
             </div>
           </div>
 
@@ -516,7 +516,7 @@
           <button class="modal-close-btn" id="btn-close-order-success" aria-label="Fechar">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="6"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
           <div class="order-success-modal" id="order-success-content"></div>
@@ -542,7 +542,7 @@
       `*Tipo:* ${order.delivery_type === 'retirada' ? 'Retirada Exclusiva' : 'Entrega em Domicílio'}\n\n` +
       `Gostaria de confirmar os detalhes e combinar o pagamento.`;
 
-    const phone = '5511999999999'; // Número da marca
+    const phone = '5516997990729'; // WhatsApp Soléria (Carla)
     const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(whatsappText)}`;
 
     const content = modal.querySelector('#order-success-content');

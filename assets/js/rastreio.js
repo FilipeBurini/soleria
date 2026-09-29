@@ -348,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     });
 
-    const phone = '5511999999999';
+    const phone = '5516997990729'; // WhatsApp Soléria (Carla)
     const waHelpMsg = `Olá! Gostaria de informações sobre meu pedido *${order.order_number}* em nome de ${order.customer_name}.`;
     const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(waHelpMsg)}`;
 
