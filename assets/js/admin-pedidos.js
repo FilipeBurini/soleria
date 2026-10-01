@@ -60,8 +60,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       let orders = [];
 
-      if (typeof db !== 'undefined' && db && isSupabaseConfigured()) {
-        const { data, error } = await db
+      const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db) ||
+                     (window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
+
+      if (client && isSupabaseConfigured()) {
+        const { data, error } = await client
           .from('orders')
           .select('*')
           .order('created_at', { ascending: false });
@@ -114,6 +117,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderOrders() {
     const q = (searchInput ? searchInput.value.trim().toLowerCase() : '');
     const selectedStatus = (statusFilter ? statusFilter.value : 'todos');
+
+    const filtered = rawOrders.filter(order => {
+      const matchStatus = selectedStatus === 'todos' || (order.status && order.status.toLowerCase() === selectedStatus.toLowerCase());
 
       const qDigits = q.replace(/\D/g, '');
       const oDigits = (order.customer_phone || '').replace(/\D/g, '');
@@ -401,8 +407,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         order.admin_notes = newNotes;
         order.updated_at = new Date().toISOString();
 
-        if (typeof db !== 'undefined' && db && isSupabaseConfigured()) {
-          const { error } = await db
+        const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
+        if (client && isSupabaseConfigured()) {
+          const { error } = await client
             .from('orders')
             .update({
               status: newStatus,
@@ -465,7 +472,8 @@ document.addEventListener('DOMContentLoaded', async () => {
    */
   async function deductOrderItemsFromStock(items) {
     if (!Array.isArray(items) || items.length === 0) return;
-    if (!db || !isSupabaseConfigured()) return;
+    const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
+    if (!client || !isSupabaseConfigured()) return;
 
     for (const item of items) {
       if (!item.id) continue;

@@ -84,9 +84,10 @@ function formatBRL(value) {
  * Retorna o usuário autenticado atualmente, ou null se não houver sessão ativa
  */
 async function getCurrentUser() {
-  if (!db || !isSupabaseConfigured()) return null;
+  const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
+  if (!client || !isSupabaseConfigured()) return null;
   try {
-    const { data: { session }, error } = await db.auth.getSession();
+    const { data: { session }, error } = await client.auth.getSession();
     if (error || !session) return null;
     return session.user;
   } catch (e) {
