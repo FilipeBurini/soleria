@@ -723,6 +723,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Event Listeners de Fechamento do Modal
   modalCloseBtn.addEventListener('click', closeModal);
+  const modalCloseSecondary = document.getElementById('btn-modal-close-secondary');
+  if (modalCloseSecondary) {
+    modalCloseSecondary.addEventListener('click', closeModal);
+  }
   modal.addEventListener('click', (e) => {
     if (e.target === modal) closeModal();
   });

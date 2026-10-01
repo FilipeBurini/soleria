@@ -3542,73 +3542,93 @@ a {
   }
 }
 
-/* 4. Modal de Detalhes do Produto no Mobile (Bottom Sheet Fluido e Proporcional) */
+/* 4. Modal de Detalhes do Produto no Mobile (Container Centralizado, Menor e Proporcional) */
 @media (max-width: 768px) {
   .modal-overlay {
-    padding: 0 !important;
-    align-items: flex-end !important;
+    padding: 1.25rem 0.85rem !important;
+    align-items: center !important;
     justify-content: center !important;
   }
 
   .modal-window {
-    max-height: 92dvh !important;
-    max-height: 92vh !important;
-    border-radius: 20px 20px 0 0 !important;
-    width: 100% !important;
-    margin: 0 !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    overscroll-behavior: contain !important;
-    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.25) !important;
+    max-height: 84vh !important;
+    max-height: 84dvh !important;
+    border-radius: 20px !important;
+    width: 92% !important;
+    max-width: 400px !important;
+    margin: auto !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.45) !important;
+    border: 1px solid rgba(197, 164, 101, 0.25) !important;
+    background: #FFFFFF !important;
   }
 
   .modal-close-btn {
-    position: sticky !important;
-    top: 0.75rem !important;
-    right: 0.75rem !important;
-    float: right !important;
-    margin-bottom: -36px !important;
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
     width: 36px !important;
     height: 36px !important;
-    background: rgba(255, 255, 255, 0.95) !important;
-    border: 1px solid var(--border-medium) !important;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15) !important;
-    z-index: 100 !important;
+    background: #FFFFFF !important;
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
+    color: #1A1A1A !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22) !important;
+    z-index: 9999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    border-radius: 50% !important;
+  }
+
+  .modal-close-btn:hover {
+    background: #FAF8F5 !important;
+    color: var(--brand-terracotta) !important;
   }
 
   .modal-product-layout {
     display: flex !important;
     flex-direction: column !important;
-    min-height: auto !important;
     width: 100% !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
   }
 
   .modal-gallery {
-    padding: 1rem 1rem 0.5rem !important;
+    padding: 1.15rem 1rem 0.5rem !important;
     background-color: #FAF8F5 !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
-    gap: 0.6rem !important;
+    gap: 0.5rem !important;
     width: 100% !important;
   }
 
   .modal-main-image-wrap {
     width: 100% !important;
     max-width: 220px !important;
-    height: 200px !important;
+    height: 180px !important;
     aspect-ratio: auto !important;
-    border-radius: var(--radius-md) !important;
+    border-radius: 12px !important;
     overflow: hidden !important;
     margin: 0 auto !important;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08) !important;
-    background-color: #EDE8E2 !important;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08) !important;
+    background-color: #FFFFFF !important;
+    border: 1px solid var(--border-subtle) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 6px !important;
   }
 
   .modal-main-image {
     width: 100% !important;
     height: 100% !important;
-    object-fit: cover !important;
+    object-fit: contain !important; /* Exibe a peça inteira sem cortar corrente ou pingente */
   }
 
   .modal-thumbnails {
@@ -3617,87 +3637,163 @@ a {
     gap: 0.45rem !important;
     width: 100% !important;
     overflow-x: auto !important;
-    padding-bottom: 0.25rem !important;
+    padding-bottom: 0.2rem !important;
   }
 
   .modal-thumb {
-    width: 46px !important;
-    height: 46px !important;
+    width: 42px !important;
+    height: 42px !important;
     border-radius: 6px !important;
     flex-shrink: 0 !important;
+    background-color: #FFFFFF !important;
+    border: 1px solid var(--border-subtle) !important;
+    padding: 2px !important;
+  }
+
+  .modal-thumb img {
+    object-fit: contain !important;
   }
 
   .modal-details {
-    padding: 0.85rem 1.15rem max(env(safe-area-inset-bottom), 1.75rem) !important;
+    padding: 0.95rem 1.15rem 1.75rem !important;
     display: flex !important;
     flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
     width: 100% !important;
   }
 
   .modal-category-tag {
     font-size: 0.62rem !important;
     padding: 0.22rem 0.6rem !important;
-    margin-bottom: 0.35rem !important;
+    margin: 0 auto 0.4rem auto !important;
+    display: inline-block !important;
   }
 
   .modal-product-name {
-    font-size: 1.35rem !important;
+    font-size: 1.25rem !important;
     line-height: 1.25 !important;
-    margin-bottom: 0.35rem !important;
+    margin: 0 auto 0.35rem auto !important;
+    text-align: center !important;
+    max-width: 320px !important;
   }
 
   .modal-product-sku {
     font-size: 0.72rem !important;
-    margin-bottom: 0.75rem !important;
+    margin: 0 auto 0.65rem auto !important;
+    text-align: center !important;
+    display: inline-block !important;
   }
 
   .modal-price-box {
-    margin-bottom: 1rem !important;
+    margin: 0 auto 0.85rem auto !important;
     padding-bottom: 0.75rem !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+
+  .modal-price-promo-row {
+    justify-content: center !important;
+    gap: 0.5rem !important;
   }
 
   .modal-price-val {
+    justify-content: center !important;
     font-size: 1.45rem !important;
   }
 
+  .modal-price-installment {
+    text-align: center !important;
+    font-size: 0.76rem !important;
+  }
+
   .modal-sizes-box {
-    margin-bottom: 1rem !important;
-    padding: 0.75rem !important;
+    margin: 0 auto 0.85rem auto !important;
+    padding: 0.65rem 0.75rem !important;
     border-radius: var(--radius-sm) !important;
+    width: 100% !important;
+    text-align: center !important;
+  }
+
+  .modal-sizes-title {
+    justify-content: center !important;
+    text-align: center !important;
+    font-size: 0.75rem !important;
   }
 
   .modal-sizes-list {
     display: flex !important;
+    justify-content: center !important;
     flex-wrap: wrap !important;
-    gap: 0.4rem !important;
+    gap: 0.35rem !important;
   }
 
   .ring-size-badge {
-    min-width: 40px !important;
-    min-height: 36px !important;
-    font-size: 0.76rem !important;
-    padding: 0.35rem 0.55rem !important;
+    min-width: 38px !important;
+    min-height: 34px !important;
+    font-size: 0.74rem !important;
+    padding: 0.3rem 0.5rem !important;
   }
 
   .modal-description-title {
     font-size: 0.72rem !important;
-    margin-bottom: 0.35rem !important;
+    margin-bottom: 0.3rem !important;
+    text-align: center !important;
   }
 
   .modal-description-text {
-    font-size: 0.82rem !important;
-    line-height: 1.55 !important;
-    margin-bottom: 1.25rem !important;
+    font-size: 0.8rem !important;
+    line-height: 1.5 !important;
+    margin: 0 auto 1.15rem auto !important;
+    text-align: center !important;
+    max-width: 320px !important;
   }
 
   .modal-actions {
-    gap: 0.65rem !important;
-    margin-top: 0.5rem !important;
+    gap: 0.55rem !important;
+    margin-top: 0.35rem !important;
+    width: 100% !important;
   }
 
-  .btn-add-to-cart, .btn-whatsapp-concierge {
+  .btn-add-to-cart {
     padding: 0.85rem 1rem !important;
     font-size: 0.82rem !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+  }
+
+  .btn-whatsapp-concierge {
+    padding: 0.75rem 1rem !important;
+    font-size: 0.76rem !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+  }
+
+  .btn-modal-close-secondary {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0.65rem 1rem !important;
+    font-size: 0.74rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    background: transparent !important;
+    border: 1px solid var(--border-medium) !important;
+    color: var(--text-muted) !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    margin-top: 0.2rem !important;
+    transition: all var(--trans-fast) !important;
+  }
+
+  .btn-modal-close-secondary:hover {
+    color: var(--text-primary) !important;
+    border-color: var(--text-primary) !important;
+    background: #FAF8F5 !important;
   }
 }
 
