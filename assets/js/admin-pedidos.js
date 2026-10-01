@@ -126,10 +126,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       const matchPhone = (order.customer_phone && order.customer_phone.toLowerCase().includes(q)) ||
                          (qDigits.length >= 4 && oDigits.includes(qDigits));
 
+      const items = Array.isArray(order.items) ? order.items : [];
       const matchSearch = !q ||
         (order.order_number && order.order_number.toLowerCase().includes(q)) ||
         (order.customer_name && order.customer_name.toLowerCase().includes(q)) ||
-        matchPhone;
+        (order.customer_cpf && (order.customer_cpf.includes(cleanDigits) || order.customer_cpf.includes(q))) ||
+        matchPhone ||
+        items.some(it => (it.sku && it.sku.toLowerCase().includes(q)) || (it.name && it.name.toLowerCase().includes(q)));
 
       return matchStatus && matchSearch;
     });
@@ -173,7 +176,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Resumo visual das peças
       const itemsPreview = items.map(i => {
         const aroText = i.size ? ` <span style="color: var(--brand-terracotta); font-weight: 600;">(Aro ${i.size})</span>` : '';
-        return `• ${i.quantity}x ${i.name}${aroText}`;
+        const skuText = (i.sku && i.sku !== 'N/A') ? ` <span style="font-family: monospace; font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">[${i.sku}]</span>` : '';
+        return `• ${i.quantity}x ${i.name}${aroText}${skuText}`;
       }).join('<br>');
 
       card.innerHTML = `
@@ -195,6 +199,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div style="color: var(--text-secondary); margin-top: 0.2rem;">
               WhatsApp: <strong>${order.customer_phone}</strong>
             </div>
+            ${order.customer_cpf ? `
+              <div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.15rem; font-family: monospace;">
+                CPF: ${order.customer_cpf}
+              </div>
+            ` : ''}
             <div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.15rem;">
               ${order.delivery_type === 'retirada' ? '✨ Retirada no Local' : '🚚 Envio em Domicílio'}
             </div>
@@ -263,11 +272,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     function buildItemsRows() {
       return editableItems.map((i, idx) => {
         const aroStr = i.size ? `<span class="cart-item-aro-tag" style="margin-left: 0.35rem;">Aro ${i.size}</span>` : '';
+        const skuStr = (i.sku && i.sku !== 'N/A') ? `<div style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace; margin-top: 0.2rem;">SKU: <strong style="color: var(--brand-terracotta);">${i.sku}</strong></div>` : '';
         const lineTotal = i.price * i.quantity;
         return `
           <div class="admin-item-row" data-idx="${idx}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0; border-bottom: 1px solid var(--border-subtle); font-size: 0.85rem; gap: 0.75rem;">
             <div style="flex-grow: 1;">
               <strong>${i.quantity}x</strong> ${i.name} ${aroStr}
+              ${skuStr}
             </div>
             <div style="display: flex; align-items: center; gap: 0.35rem;">
               <span style="font-size: 0.75rem; color: var(--text-muted);">R$</span>
@@ -282,7 +293,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     modalContent.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; padding-right: 3.5rem;">
         <div>
           <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Gestão do Pedido</span>
           <h3 style="font-family: monospace; font-size: 1.4rem; color: var(--brand-terracotta); margin: 0.15rem 0;">
@@ -291,7 +302,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <span style="font-size: 0.78rem; color: var(--text-muted);">${formatDate(order.created_at)}</span>
         </div>
         <div>
-          <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp-order" style="width: auto; padding: 0.45rem 0.85rem; font-size: 0.78rem;">
+          <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp-order" style="width: auto; padding: 0.45rem 0.85rem; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 0.35rem;">
             💬 Conversar com Cliente
           </a>
         </div>
@@ -534,6 +545,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
           await deductOrderItemsFromStock(editableItems);
           order.stock_deducted = true;
+          order.stock_restored = false;
           order.items = editableItems;
           order.subtotal = currentSubtotal;
           order.discount_amount = currentDiscount;
@@ -581,6 +593,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
           await restoreOrderItemsToStock(editableItems);
           order.stock_deducted = false;
+          order.stock_restored = true;
           order.updated_at = new Date().toISOString();
 
           const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
@@ -617,10 +630,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       btnSave.textContent = 'Gravando...';
 
       try {
-        // Se mudou para cancelado e o estoque estava baixado, devolve automaticamente
-        if (newStatus === 'cancelado' && order.status !== 'cancelado' && order.stock_deducted) {
+        // Se o status mudou para cancelado, devolve as peças reservadas/baixadas ao catálogo
+        if (newStatus === 'cancelado' && order.status !== 'cancelado' && !order.stock_restored) {
           await restoreOrderItemsToStock(editableItems);
           order.stock_deducted = false;
+          order.stock_restored = true;
+          showToast('Pedido cancelado e peças devolvidas ao estoque do catálogo!', 'info');
         }
 
         order.status = newStatus;

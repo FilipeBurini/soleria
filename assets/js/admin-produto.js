@@ -224,42 +224,62 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderImagePreviews();
   }
 
+  let pendingImageFiles = []; // [{ file, previewUrl, name }]
+
   /**
-   * Renderiza as miniaturas das fotos preenchidas e atualiza o badge de contagem
+   * Renderiza as miniaturas das fotos preenchidas e arquivos pendentes de upload
    */
   function renderImagePreviews() {
     const validImages = getValidImages();
     currentImages = validImages;
+    const totalCount = validImages.length + pendingImageFiles.length;
 
     if (imgCountBadge) {
-      imgCountBadge.textContent = validImages.length;
+      imgCountBadge.textContent = totalCount;
     }
 
     imagePreviewsContainer.innerHTML = '';
 
-    if (validImages.length === 0) {
+    if (totalCount === 0) {
       imagePreviewsContainer.innerHTML = `
         <div style="font-size: 0.78rem; color: var(--text-muted); font-style: italic; padding: 0.5rem 0;">
-          Nenhuma foto adicionada ainda. Adicione links nos campos acima ou faça upload de arquivos.
+          Nenhuma foto adicionada ainda. Adicione links nos campos acima ou selecione imagens para envio.
         </div>
       `;
       return;
     }
 
+    // 1. Fotos já existentes com URL direta
     validImages.forEach((url, idx) => {
       const item = document.createElement('div');
       item.className = 'image-preview-item';
       item.style.position = 'relative';
       item.innerHTML = `
         <img src="${url}" alt="Foto ${idx + 1}" onerror="this.src='https://via.placeholder.com/80?text=Inválida'">
-        ${idx === 0 ? '<span style="position: absolute; bottom: 2px; left: 2px; background: rgba(197, 164, 101, 0.9); color: #181614; font-size: 0.55rem; font-weight: 700; padding: 1px 4px; border-radius: 2px; text-transform: uppercase;">Capa</span>' : ''}
-        <button type="button" class="image-preview-remove" data-index="${idx}" title="Remover esta foto">&times;</button>
+        ${idx === 0 && pendingImageFiles.length === 0 ? '<span style="position: absolute; bottom: 2px; left: 2px; background: rgba(197, 164, 101, 0.95); color: #181614; font-size: 0.55rem; font-weight: 700; padding: 1px 4px; border-radius: 2px; text-transform: uppercase;">Capa</span>' : ''}
+        <button type="button" class="image-preview-remove btn-remove-saved" data-index="${idx}" title="Remover esta foto">&times;</button>
       `;
       imagePreviewsContainer.appendChild(item);
     });
 
-    // Remove imagem ao clicar no X da miniatura e reorganiza os slots
-    imagePreviewsContainer.querySelectorAll('.image-preview-remove').forEach(btn => {
+    // 2. Fotos selecionadas no computador (pendentes de envio no clique de Salvar)
+    pendingImageFiles.forEach((p, pIdx) => {
+      const isCover = validImages.length === 0 && pIdx === 0;
+      const item = document.createElement('div');
+      item.className = 'image-preview-item';
+      item.style.position = 'relative';
+      item.innerHTML = `
+        <img src="${p.previewUrl}" alt="${p.name}">
+        <span style="position: absolute; bottom: 2px; left: 2px; background: #B45309; color: #FFFFFF; font-size: 0.55rem; font-weight: 700; padding: 1px 4px; border-radius: 2px;">
+          ${isCover ? 'Capa (Upload)' : 'Upload Pendente'}
+        </span>
+        <button type="button" class="image-preview-remove btn-remove-pending" data-pindex="${pIdx}" title="Remover esta foto selecionada">&times;</button>
+      `;
+      imagePreviewsContainer.appendChild(item);
+    });
+
+    // Eventos de remoção de fotos salvas
+    imagePreviewsContainer.querySelectorAll('.btn-remove-saved').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const index = parseInt(e.target.dataset.index, 10);
         const updated = getValidImages();
@@ -267,20 +287,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         syncSlotsFromImages(updated);
       });
     });
+
+    // Eventos de remoção de fotos pendentes
+    imagePreviewsContainer.querySelectorAll('.btn-remove-pending').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const pIdx = parseInt(e.target.dataset.pindex, 10);
+        if (pendingImageFiles[pIdx]) {
+          URL.revokeObjectURL(pendingImageFiles[pIdx].previewUrl);
+          pendingImageFiles.splice(pIdx, 1);
+          renderImagePreviews();
+        }
+      });
+    });
   }
 
   // Monitora alterações manuais em cada um dos 6 slots
   photoSlots.forEach(slot => {
     if (!slot) return;
-    slot.addEventListener('input', () => {
-      renderImagePreviews();
-    });
-    slot.addEventListener('change', () => {
-      renderImagePreviews();
-    });
+    slot.addEventListener('input', () => renderImagePreviews());
+    slot.addEventListener('change', () => renderImagePreviews());
   });
 
-  // Upload para Supabase Storage
+  // Seleção e buffer de fotos (upload diferido para o clique em Salvar)
   uploadZone.addEventListener('click', () => imageFileInput.click());
   uploadZone.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -289,67 +317,42 @@ document.addEventListener('DOMContentLoaded', async () => {
   uploadZone.addEventListener('dragleave', () => {
     uploadZone.style.borderColor = '';
   });
-  uploadZone.addEventListener('drop', async (e) => {
+  uploadZone.addEventListener('drop', (e) => {
     e.preventDefault();
     uploadZone.style.borderColor = '';
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFilesUpload(e.dataTransfer.files);
+      bufferFilesForDeferredUpload(e.dataTransfer.files);
     }
   });
 
   imageFileInput.addEventListener('change', (e) => {
     if (e.target.files && e.target.files.length > 0) {
-      handleFilesUpload(e.target.files);
+      bufferFilesForDeferredUpload(e.target.files);
     }
   });
 
-  async function handleFilesUpload(fileList) {
-    if (!isSupabaseConfigured()) {
-      showToast('Configure as chaves do Supabase para fazer upload.', 'error');
-      return;
-    }
-
+  function bufferFilesForDeferredUpload(fileList) {
     const currentValid = getValidImages();
-    const remainingSlots = 6 - currentValid.length;
+    const remainingSlots = 6 - (currentValid.length + pendingImageFiles.length);
 
     if (remainingSlots <= 0) {
-      showToast('Limite de 6 fotos por produto já atingido. Remova uma foto antes de enviar outra.', 'error', 4500);
+      showToast('Limite máximo de 6 fotos por produto já atingido.', 'warning', 4000);
       return;
     }
 
-    const filesToUpload = Array.from(fileList).slice(0, remainingSlots);
+    const filesToAdd = Array.from(fileList).slice(0, remainingSlots);
     if (fileList.length > remainingSlots) {
-      showToast(`Apenas ${remainingSlots} foto(s) aceita(s) para respeitar o limite máximo de 6 fotos.`, 'info', 4000);
+      showToast(`Apenas ${remainingSlots} foto(s) aceita(s) para respeitar o limite de 6 fotos.`, 'info', 4000);
     }
 
-    const productSku = (skuInput.value.trim() || 'geral').toUpperCase();
-    showToast(`Enviando ${filesToUpload.length} foto(s) para a pasta "${productSku}"...`, 'info');
+    filesToAdd.forEach(file => {
+      const previewUrl = URL.createObjectURL(file);
+      pendingImageFiles.push({ file, previewUrl, name: file.name });
+    });
 
-    for (const file of filesToUpload) {
-      try {
-        const publicUrl = await uploadImageToStorage(file, productSku, 'Fotos Produtos');
-        
-        // Encontra o primeiro slot vazio de 1 a 6
-        let placed = false;
-        for (const slot of photoSlots) {
-          if (slot && !slot.value.trim()) {
-            slot.value = publicUrl;
-            placed = true;
-            break;
-          }
-        }
-        if (!placed && photoSlots[5]) {
-          photoSlots[5].value = publicUrl;
-        }
+    renderImagePreviews();
+    showToast(`${filesToAdd.length} foto(s) selecionada(s). As imagens serão enviadas ao banco quando você clicar em "Salvar Produto".`, 'info', 4500);
 
-        renderImagePreviews();
-        showToast(`Foto enviada com sucesso!`, 'success');
-      } catch (err) {
-        console.error('Falha de upload:', err);
-        showToast(`Erro ao enviar ${file.name}: ${err.message}`, 'error', 5000);
-      }
-    }
-    // Reseta o file input para permitir reenvio do mesmo arquivo se desejado
     imageFileInput.value = '';
   }
 
@@ -470,13 +473,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast('Insumo vinculado com sucesso!', 'success');
   });
 
+  // Elementos dos Modais
+  const skuConfirmModal = document.getElementById('sku-confirm-modal');
+  const btnCancelSkuConfirm = document.getElementById('btn-cancel-sku-confirm');
+  const btnProceedSkuConfirm = document.getElementById('btn-proceed-sku-confirm');
+  const confirmSkuDisplay = document.getElementById('confirm-sku-display');
+
+  const uploadProgressModal = document.getElementById('upload-progress-modal');
+  const uploadProgressBar = document.getElementById('upload-progress-bar');
+  const uploadProgressPct = document.getElementById('upload-progress-pct');
+  const uploadProgressStatus = document.getElementById('upload-progress-status');
+
+  const btnRecalc300 = document.getElementById('btn-recalc-300');
+  const badgeMarkup = document.getElementById('badge-markup-300');
+  let manualPriceEdited = false;
+
   // ==========================================================================
-  // Calculadora Financeira em Tempo Real
+  // Calculadora Financeira em Tempo Real & Simulação 300%
   // ==========================================================================
 
   function recalculateFinancials() {
     const prodCost = parseFloat(costInput.value) || 0;
-    const salePrice = parseFloat(priceInput.value) || 0;
 
     let suppliesCost = 0;
     linkedSupplies.forEach(item => {
@@ -484,6 +501,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     const totalCost = prodCost + suppliesCost;
+
+    // Se o preço ainda não foi editado manualmente e custo total > 0, já simula 300% automaticamente
+    if (!manualPriceEdited && totalCost > 0) {
+      // 300% sobre o valor do custo direto + insumos (ex: R$ 10 vira R$ 40)
+      const simulatedPrice = totalCost * 4.0;
+      priceInput.value = simulatedPrice.toFixed(2);
+      if (originalPriceInput && (!originalPriceInput.value || originalPriceInput.dataset.autoFilled === 'true')) {
+        originalPriceInput.value = (simulatedPrice * 1.4).toFixed(2);
+        originalPriceInput.dataset.autoFilled = 'true';
+      }
+    }
+
+    const salePrice = parseFloat(priceInput.value) || 0;
     const unitProfit = salePrice - totalCost;
 
     calcProdCost.textContent = formatBRL(prodCost);
@@ -492,6 +522,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     calcSalePrice.textContent = formatBRL(salePrice);
     calcUnitProfit.textContent = formatBRL(unitProfit);
 
+    if (badgeMarkup && totalCost > 0 && salePrice > 0) {
+      const markupPct = Math.round(((salePrice - totalCost) / totalCost) * 100);
+      badgeMarkup.textContent = `${markupPct}% Markup`;
+    }
+
     if (unitProfit < 0) {
       calcUnitProfit.classList.remove('highlight-green');
       calcUnitProfit.style.color = '#dc3545';
@@ -499,6 +534,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       calcUnitProfit.classList.add('highlight-green');
       calcUnitProfit.style.color = '';
     }
+  }
+
+  if (btnRecalc300) {
+    btnRecalc300.addEventListener('click', () => {
+      manualPriceEdited = false;
+      const prodCost = parseFloat(costInput.value) || 0;
+      let suppliesCost = 0;
+      linkedSupplies.forEach(item => suppliesCost += (item.unit_cost * item.quantity));
+      const totalCost = prodCost + suppliesCost;
+      if (totalCost > 0) {
+        const simulatedPrice = totalCost * 4.0;
+        priceInput.value = simulatedPrice.toFixed(2);
+        if (originalPriceInput) {
+          originalPriceInput.value = (simulatedPrice * 1.4).toFixed(2);
+          originalPriceInput.dataset.autoFilled = 'true';
+        }
+        recalculateFinancials();
+        showToast(`Preço recalculado para ${formatBRL(simulatedPrice)} (300% sobre custo total de ${formatBRL(totalCost)}).`, 'success');
+      } else {
+        showToast('Informe o custo direto da peça para simular 300%.', 'info');
+      }
+    });
   }
 
   function autoGenerateOriginalPrice() {
@@ -512,8 +569,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  costInput.addEventListener('input', recalculateFinancials);
+  costInput.addEventListener('input', () => {
+    recalculateFinancials();
+  });
+
   priceInput.addEventListener('input', () => {
+    manualPriceEdited = true;
     recalculateFinancials();
     autoGenerateOriginalPrice();
   });
@@ -632,10 +693,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ==========================================================================
-  // Submissão do Formulário (Insert ou Update)
+  // Submissão do Formulário com Confirmação de SKU e Upload Diferido
   // ==========================================================================
 
-  form.addEventListener('submit', async (e) => {
+  form.addEventListener('submit', (e) => {
     e.preventDefault();
 
     if (!isSupabaseConfigured()) {
@@ -643,10 +704,89 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    const currentSku = (skuInput.value.trim() || 'GERAL').toUpperCase();
+    if (confirmSkuDisplay) {
+      confirmSkuDisplay.textContent = currentSku;
+    }
+
+    // Pede confirmação se o SKU está correto antes de salvar
+    if (skuConfirmModal) {
+      skuConfirmModal.classList.add('active');
+    } else {
+      executeSaveProduct();
+    }
+  });
+
+  if (btnCancelSkuConfirm) {
+    btnCancelSkuConfirm.addEventListener('click', () => {
+      if (skuConfirmModal) skuConfirmModal.classList.remove('active');
+      skuInput.focus();
+    });
+  }
+
+  if (btnProceedSkuConfirm) {
+    btnProceedSkuConfirm.addEventListener('click', async () => {
+      if (skuConfirmModal) skuConfirmModal.classList.remove('active');
+      await executeSaveProduct();
+    });
+  }
+
+  async function executeSaveProduct() {
     btnSave.disabled = true;
     btnSave.textContent = 'Gravando no Banco...';
 
-    // Monta payload do produto (incluindo grade de aros se for anel)
+    const currentSku = (skuInput.value.trim() || 'GERAL').toUpperCase();
+
+    // 1. Upload diferido das fotos selecionadas diretamente para a pasta do SKU
+    if (pendingImageFiles.length > 0) {
+      if (uploadProgressModal) uploadProgressModal.classList.add('active');
+
+      const totalFiles = pendingImageFiles.length;
+      for (let i = 0; i < totalFiles; i++) {
+        const item = pendingImageFiles[i];
+        const progressPct = Math.round((i / totalFiles) * 100);
+
+        if (uploadProgressBar) uploadProgressBar.style.width = `${progressPct}%`;
+        if (uploadProgressPct) uploadProgressPct.textContent = `${progressPct}%`;
+        if (uploadProgressStatus) {
+          uploadProgressStatus.textContent = `Enviando foto ${i + 1} de ${totalFiles} para a pasta Fotos Produtos/${currentSku}/...`;
+        }
+
+        try {
+          const publicUrl = await uploadImageToStorage(item.file, currentSku, 'Fotos Produtos');
+          
+          // Encontra o primeiro slot livre de foto para atribuir a URL
+          let placed = false;
+          for (const slot of photoSlots) {
+            if (slot && !slot.value.trim()) {
+              slot.value = publicUrl;
+              placed = true;
+              break;
+            }
+          }
+          if (!placed && photoSlots[5]) {
+            photoSlots[5].value = publicUrl;
+          }
+        } catch (uploadErr) {
+          console.error('Falha ao enviar foto pendente:', uploadErr);
+          showToast(`Erro ao enviar ${item.name}: ${uploadErr.message}`, 'error', 4500);
+        }
+      }
+
+      if (uploadProgressBar) uploadProgressBar.style.width = '100%';
+      if (uploadProgressPct) uploadProgressPct.textContent = '100%';
+      if (uploadProgressStatus) uploadProgressStatus.textContent = 'Fotos enviadas com sucesso!';
+
+      // Limpa os arquivos temporários da memória
+      pendingImageFiles.forEach(p => URL.revokeObjectURL(p.previewUrl));
+      pendingImageFiles = [];
+      renderImagePreviews();
+
+      await new Promise(r => setTimeout(r, 400));
+      if (uploadProgressModal) uploadProgressModal.classList.remove('active');
+    }
+
+    // 2. Monta payload do produto (incluindo grade de aros 10 ao 30 se for anel)
     const isRing = isRingCategory(categoryInput.value);
     const ringSizes = isRing ? getRingSizesData() : {};
 
@@ -658,7 +798,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       name: nameInput.value.trim(),
       status: statusInput.value,
       category: categoryInput.value.trim(),
-      sku: skuInput.value.trim().toUpperCase(),
+      sku: currentSku,
       description: descInput.value.trim(),
       product_cost: parseFloat(costInput.value) || 0,
       sale_price: parseFloat(priceInput.value) || 0,
@@ -730,6 +870,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       btnSave.disabled = false;
       btnSave.textContent = isEditMode ? 'Atualizar Produto & Insumos' : 'Salvar Produto & Insumos';
     }
-  });
+  }
 
 });

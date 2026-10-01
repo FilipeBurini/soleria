@@ -203,3 +203,43 @@ AFTER UPDATE ON orders
 FOR EACH ROW
 EXECUTE FUNCTION handle_order_stock_restoration();
 
+-- ==========================================================================
+-- 7. Tabela de Clientes (Cadastro Simples CPF + Senha)
+-- ==========================================================================
+CREATE TABLE IF NOT EXISTS customers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cpf TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  email TEXT,
+  password_hash TEXT NOT NULL,
+  address JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_customers_cpf ON customers(cpf);
+CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone);
+
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "allow_anon_customers" ON customers;
+CREATE POLICY "allow_anon_customers"
+ON customers FOR ALL
+TO anon, authenticated
+USING (true)
+WITH CHECK (true);
+
+-- Adiciona coluna customer_cpf na tabela orders se ainda não existir
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'orders' AND column_name = 'customer_cpf'
+  ) THEN
+    ALTER TABLE orders ADD COLUMN customer_cpf TEXT;
+    CREATE INDEX IF NOT EXISTS idx_orders_customer_cpf ON orders(customer_cpf);
+  END IF;
+END $$;
+
+

@@ -724,7 +724,24 @@ a {
   font-weight: 400;
   line-height: 1.15;
   color: var(--text-primary);
+  margin-bottom: 0.35rem;
+}
+
+.modal-product-sku {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
   margin-bottom: 1rem;
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.03);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.modal-product-sku span {
+  color: var(--brand-terracotta);
+  font-weight: 700;
 }
 
 .modal-price-box {

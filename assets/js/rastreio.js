@@ -69,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // 1. Tenta buscar no Supabase
       if (client && isSupabaseConfigured()) {
         const safeQ = cleanQ.replace(/[(),]/g, '').trim();
+        const conditions = [];
 
         // Busca por código de pedido (ex: SOL-77620 ou apenas 77620)
         if (safeQ && cleanDigits.length < 8) {
@@ -114,14 +115,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const uniqueConditions = Array.from(new Set(conditions));
 
-        const { data, error } = await client
-          .from('orders')
-          .select('*')
-          .or(uniqueConditions.join(','))
-          .order('created_at', { ascending: false });
+        if (uniqueConditions.length > 0) {
+          const { data, error } = await client
+            .from('orders')
+            .select('*')
+            .or(uniqueConditions.join(','))
+            .order('created_at', { ascending: false });
 
-        if (data && data.length > 0) {
-          foundOrders = data;
+          if (data && data.length > 0) {
+            foundOrders = data;
+          }
         }
       }
 

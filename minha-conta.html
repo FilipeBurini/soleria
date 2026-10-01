@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minha Conta — Soléria Semijoias</title>
+  <meta name="description" content="Acesse sua conta Soléria com CPF e senha. Acompanhe o histórico de pedidos e o controle de todas as suas peças solicitadas.">
+  <link rel="icon" type="image/png" href="assets/images/logo-simbolo.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Estilos Compartilhados -->
+  <link rel="stylesheet" href="assets/css/style.css">
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    .account-page-wrap {
+      min-height: 80vh;
+      padding: 3rem 1rem 5rem;
+      background: var(--bg-soft, #FAF8F5);
+    }
+    .account-container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .account-auth-card {
+      max-width: 480px;
+      margin: 0 auto;
+      background: #FFFFFF;
+      border: 1px solid var(--border-subtle, #EFECE6);
+      border-radius: var(--radius-md, 8px);
+      box-shadow: var(--shadow-sm);
+      padding: 2.25rem 2rem;
+    }
+    .auth-tab-buttons {
+      display: flex;
+      border-bottom: 2px solid var(--border-subtle, #EFECE6);
+      margin-bottom: 1.75rem;
+    }
+    .auth-tab-btn {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      background: none;
+      border: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-muted, #8C827A);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s ease;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+    }
+    .auth-tab-btn.active {
+      color: var(--brand-terracotta, #AB5332);
+      border-bottom-color: var(--brand-terracotta, #AB5332);
+    }
+    .account-dashboard {
+      display: none;
+    }
+    .dashboard-header-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-subtle, #EFECE6);
+      border-radius: var(--radius-md, 8px);
+      padding: 1.75rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .dashboard-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    .dashboard-metric-box {
+      background: #FFFFFF;
+      border: 1px solid var(--border-subtle, #EFECE6);
+      border-radius: var(--radius-md, 8px);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      border-left: 4px solid var(--gold-primary, #C5A465);
+    }
+    .dashboard-metric-num {
+      font-family: var(--font-serif, 'Cormorant Garamond', serif);
+      font-size: 2.2rem;
+      font-weight: 600;
+      color: var(--text-primary, #181614);
+      line-height: 1.1;
+      margin: 0.25rem 0;
+    }
+    .dashboard-tabs-bar {
+      display: flex;
+      gap: 0.75rem;
+      border-bottom: 1px solid var(--border-medium, #E2DDD5);
+      margin-bottom: 1.75rem;
+      overflow-x: auto;
+      padding-bottom: 0.25rem;
+    }
+    .dashboard-tab-pill {
+      background: none;
+      border: none;
+      padding: 0.65rem 1.25rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary, #4A4238);
+      cursor: pointer;
+      border-radius: 20px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .dashboard-tab-pill.active {
+      background: var(--brand-terracotta, #AB5332);
+      color: #FFFFFF;
+    }
+    .customer-piece-item {
+      background: #FFFFFF;
+      border: 1px solid var(--border-subtle, #EFECE6);
+      border-radius: var(--radius-sm, 6px);
+      padding: 1rem;
+      display: flex;
+      gap: 1.25rem;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      transition: box-shadow 0.2s ease;
+    }
+    .customer-piece-item:hover {
+      box-shadow: var(--shadow-sm);
+    }
+    .customer-piece-thumb {
+      width: 70px;
+      height: 70px;
+      border-radius: 4px;
+      object-fit: cover;
+      background: #FAF8F5;
+      border: 1px solid var(--border-subtle, #EFECE6);
+      flex-shrink: 0;
+    }
+    .customer-order-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-subtle, #EFECE6);
+      border-radius: var(--radius-md, 8px);
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .customer-order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--border-subtle, #EFECE6);
+      padding-bottom: 0.85rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header Público -->
+  <header class="site-header">
+    <div class="container header-top">
+      <div class="header-brand">
+        <a href="index.html" class="header-brand-link" title="Soléria — Joias que contam sua luz">
+          <img src="assets/images/logo-simbolo.png" alt="Símbolo Soléria" class="header-brand-symbol">
+          <div>
+            <span class="brand-title">Soléria</span>
+            <span class="brand-subtitle">Semijoias que contam sua luz</span>
+          </div>
+        </a>
+      </div>
+
+      <nav class="header-nav">
+        <a href="index.html#colecoes" class="nav-link">Coleções</a>
+        <a href="rastreio.html" class="nav-link">Acompanhar Pedido</a>
+        <a href="minha-conta.html" class="nav-link active" id="nav-customer-account">Minha Conta</a>
+        <button type="button" class="header-cart-btn" id="btn-open-cart" title="Ver Sacola de Compras">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          <span>Sacola</span>
+          <span class="header-cart-badge">0</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="account-page-wrap">
+    <div class="account-container">
+
+      <!-- ================================================================== -->
+      <!-- TELA 1: AUTENTICAÇÃO (LOGIN / CADASTRO POR CPF + SENHA)            -->
+      <!-- ================================================================== -->
+      <section id="auth-section" class="account-auth-card">
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+          <img src="assets/images/logo-simbolo.png" alt="Soléria" style="width: 44px; height: 44px; margin-bottom: 0.5rem;">
+          <h1 style="font-family: var(--font-serif); font-size: 1.8rem; margin: 0; color: var(--text-primary);">Área Exclusiva da Cliente</h1>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">
+            Acesse com seu CPF para consultar suas peças e acompanhar seus pedidos.
+          </p>
+        </div>
+
+        <div class="auth-tab-buttons">
+          <button type="button" class="auth-tab-btn active" id="tab-btn-login">Já Tenho Cadastro</button>
+          <button type="button" class="auth-tab-btn" id="tab-btn-register">Novo Cadastro</button>
+        </div>
+
+        <!-- Formulário de Login -->
+        <form id="form-customer-login">
+          <div class="form-group" style="margin-bottom: 1.1rem;">
+            <label class="form-label" for="login-cpf">Seu CPF <span class="required">*</span></label>
+            <input type="text" id="login-cpf" class="form-input" placeholder="000.000.000-00" maxlength="14" required inputmode="numeric">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label class="form-label" for="login-pass">Sua Senha <span class="required">*</span></label>
+            <input type="password" id="login-pass" class="form-input" placeholder="••••••••" required>
+          </div>
+
+          <button type="submit" id="btn-submit-login" class="btn-primary" style="width: 100%; justify-content: center; height: 44px;">
+            Acessar Minha Conta &rarr;
+          </button>
+        </form>
+
+        <!-- Formulário de Cadastro Simples -->
+        <form id="form-customer-register" style="display: none;">
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label" for="reg-name">Nome Completo <span class="required">*</span></label>
+            <input type="text" id="reg-name" class="form-input" placeholder="Ex: Fernanda Lima" required>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label" for="reg-cpf">Seu CPF <span class="required">*</span></label>
+            <input type="text" id="reg-cpf" class="form-input" placeholder="000.000.000-00" maxlength="14" required inputmode="numeric">
+            <span class="form-help-text">Utilizado como login e para identificar seus pedidos.</span>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label" for="reg-phone">WhatsApp / Telefone com DDD <span class="required">*</span></label>
+            <input type="tel" id="reg-phone" class="form-input" placeholder="(16) 99999-9999" maxlength="15" required>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label" for="reg-email">E-mail (Opcional)</label>
+            <input type="email" id="reg-email" class="form-input" placeholder="exemplo@email.com">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label class="form-label" for="reg-pass">Crie uma Senha <span class="required">*</span></label>
+            <input type="password" id="reg-pass" class="form-input" placeholder="Mínimo 4 caracteres" required minlength="4">
+          </div>
+
+          <button type="submit" id="btn-submit-register" class="btn-primary" style="width: 100%; justify-content: center; height: 44px;">
+            Concluir Cadastro &rarr;
+          </button>
+        </form>
+      </section>
+
+      <!-- ================================================================== -->
+      <!-- TELA 2: PAINEL DA CLIENTE (LOGADA)                                -->
+      <!-- ================================================================== -->
+      <section id="dashboard-section" class="account-dashboard">
+        
+        <!-- Boas-vindas -->
+        <div class="dashboard-header-card">
+          <div>
+            <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--gold-dark); font-weight: 700; letter-spacing: 0.08em;">
+              Espaço Exclusivo Soléria
+            </span>
+            <h2 id="dash-customer-name" style="font-family: var(--font-serif); font-size: 1.8rem; margin: 0.2rem 0; color: var(--text-primary);">
+              Olá, Cliente!
+            </h2>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; gap: 1rem; flex-wrap: wrap;">
+              <span>CPF: <strong id="dash-customer-cpf">000.000.000-00</strong></span>
+              <span>WhatsApp: <strong id="dash-customer-phone">(00) 00000-0000</strong></span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <a href="index.html#colecoes" class="btn-secondary" style="font-size: 0.8rem; padding: 0.45rem 0.85rem;">
+              Ver Catálogo
+            </a>
+            <button type="button" id="btn-customer-logout" class="btn-secondary-action" style="font-size: 0.8rem; padding: 0.45rem 0.85rem; color: #DC2626; border-color: #FECACA;">
+              Sair da Conta
+            </button>
+          </div>
+        </div>
+
+        <!-- Métricas Rápidas -->
+        <div class="dashboard-metrics-grid">
+          <div class="dashboard-metric-box">
+            <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Peças Solicitadas</span>
+            <div class="dashboard-metric-num" id="metric-total-pieces">0</div>
+            <span style="font-size: 0.75rem; color: var(--text-secondary);">Total de joias no seu acervo</span>
+          </div>
+
+          <div class="dashboard-metric-box" style="border-left-color: var(--brand-terracotta);">
+            <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Pedidos Realizados</span>
+            <div class="dashboard-metric-num" id="metric-total-orders">0</div>
+            <span style="font-size: 0.75rem; color: var(--text-secondary);">Histórico completo de compras</span>
+          </div>
+        </div>
+
+        <!-- Abas do Dashboard -->
+        <div class="dashboard-tabs-bar">
+          <button type="button" class="dashboard-tab-pill active" data-tab="tab-pieces">
+            💎 Peças Solicitadas (<span id="badge-pieces-count">0</span>)
+          </button>
+          <button type="button" class="dashboard-tab-pill" data-tab="tab-orders">
+            📦 Meus Pedidos (<span id="badge-orders-count">0</span>)
+          </button>
+          <button type="button" class="dashboard-tab-pill" data-tab="tab-address">
+            📍 Meu Endereço & Dados
+          </button>
+        </div>
+
+        <!-- Conteúdo Aba: Peças Solicitadas -->
+        <div id="tab-pieces" class="dash-tab-content">
+          <div id="pieces-empty-state" style="display: none; text-align: center; padding: 3rem 1rem; background: #FFFFFF; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+            <span style="font-size: 2.2rem; display: block; margin-bottom: 0.5rem;">✦</span>
+            <h3 style="font-family: var(--font-serif); font-size: 1.4rem; color: var(--text-primary);">Nenhuma peça registrada ainda</h3>
+            <p style="font-size: 0.82rem; color: var(--text-secondary); max-width: 400px; margin: 0.5rem auto 1.5rem;">
+              Quando você fizer um pedido em nossa loja, todas as suas joias e aros ficarão organizados aqui para consulta.
+            </p>
+            <a href="index.html#colecoes" class="btn-primary" style="display: inline-flex;">Explorar Coleções</a>
+          </div>
+
+          <div id="pieces-list-container">
+            <!-- Injetado dinamicamente -->
+          </div>
+        </div>
+
+        <!-- Conteúdo Aba: Meus Pedidos -->
+        <div id="tab-orders" class="dash-tab-content" style="display: none;">
+          <div id="orders-empty-state" style="display: none; text-align: center; padding: 3rem 1rem; background: #FFFFFF; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+            <span style="font-size: 2.2rem; display: block; margin-bottom: 0.5rem;">📦</span>
+            <h3 style="font-family: var(--font-serif); font-size: 1.4rem; color: var(--text-primary);">Nenhum pedido encontrado</h3>
+            <p style="font-size: 0.82rem; color: var(--text-secondary); max-width: 400px; margin: 0.5rem auto 1.5rem;">
+              Seus pedidos realizados com este CPF ou telefone aparecerão aqui com status em tempo real.
+            </p>
+            <a href="index.html#colecoes" class="btn-primary" style="display: inline-flex;">Iniciar Pedido</a>
+          </div>
+
+          <div id="orders-list-container">
+            <!-- Injetado dinamicamente -->
+          </div>
+        </div>
+
+        <!-- Conteúdo Aba: Meu Endereço & Dados -->
+        <div id="tab-address" class="dash-tab-content" style="display: none;">
+          <div style="background: #FFFFFF; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.75rem; max-width: 680px;">
+            <h3 style="font-family: var(--font-serif); font-size: 1.3rem; margin: 0 0 1rem; color: var(--text-primary);">Endereço Padrão de Entrega</h3>
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+              Mantenha seu endereço salvo para agilizar seus pedidos na sacola.
+            </p>
+
+            <form id="form-customer-address">
+              <div class="form-grid">
+                <div class="form-group col-4">
+                  <label class="form-label" for="addr-cep">CEP</label>
+                  <input type="text" id="addr-cep" class="form-input" placeholder="00000-000" maxlength="9">
+                </div>
+
+                <div class="form-group col-8">
+                  <label class="form-label" for="addr-street">Rua / Logradouro</label>
+                  <input type="text" id="addr-street" class="form-input" placeholder="Ex: Av. Paulista">
+                </div>
+
+                <div class="form-group col-4">
+                  <label class="form-label" for="addr-number">Número</label>
+                  <input type="text" id="addr-number" class="form-input" placeholder="Ex: 1200">
+                </div>
+
+                <div class="form-group col-8">
+                  <label class="form-label" for="addr-complement">Complemento (Apto/Bloco)</label>
+                  <input type="text" id="addr-complement" class="form-input" placeholder="Ex: Apto 42">
+                </div>
+
+                <div class="form-group col-6">
+                  <label class="form-label" for="addr-neighborhood">Bairro</label>
+                  <input type="text" id="addr-neighborhood" class="form-input" placeholder="Ex: Bela Vista">
+                </div>
+
+                <div class="form-group col-6">
+                  <label class="form-label" for="addr-city">Cidade / UF</label>
+                  <input type="text" id="addr-city" class="form-input" placeholder="Ex: São Paulo - SP">
+                </div>
+              </div>
+
+              <div style="margin-top: 1.5rem; text-align: right;">
+                <button type="submit" class="btn-primary" id="btn-save-address">Salvar Alterações</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Rodapé Institucional -->
+  <footer class="site-footer">
+    <div class="container footer-content" style="text-align: center; padding: 2rem 1rem;">
+      <p style="font-size: 0.78rem; color: var(--text-muted);">&copy; <span id="current-year">2026</span> Soléria Semijoias — Todos os direitos reservados.</p>
+    </div>
+  </footer>
+
+  <!-- Drawer da Sacola Compartilhado -->
+  <div class="cart-overlay" id="cart-overlay" aria-hidden="true"></div>
+  <aside class="cart-drawer" id="cart-drawer" aria-hidden="true" role="dialog" aria-label="Sacola de Compras">
+    <div class="cart-header">
+      <div class="cart-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <path d="M16 10a4 4 0 0 1-8 0"></path>
+        </svg>
+        <span>Sua Sacola Soléria</span>
+      </div>
+      <button class="cart-close-btn" id="btn-close-cart" aria-label="Fechar Sacola">&times;</button>
+    </div>
+    <div class="cart-items-list" id="cart-items-list"></div>
+    <div class="cart-footer" id="cart-footer">
+      <div class="cart-total-row">
+        <span>Subtotal Estimado:</span>
+        <strong id="cart-total-price">R$ 0,00</strong>
+      </div>
+      <button type="button" class="btn-checkout" id="btn-checkout">Finalizar Pedido via WhatsApp</button>
+    </div>
+  </aside>
+
+  <!-- Scripts -->
+  <script src="assets/js/supabase.js?v=2.2"></script>
+  <script src="assets/js/cliente.js?v=2.2"></script>
+  <script src="assets/js/carrinho.js?v=2.2"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const yearElem = document.getElementById('current-year');
+      if (yearElem) yearElem.textContent = new Date().getFullYear();
+
+      // Máscara de CPF
+      const cpfInputs = [document.getElementById('login-cpf'), document.getElementById('reg-cpf')];
+      cpfInputs.forEach(input => {
+        if (!input) return;
+        input.addEventListener('input', (e) => {
+          let v = e.target.value.replace(/\D/g, '');
+          if (v.length > 11) v = v.slice(0, 11);
+          if (v.length > 9) {
+            v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+          } else if (v.length > 6) {
+            v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+          } else if (v.length > 3) {
+            v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+          }
+          e.target.value = v;
+        });
+      });
+
+      // Máscara de Telefone
+      const phoneInput = document.getElementById('reg-phone');
+      if (phoneInput) {
+        phoneInput.addEventListener('input', (e) => {
+          let v = e.target.value.replace(/\D/g, '');
+          if (v.length > 11) v = v.slice(0, 11);
+          if (v.length > 10) {
+            v = v.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+          } else if (v.length > 6) {
+            v = v.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+          } else if (v.length > 2) {
+            v = v.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+          }
+          e.target.value = v;
+        });
+      }
+
+      // Alternância de Abas Auth
+      const tabLogin = document.getElementById('tab-btn-login');
+      const tabReg = document.getElementById('tab-btn-register');
+      const formLogin = document.getElementById('form-customer-login');
+      const formReg = document.getElementById('form-customer-register');
+
+      tabLogin.addEventListener('click', () => {
+        tabLogin.classList.add('active');
+        tabReg.classList.remove('active');
+        formLogin.style.display = 'block';
+        formReg.style.display = 'none';
+      });
+
+      tabReg.addEventListener('click', () => {
+        tabReg.classList.add('active');
+        tabLogin.classList.remove('active');
+        formReg.style.display = 'block';
+        formLogin.style.display = 'none';
+      });
+
+      // Submit Login
+      formLogin.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const cpf = document.getElementById('login-cpf').value;
+        const pass = document.getElementById('login-pass').value;
+        const btn = document.getElementById('btn-submit-login');
+
+        btn.disabled = true;
+        btn.textContent = 'Verificando...';
+
+        try {
+          await window.SoleriaCustomer.login(cpf, pass);
+          if (typeof showToast === 'function') showToast('Login realizado com sucesso!', 'success');
+          renderDashboard();
+        } catch (err) {
+          if (typeof showToast === 'function') {
+            showToast(err.message, 'error');
+          } else {
+            alert(err.message);
+          }
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = 'Acessar Minha Conta &rarr;';
+        }
+      });
+
+      // Submit Cadastro
+      formReg.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('reg-name').value;
+        const cpf = document.getElementById('reg-cpf').value;
+        const phone = document.getElementById('reg-phone').value;
+        const email = document.getElementById('reg-email').value;
+        const pass = document.getElementById('reg-pass').value;
+        const btn = document.getElementById('btn-submit-register');
+
+        btn.disabled = true;
+        btn.textContent = 'Criando cadastro...';
+
+        try {
+          await window.SoleriaCustomer.cadastrar({ name, cpf, phone, email, password: pass });
+          if (typeof showToast === 'function') showToast('Conta criada com sucesso! Bem-vinda à Soléria.', 'success');
+          renderDashboard();
+        } catch (err) {
+          if (typeof showToast === 'function') {
+            showToast(err.message, 'error');
+          } else {
+            alert(err.message);
+          }
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = 'Concluir Cadastro &rarr;';
+        }
+      });
+
+      // Logout
+      const btnLogout = document.getElementById('btn-customer-logout');
+      if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+          if (confirm('Deseja realmente sair da sua conta?')) {
+            window.SoleriaCustomer.logout();
+          }
+        });
+      }
+
+      // Abas do Dashboard
+      const dashTabPills = document.querySelectorAll('.dashboard-tab-pill');
+      dashTabPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+          dashTabPills.forEach(p => p.classList.remove('active'));
+          pill.classList.add('active');
+          const targetId = pill.dataset.tab;
+          document.querySelectorAll('.dash-tab-content').forEach(c => c.style.display = 'none');
+          const targetElem = document.getElementById(targetId);
+          if (targetElem) targetElem.style.display = 'block';
+        });
+      });
+
+      // Salvar Endereço
+      const formAddr = document.getElementById('form-customer-address');
+      if (formAddr) {
+        formAddr.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const address = {
+            cep: document.getElementById('addr-cep').value.trim(),
+            street: document.getElementById('addr-street').value.trim(),
+            number: document.getElementById('addr-number').value.trim(),
+            complement: document.getElementById('addr-complement').value.trim(),
+            neighborhood: document.getElementById('addr-neighborhood').value.trim(),
+            city: document.getElementById('addr-city').value.trim()
+          };
+
+          const btnSave = document.getElementById('btn-save-address');
+          btnSave.disabled = true;
+          btnSave.textContent = 'Salvando...';
+
+          try {
+            await window.SoleriaCustomer.updateProfile({ address });
+            if (typeof showToast === 'function') showToast('Endereço atualizado com sucesso!', 'success');
+          } catch (err) {
+            if (typeof showToast === 'function') showToast(err.message, 'error');
+          } finally {
+            btnSave.disabled = false;
+            btnSave.textContent = 'Salvar Alterações';
+          }
+        });
+      }
+
+      // Função Principal de Render do Dashboard
+      async function renderDashboard() {
+        const cust = window.SoleriaCustomer.getCurrent();
+        const authSec = document.getElementById('auth-section');
+        const dashSec = document.getElementById('dashboard-section');
+
+        if (!cust) {
+          authSec.style.display = 'block';
+          dashSec.style.display = 'none';
+          return;
+        }
+
+        authSec.style.display = 'none';
+        dashSec.style.display = 'block';
+
+        // Preenche dados do topo
+        document.getElementById('dash-customer-name').textContent = `Olá, ${cust.name || 'Cliente'}!`;
+        document.getElementById('dash-customer-cpf').textContent = window.SoleriaCustomer.formatCPF(cust.cpf);
+        document.getElementById('dash-customer-phone').textContent = cust.phone || 'Não informado';
+
+        // Preenche endereço se houver
+        if (cust.address) {
+          document.getElementById('addr-cep').value = cust.address.cep || '';
+          document.getElementById('addr-street').value = cust.address.street || '';
+          document.getElementById('addr-number').value = cust.address.number || '';
+          document.getElementById('addr-complement').value = cust.address.complement || '';
+          document.getElementById('addr-neighborhood').value = cust.address.neighborhood || '';
+          document.getElementById('addr-city').value = cust.address.city || '';
+        }
+
+        // Carrega Peças e Pedidos
+        try {
+          const piecesSummary = await window.SoleriaCustomer.getPiecesSummary(cust.cpf);
+          const orders = await window.SoleriaCustomer.getOrders(cust.cpf);
+
+          // Atualiza Métricas
+          document.getElementById('metric-total-pieces').textContent = piecesSummary.totalPieces;
+          document.getElementById('metric-total-orders').textContent = piecesSummary.totalOrders;
+          document.getElementById('badge-pieces-count').textContent = piecesSummary.list.length;
+          document.getElementById('badge-orders-count').textContent = orders.length;
+
+          // Render Peças Solicitadas
+          const piecesContainer = document.getElementById('pieces-list-container');
+          const piecesEmpty = document.getElementById('pieces-empty-state');
+          piecesContainer.innerHTML = '';
+
+          if (piecesSummary.list.length === 0) {
+            piecesEmpty.style.display = 'block';
+          } else {
+            piecesEmpty.style.display = 'none';
+            piecesSummary.list.forEach(item => {
+              const el = document.createElement('div');
+              el.className = 'customer-piece-item';
+              const aroTag = item.size ? `<span class="cart-item-aro-tag" style="margin-left: 0.35rem;">Aro ${item.size}</span>` : '';
+              const skuDisplay = item.sku && item.sku !== 'N/A' ? `<span style="font-family: monospace; font-size: 0.72rem; color: var(--text-muted); display: block; margin-top: 0.15rem;">SKU: <strong>${item.sku}</strong></span>` : '';
+
+              el.innerHTML = `
+                <img src="${item.image}" alt="${item.name}" class="customer-piece-thumb" onerror="this.src='assets/images/logo-simbolo.png'">
+                <div style="flex-grow: 1;">
+                  <strong style="font-size: 0.95rem; color: var(--text-primary);">${item.name}</strong> ${aroTag}
+                  ${skuDisplay}
+                  <div style="font-size: 0.76rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                    Último pedido: <strong>${item.lastOrderNumber}</strong> (${new Date(item.lastOrderDate).toLocaleDateString('pt-BR')})
+                  </div>
+                </div>
+                <div style="text-align: right; min-width: 90px;">
+                  <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block;">Qtd Total</span>
+                  <div style="font-size: 1.25rem; font-weight: 700; color: var(--brand-terracotta);">${item.totalQty} un</div>
+                </div>
+              `;
+              piecesContainer.appendChild(el);
+            });
+          }
+
+          // Render Pedidos
+          const ordersContainer = document.getElementById('orders-list-container');
+          const ordersEmpty = document.getElementById('orders-empty-state');
+          ordersContainer.innerHTML = '';
+
+          if (orders.length === 0) {
+            ordersEmpty.style.display = 'block';
+          } else {
+            ordersEmpty.style.display = 'none';
+            orders.forEach(o => {
+              const card = document.createElement('div');
+              card.className = 'customer-order-card';
+              
+              const statusLabels = {
+                recebido: { label: 'Recebido', color: '#B45309', bg: '#FEF3C7' },
+                confirmado: { label: 'Confirmado', color: '#1E40AF', bg: '#DBEAFE' },
+                preparacao: { label: 'Em Confecção / Preparação', color: '#6D28D9', bg: '#EDE9FE' },
+                enviado: { label: 'Enviado / A Caminho', color: '#047857', bg: '#D1FAE5' },
+                entregue: { label: 'Entregue / Concluído', color: '#15803D', bg: '#DCFCE7' },
+                cancelado: { label: 'Cancelado', color: '#991B1B', bg: '#FEE2E2' }
+              };
+              const st = statusLabels[o.status] || { label: o.status || 'Em Processamento', color: '#4B5563', bg: '#F3F4F6' };
+              const dateStr = new Date(o.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+              const itemsList = Array.isArray(o.items) ? o.items : [];
+              const itemsHtml = itemsList.map(it => {
+                const aro = it.size ? ` (Aro ${it.size})` : '';
+                const sku = it.sku && it.sku !== 'N/A' ? ` <span style="font-family: monospace; font-size: 0.72rem; color: var(--text-muted);">(SKU: ${it.sku})</span>` : '';
+                const val = (Number(it.price) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                return `<div style="font-size: 0.82rem; margin-bottom: 0.25rem;">• <strong>${it.quantity}x</strong> ${it.name}${aro}${sku} — <span style="color: var(--gold-dark);">${val}</span></div>`;
+              }).join('');
+
+              const totalVal = (Number(o.total_amount) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+              const trackingHtml = o.tracking_code ? `
+                <div style="background: #F0FDF4; border: 1px solid #BBF7D0; padding: 0.5rem 0.75rem; border-radius: 4px; font-size: 0.78rem; margin-top: 0.6rem; color: #166534;">
+                  🚚 <strong>Código de Rastreio:</strong> <code style="font-weight: 700; font-size: 0.85rem;">${o.tracking_code}</code>
+                </div>
+              ` : '';
+
+              card.innerHTML = `
+                <div class="customer-order-header">
+                  <div>
+                    <span style="font-family: monospace; font-size: 1.15rem; font-weight: 700; color: var(--brand-terracotta);">${o.order_number}</span>
+                    <span style="font-size: 0.76rem; color: var(--text-muted); margin-left: 0.5rem;">${dateStr}</span>
+                  </div>
+                  <div>
+                    <span style="display: inline-block; padding: 0.25rem 0.65rem; border-radius: 20px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; background: ${st.bg}; color: ${st.color};">
+                      ${st.label}
+                    </span>
+                  </div>
+                </div>
+
+                <div style="margin-bottom: 0.75rem;">
+                  <div style="font-size: 0.74rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.35rem;">Itens Deste Pedido:</div>
+                  ${itemsHtml}
+                </div>
+
+                ${trackingHtml}
+
+                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 0.75rem; margin-top: 0.75rem;">
+                  <div>
+                    <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Total</span>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--gold-dark);">${totalVal}</div>
+                  </div>
+                  <div>
+                    <a href="rastreio.html?q=${encodeURIComponent(o.order_number)}" class="btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
+                      Ver Detalhes no Rastreio &rarr;
+                    </a>
+                  </div>
+                </div>
+              `;
+              ordersContainer.appendChild(card);
+            });
+          }
+
+        } catch (e) {
+          console.error('Erro ao renderizar dados do dashboard:', e);
+        }
+      }
+
+      // Inicia render
+      renderDashboard();
+    });
+  </script>
+</body>
+</html>

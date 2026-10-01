@@ -223,6 +223,11 @@
               <label class="form-label">WhatsApp para Atendimento <span class="required">*</span></label>
               <input type="tel" id="order-customer-phone" class="form-input" placeholder="(16) 99799-0729" required>
             </div>
+            <div class="form-group" style="margin-bottom: 0.65rem;">
+              <label class="form-label">Seu CPF (para login e acompanhamento) <span class="required">*</span></label>
+              <input type="text" id="order-customer-cpf" class="form-input" placeholder="000.000.000-00" maxlength="14" required inputmode="numeric">
+              <span class="form-help-text">Seus pedidos e peças solicitadas ficarão vinculados ao seu CPF.</span>
+            </div>
           </div>
 
           <div>
@@ -404,6 +409,52 @@
       });
     }
 
+    // Preenche dados do cliente autenticado se houver
+    if (window.SoleriaCustomer && typeof window.SoleriaCustomer.getCurrent === 'function') {
+      const activeCust = window.SoleriaCustomer.getCurrent();
+      if (activeCust) {
+        const nameInp = document.getElementById('order-customer-name');
+        const phoneInp = document.getElementById('order-customer-phone');
+        const cpfInp = document.getElementById('order-customer-cpf');
+        if (nameInp && !nameInp.value) nameInp.value = activeCust.name || '';
+        if (phoneInp && !phoneInp.value) phoneInp.value = activeCust.phone || '';
+        if (cpfInp && !cpfInp.value && activeCust.cpf) cpfInp.value = window.SoleriaCustomer.formatCPF(activeCust.cpf);
+
+        if (activeCust.address) {
+          const cepInp = document.getElementById('order-cep');
+          const streetInp = document.getElementById('order-street');
+          const numInp = document.getElementById('order-number');
+          const compInp = document.getElementById('order-complement');
+          const neighInp = document.getElementById('order-neighborhood');
+          const cityInp = document.getElementById('order-city');
+          if (cepInp && !cepInp.value) cepInp.value = activeCust.address.cep || '';
+          if (streetInp && !streetInp.value) streetInp.value = activeCust.address.street || '';
+          if (numInp && !numInp.value) numInp.value = activeCust.address.number || '';
+          if (compInp && !compInp.value) compInp.value = activeCust.address.complement || '';
+          if (neighInp && !neighInp.value) neighInp.value = activeCust.address.neighborhood || '';
+          if (cityInp && !cityInp.value) cityInp.value = activeCust.address.city || '';
+        }
+      }
+    }
+
+    // Máscara de CPF
+    const cpfInput = document.getElementById('order-customer-cpf');
+    if (cpfInput) {
+      cpfInput.addEventListener('input', (e) => {
+        let v = e.target.value.replace(/\D/g, '');
+        if (v.length > 11) v = v.slice(0, 11);
+        if (v.length > 9) {
+          e.target.value = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+        } else if (v.length > 6) {
+          e.target.value = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+        } else if (v.length > 3) {
+          e.target.value = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+        } else {
+          e.target.value = v;
+        }
+      });
+    }
+
     // Máscara e validação do telefone WhatsApp
     const phoneInput = document.getElementById('order-customer-phone');
     if (phoneInput) {
@@ -472,6 +523,9 @@
         const phoneField = document.getElementById('order-customer-phone');
         const notesInput = document.getElementById('order-notes');
 
+        const cpfField = document.getElementById('order-customer-cpf');
+        const rawCpf = cpfField ? cpfField.value.replace(/\D/g, '') : '';
+
         if (!nameInput || !nameInput.value.trim()) {
           showToast('Por favor, informe seu nome completo.', 'warning');
           nameInput.focus();
@@ -481,6 +535,12 @@
         if (!phoneField || !phoneField.value.trim() || phoneField.value.replace(/\D/g, '').length < 10) {
           showToast('Por favor, informe um WhatsApp válido com DDD.', 'warning');
           phoneField.focus();
+          return;
+        }
+
+        if (!rawCpf || rawCpf.length !== 11) {
+          showToast('Por favor, informe um CPF válido com 11 dígitos para vincular seu pedido.', 'warning');
+          if (cpfField) cpfField.focus();
           return;
         }
 
@@ -518,6 +578,7 @@
           order_number: orderNumber,
           customer_name: nameInput.value.trim(),
           customer_phone: phoneField.value.trim(),
+          customer_cpf: rawCpf,
           delivery_type: selectedDelivery,
           customer_address: addressData,
           items: itemsCopy,

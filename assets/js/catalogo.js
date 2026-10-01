@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (db && isSupabaseConfigured()) {
         const { data, error } = await db
           .from('products')
-          .select('id, name, category, description, sale_price, images, status, sizes, original_price, stock')
+          .select('id, name, sku, category, description, sale_price, images, status, sizes, original_price, stock')
           .eq('status', 'ativo')
           .order('created_at', { ascending: false });
 
@@ -317,6 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const q = searchTerm.toLowerCase();
       const matchesSearch = !q || 
         (p.name && p.name.toLowerCase().includes(q)) || 
+        (p.sku && p.sku.toLowerCase().includes(q)) || 
         (p.category && p.category.toLowerCase().includes(q)) ||
         (p.description && p.description.toLowerCase().includes(q));
 
@@ -408,6 +409,18 @@ document.addEventListener('DOMContentLoaded', () => {
     modalTitle.textContent = product.name;
     modalCategory.textContent = product.category || 'Semijoias';
     modalDesc.textContent = product.description || 'Semijoia de alta qualidade com banho nobre, verniz protetor e acabamento primoroso de joia.';
+
+    // Exibe SKU discreto abaixo do nome do item
+    const modalSku = document.getElementById('modal-sku');
+    const modalSkuVal = document.getElementById('modal-sku-val');
+    if (modalSku && modalSkuVal) {
+      if (product.sku && product.sku !== 'N/A') {
+        modalSkuVal.textContent = product.sku;
+        modalSku.style.display = 'block';
+      } else {
+        modalSku.style.display = 'none';
+      }
+    }
 
     // Exibe preços promocionais no modal
     const modalPromoRow = document.getElementById('modal-promo-row');
