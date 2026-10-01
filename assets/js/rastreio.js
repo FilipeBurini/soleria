@@ -415,8 +415,14 @@ document.addEventListener('DOMContentLoaded', () => {
           </h3>
           <div>${itemsRowsHtml}</div>
           
-          <div style="display: flex; justify-content: flex-end; margin-top: 1rem; font-size: 1.15rem; font-weight: 700; color: var(--text-primary);">
-            Total: <span style="color: var(--gold-dark); margin-left: 0.5rem;">${formatMoney(order.total_amount)}</span>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; margin-top: 1rem; gap: 0.25rem;">
+            ${Number(order.discount_amount) > 0 ? `
+              <div style="font-size: 0.82rem; color: var(--text-muted);">Subtotal Original: <span style="text-decoration: line-through;">${formatMoney(Number(order.subtotal) || (Number(order.total_amount) + Number(order.discount_amount)))}</span></div>
+              <div style="font-size: 0.82rem; color: #16A34A; font-weight: 600;">🏷️ Desconto Especial Soléria: -${formatMoney(order.discount_amount)}</div>
+            ` : ''}
+            <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary);">
+              Total: <span style="color: var(--gold-dark); margin-left: 0.5rem;">${formatMoney(order.total_amount)}</span>
+            </div>
           </div>
         </div>
 

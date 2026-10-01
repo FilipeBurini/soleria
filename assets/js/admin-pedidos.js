@@ -178,12 +178,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       card.innerHTML = `
         <div class="admin-order-header">
-          <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
             <span class="admin-order-number">${order.order_number}</span>
             <span class="order-badge ${stInfo.class}">${stInfo.label}</span>
             ${order.stock_deducted 
-              ? `<span style="font-size: 0.7rem; color: #046C4E; background: #DEF7EC; padding: 0.15rem 0.45rem; border-radius: var(--radius-xs); font-weight: 600;">✓ Estoque Baixado</span>`
-              : `<span style="font-size: 0.7rem; color: #92400E; background: #FEF3C7; padding: 0.15rem 0.45rem; border-radius: var(--radius-xs); font-weight: 600;">⚠️ Estoque Não Baixado</span>`
+              ? `<span class="badge-stock-ok">✓ Baixa Confirmada pelo Admin</span>`
+              : `<span class="badge-stock-pending">⚠️ Aguardando Baixa do Admin</span>`
             }
           </div>
           <span style="font-size: 0.75rem; color: var(--text-muted);">${formatDate(order.created_at)}</span>
@@ -209,6 +209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div>
               <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Total</span>
               <div style="font-size: 1.15rem; font-weight: 700; color: var(--gold-dark);">${formatMoney(order.total_amount)}</div>
+              ${order.discount_amount > 0 ? `<div style="font-size: 0.72rem; color: #16A34A; font-weight: 600;">Desconto: -${formatMoney(order.discount_amount)}</div>` : ''}
             </div>
             
             <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem;">
@@ -236,23 +237,49 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ==========================================================================
 
   function openOrderManageModal(order) {
-    const items = Array.isArray(order.items) ? order.items : [];
+    const rawItems = Array.isArray(order.items) ? order.items : [];
+    let editableItems = rawItems.map(i => ({
+      ...i,
+      price: Number(i.price) || 0,
+      quantity: Number(i.quantity) || 1
+    }));
+
     const addr = order.customer_address || {};
     const phoneDigits = (order.customer_phone || '').replace(/\D/g, '');
     const waLink = `https://wa.me/55${phoneDigits}?text=${encodeURIComponent(`Olá, ${order.customer_name}! Estamos acompanhando seu pedido *${order.order_number}* na Soléria.`)}`;
 
-    let itemsRows = '';
-    items.forEach(i => {
-      const aroStr = i.size ? `<span class="cart-item-aro-tag" style="margin-left: 0.35rem;">Aro ${i.size}</span>` : '';
-      itemsRows += `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--border-subtle); font-size: 0.85rem;">
-          <div>
-            <strong>${i.quantity}x</strong> ${i.name} ${aroStr}
+    let currentDiscount = Number(order.discount_amount) || 0;
+    let currentTotal = Number(order.total_amount) || 0;
+
+    function calculateSubtotal() {
+      return editableItems.reduce((acc, it) => acc + (it.price * it.quantity), 0);
+    }
+
+    let currentSubtotal = calculateSubtotal();
+    if (!currentTotal || currentTotal <= 0) {
+      currentTotal = Math.max(0, currentSubtotal - currentDiscount);
+    }
+
+    function buildItemsRows() {
+      return editableItems.map((i, idx) => {
+        const aroStr = i.size ? `<span class="cart-item-aro-tag" style="margin-left: 0.35rem;">Aro ${i.size}</span>` : '';
+        const lineTotal = i.price * i.quantity;
+        return `
+          <div class="admin-item-row" data-idx="${idx}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0; border-bottom: 1px solid var(--border-subtle); font-size: 0.85rem; gap: 0.75rem;">
+            <div style="flex-grow: 1;">
+              <strong>${i.quantity}x</strong> ${i.name} ${aroStr}
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.35rem;">
+              <span style="font-size: 0.75rem; color: var(--text-muted);">R$</span>
+              <input type="number" step="0.01" min="0" class="admin-item-edit-input item-price-input" data-idx="${idx}" value="${i.price.toFixed(2)}" title="Preço unitário cobrado por esta peça">
+            </div>
+            <div class="item-line-total" style="font-weight: 700; color: var(--gold-dark); min-width: 80px; text-align: right;">
+              ${formatMoney(lineTotal)}
+            </div>
           </div>
-          <div style="font-weight: 600; color: var(--gold-dark);">${formatMoney(i.price * i.quantity)}</div>
-        </div>
-      `;
-    });
+        `;
+      }).join('');
+    }
 
     modalContent.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem;">
@@ -295,32 +322,86 @@ document.addEventListener('DOMContentLoaded', async () => {
         ` : ''}
       </div>
 
-      <!-- Lista de Itens -->
+      <!-- Peças Selecionadas & Ajuste de Preço -->
       <div style="margin-bottom: 1.25rem;">
-        <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Peças Selecionadas</span>
-        <div>${itemsRows}</div>
-        <div style="text-align: right; margin-top: 0.5rem; font-size: 1rem; font-weight: 700;">
-          Total: <span style="color: var(--gold-dark);">${formatMoney(order.total_amount)}</span>
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem;">
+          <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Peças & Valores Cobrados</span>
+          <span style="font-size: 0.72rem; color: var(--brand-terracotta);">Edite os valores se concedeu desconto no WhatsApp</span>
+        </div>
+        <div id="modal-items-container">${buildItemsRows()}</div>
+      </div>
+
+      <!-- Resumo Financeiro & Desconto Negociado -->
+      <div class="admin-order-pricing-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-size: 0.85rem;">
+          <span style="color: var(--text-secondary);">Subtotal das Peças:</span>
+          <strong id="modal-subtotal-val" style="color: var(--text-primary);">${formatMoney(currentSubtotal)}</strong>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; font-size: 0.85rem; flex-wrap: wrap; gap: 0.4rem;">
+          <div>
+            <span style="color: var(--text-secondary); display: block;">Desconto Concedido:</span>
+            <div style="display: flex; gap: 0.25rem; margin-top: 0.2rem;">
+              <button type="button" class="admin-price-chip-btn btn-quick-discount" data-pct="5">-5%</button>
+              <button type="button" class="admin-price-chip-btn btn-quick-discount" data-pct="10">-10%</button>
+              <button type="button" class="admin-price-chip-btn btn-quick-discount" data-pct="15">-15%</button>
+              <button type="button" class="admin-price-chip-btn btn-quick-discount" data-pct="0">Zerar</button>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.35rem;">
+            <span style="font-size: 0.75rem; color: var(--text-muted);">R$</span>
+            <input type="number" step="0.01" min="0" id="order-input-discount" class="admin-item-edit-input" style="width: 85px;" value="${currentDiscount.toFixed(2)}">
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.65rem; border-top: 1px solid var(--border-medium); font-size: 0.95rem;">
+          <strong style="color: var(--text-primary);">Valor Final a Cobrar:</strong>
+          <div style="display: flex; align-items: center; gap: 0.35rem;">
+            <span style="font-size: 0.85rem; font-weight: 700; color: var(--gold-dark);">R$</span>
+            <input type="number" step="0.01" min="0" id="order-input-total" class="admin-item-edit-input" style="width: 105px; font-size: 1rem; font-weight: 700; color: var(--gold-dark); border-color: var(--gold-primary);" value="${currentTotal.toFixed(2)}">
+          </div>
+        </div>
+
+        <div id="modal-discount-tag" style="display: ${currentDiscount > 0 ? 'inline-block' : 'none'}; margin-top: 0.5rem; font-size: 0.72rem; color: #15803D; background: #DCFCE7; padding: 0.2rem 0.6rem; border-radius: var(--radius-xs); font-weight: 600;">
+          🏷️ Preço Especial: Desconto de ${formatMoney(currentDiscount)} aplicado
         </div>
       </div>
 
-      <!-- Baixa de Estoque Automática -->
-      <div style="background: #FDF9F6; border: 1px solid var(--brand-terracotta-border); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1.25rem;">
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
-          <div>
-            <strong style="font-size: 0.82rem; color: var(--brand-terracotta); text-transform: uppercase; letter-spacing: 0.05em; display: block;">
-              ⚡ Baixa no Estoque do Banco
-            </strong>
-            <span style="font-size: 0.75rem; color: var(--text-secondary);">
-              ${order.stock_deducted ? '✓ O estoque das peças deste pedido já foi baixado no sistema.' : 'Abater automaticamente 1 unidade de cada peça/aro no Supabase.'}
-            </span>
+      <!-- Confirmação Oficial de Baixa no Estoque -->
+      <div style="margin-bottom: 1.25rem;">
+        ${order.stock_deducted ? `
+          <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: var(--radius-sm); padding: 1rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem;">
+              <div>
+                <strong style="font-size: 0.82rem; color: #166534; text-transform: uppercase; display: flex; align-items: center; gap: 0.35rem;">
+                  ✓ Baixa no Estoque Confirmada pelo Admin
+                </strong>
+                <span style="font-size: 0.76rem; color: #14532D; display: block; margin-top: 0.15rem;">
+                  A saída física dos produtos foi oficializada no estoque do catálogo.
+                </span>
+              </div>
+              <button type="button" class="btn-secondary-action" id="btn-restore-order-stock" style="font-size: 0.76rem; padding: 0.45rem 0.85rem; color: #B91C1C; border-color: #FCA5A5;">
+                ↩ Devolver Peças ao Estoque
+              </button>
+            </div>
           </div>
-          <div>
-            <button type="button" class="btn-admin-deduct" id="btn-deduct-order-stock" ${order.stock_deducted ? 'disabled' : ''} style="width: auto; padding: 0.5rem 0.9rem; font-size: 0.78rem;">
-              <span>${order.stock_deducted ? '✓ Já Baixado' : '⚡ Baixar Estoque Agora'}</span>
-            </button>
+        ` : `
+          <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: var(--radius-sm); padding: 1rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem;">
+              <div>
+                <strong style="font-size: 0.82rem; color: #92400E; text-transform: uppercase; display: flex; align-items: center; gap: 0.35rem;">
+                  ⚡ Confirmação de Baixa do Estoque
+                </strong>
+                <span style="font-size: 0.76rem; color: #78350F; display: block; margin-top: 0.15rem;">
+                  Itens reservados. Confirme para oficializar a baixa definitiva do estoque e registrar a venda.
+                </span>
+              </div>
+              <button type="button" class="btn-primary" id="btn-confirm-order-stock" style="padding: 0.55rem 1.1rem; font-size: 0.8rem; background: #059669; border-color: #059669;">
+                ✓ Confirmar Baixa do Estoque
+              </button>
+            </div>
           </div>
-        </div>
+        `}
       </div>
 
       <!-- Formulário de Atualização de Status & Rastreio -->
@@ -335,6 +416,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             <option value="entregue" ${order.status === 'entregue' ? 'selected' : ''}>Entregue & Concluído</option>
             <option value="cancelado" ${order.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
           </select>
+          <span id="cancel-warning-hint" style="display: ${order.status === 'cancelado' ? 'block' : 'none'}; font-size: 0.75rem; color: #B91C1C; margin-top: 0.3rem;">
+            ⚠️ Ao salvar como Cancelado, as peças do pedido serão devolvidas ao estoque do catálogo.
+          </span>
         </div>
 
         <div class="form-group" style="margin-bottom: 0.85rem;">
@@ -359,37 +443,168 @@ document.addEventListener('DOMContentLoaded', async () => {
       </form>
     `;
 
-    // Evento de Baixa no Estoque
-    const btnDeduct = modalContent.querySelector('#btn-deduct-order-stock');
-    if (btnDeduct) {
-      btnDeduct.addEventListener('click', async () => {
-        if (order.stock_deducted) return;
-        btnDeduct.disabled = true;
-        btnDeduct.textContent = 'Processando baixa...';
+    // Interatividade dos Campos de Preço e Desconto
+    const subtotalDisplay = modalContent.querySelector('#modal-subtotal-val');
+    const inputDiscount = modalContent.querySelector('#order-input-discount');
+    const inputTotal = modalContent.querySelector('#order-input-total');
+    const discountTag = modalContent.querySelector('#modal-discount-tag');
+
+    function syncPricingUI() {
+      currentSubtotal = calculateSubtotal();
+      if (subtotalDisplay) subtotalDisplay.textContent = formatMoney(currentSubtotal);
+
+      if (currentDiscount > 0) {
+        if (discountTag) {
+          discountTag.style.display = 'inline-block';
+          discountTag.textContent = `🏷️ Preço Especial: Desconto de ${formatMoney(currentDiscount)} aplicado`;
+        }
+      } else {
+        if (discountTag) discountTag.style.display = 'none';
+      }
+
+      if (inputDiscount) inputDiscount.value = currentDiscount.toFixed(2);
+      if (inputTotal) inputTotal.value = currentTotal.toFixed(2);
+    }
+
+    // Edição individual de preço de peça
+    modalContent.querySelectorAll('.item-price-input').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const idx = Number(inp.dataset.idx);
+        const val = parseFloat(inp.value) || 0;
+        if (editableItems[idx]) {
+          editableItems[idx].price = val;
+          const lineElem = modalContent.querySelector(`.admin-item-row[data-idx="${idx}"] .item-line-total`);
+          if (lineElem) lineElem.textContent = formatMoney(val * editableItems[idx].quantity);
+        }
+        currentSubtotal = calculateSubtotal();
+        currentTotal = Math.max(0, currentSubtotal - currentDiscount);
+        syncPricingUI();
+      });
+    });
+
+    // Edição do Desconto
+    if (inputDiscount) {
+      inputDiscount.addEventListener('input', () => {
+        currentDiscount = parseFloat(inputDiscount.value) || 0;
+        currentTotal = Math.max(0, currentSubtotal - currentDiscount);
+        syncPricingUI();
+      });
+    }
+
+    // Edição do Total Direto (ex: cliente negociou R$ 60,00)
+    if (inputTotal) {
+      inputTotal.addEventListener('input', () => {
+        currentTotal = parseFloat(inputTotal.value) || 0;
+        currentDiscount = Math.max(0, currentSubtotal - currentTotal);
+        syncPricingUI();
+      });
+    }
+
+    // Botões de Desconto Rápido (-5%, -10%, -15%, Zerar)
+    modalContent.querySelectorAll('.btn-quick-discount').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pct = parseFloat(btn.dataset.pct) || 0;
+        if (pct === 0) {
+          currentDiscount = 0;
+          currentTotal = currentSubtotal;
+        } else {
+          currentDiscount = Number((currentSubtotal * (pct / 100)).toFixed(2));
+          currentTotal = Math.max(0, currentSubtotal - currentDiscount);
+        }
+        syncPricingUI();
+      });
+    });
+
+    // Aviso visual ao mudar status para cancelado
+    const statusSelect = modalContent.querySelector('#modal-order-status');
+    const cancelHint = modalContent.querySelector('#cancel-warning-hint');
+    if (statusSelect && cancelHint) {
+      statusSelect.addEventListener('change', () => {
+        cancelHint.style.display = statusSelect.value === 'cancelado' ? 'block' : 'none';
+      });
+    }
+
+    // Botão de Confirmar Baixa do Estoque
+    const btnConfirmStock = modalContent.querySelector('#btn-confirm-order-stock');
+    if (btnConfirmStock) {
+      btnConfirmStock.addEventListener('click', async () => {
+        btnConfirmStock.disabled = true;
+        btnConfirmStock.textContent = 'Gravando baixa...';
 
         try {
-          await deductOrderItemsFromStock(order.items);
+          await deductOrderItemsFromStock(editableItems);
           order.stock_deducted = true;
+          order.items = editableItems;
+          order.subtotal = currentSubtotal;
+          order.discount_amount = currentDiscount;
+          order.total_amount = currentTotal;
 
-          // Atualiza pedido
-          if (typeof db !== 'undefined' && db && isSupabaseConfigured()) {
-            await db.from('orders').update({ stock_deducted: true }).eq('order_number', order.order_number);
+          if (order.status === 'recebido') {
+            order.status = 'confirmado';
+          }
+          order.updated_at = new Date().toISOString();
+
+          const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
+          if (client && isSupabaseConfigured()) {
+            await client.from('orders').update({
+              items: order.items,
+              subtotal: order.subtotal,
+              discount_amount: order.discount_amount,
+              total_amount: order.total_amount,
+              status: order.status,
+              stock_deducted: true,
+              updated_at: order.updated_at
+            }).eq('order_number', order.order_number);
           }
 
           updateLocalOrder(order);
-          showToast('Estoque das peças baixado com sucesso!', 'success');
+          showToast(`Baixa do estoque confirmada! Valor de ${formatMoney(order.total_amount)} registrado.`, 'success');
           openOrderManageModal(order);
           renderOrders();
         } catch (err) {
-          console.error('Erro ao baixar estoque do pedido:', err);
-          showToast('Erro ao baixar estoque: ' + (err.message || err), 'error');
-          btnDeduct.disabled = false;
-          btnDeduct.textContent = '⚡ Baixar Estoque Agora';
+          console.error('Erro ao confirmar baixa de estoque:', err);
+          showToast('Erro ao confirmar baixa: ' + (err.message || err), 'error');
+          btnConfirmStock.disabled = false;
+          btnConfirmStock.textContent = '✓ Confirmar Baixa do Estoque';
         }
       });
     }
 
-    // Salvar formulário
+    // Botão de Restaurar / Devolver Peças ao Estoque
+    const btnRestoreStock = modalContent.querySelector('#btn-restore-order-stock');
+    if (btnRestoreStock) {
+      btnRestoreStock.addEventListener('click', async () => {
+        if (!confirm('Deseja devolver as peças deste pedido de volta ao estoque do catálogo?')) return;
+        btnRestoreStock.disabled = true;
+        btnRestoreStock.textContent = 'Devolvendo...';
+
+        try {
+          await restoreOrderItemsToStock(editableItems);
+          order.stock_deducted = false;
+          order.updated_at = new Date().toISOString();
+
+          const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
+          if (client && isSupabaseConfigured()) {
+            await client.from('orders').update({
+              stock_deducted: false,
+              updated_at: order.updated_at
+            }).eq('order_number', order.order_number);
+          }
+
+          updateLocalOrder(order);
+          showToast('Peças devolvidas ao estoque do catálogo com sucesso!', 'info');
+          openOrderManageModal(order);
+          renderOrders();
+        } catch (err) {
+          console.error('Erro ao devolver estoque:', err);
+          showToast('Erro ao devolver peças: ' + (err.message || err), 'error');
+          btnRestoreStock.disabled = false;
+          btnRestoreStock.textContent = '↩ Devolver Peças ao Estoque';
+        }
+      });
+    }
+
+    // Salvar formulário completo
     const form = modalContent.querySelector('#form-update-order');
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -402,9 +617,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       btnSave.textContent = 'Gravando...';
 
       try {
+        // Se mudou para cancelado e o estoque estava baixado, devolve automaticamente
+        if (newStatus === 'cancelado' && order.status !== 'cancelado' && order.stock_deducted) {
+          await restoreOrderItemsToStock(editableItems);
+          order.stock_deducted = false;
+        }
+
         order.status = newStatus;
         order.tracking_code = newTracking;
         order.admin_notes = newNotes;
+        order.items = editableItems;
+        order.subtotal = currentSubtotal;
+        order.discount_amount = currentDiscount;
+        order.total_amount = currentTotal;
         order.updated_at = new Date().toISOString();
 
         const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
@@ -412,9 +637,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           const { error } = await client
             .from('orders')
             .update({
-              status: newStatus,
-              tracking_code: newTracking,
-              admin_notes: newNotes,
+              status: order.status,
+              tracking_code: order.tracking_code,
+              admin_notes: order.admin_notes,
+              items: order.items,
+              subtotal: order.subtotal,
+              discount_amount: order.discount_amount,
+              total_amount: order.total_amount,
+              stock_deducted: order.stock_deducted,
               updated_at: order.updated_at
             })
             .eq('order_number', order.order_number);
@@ -423,7 +653,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         updateLocalOrder(order);
-        showToast(`Pedido ${order.order_number} atualizado com sucesso!`, 'success');
+        showToast(`Pedido ${order.order_number} e valores atualizados com sucesso!`, 'success');
         closeOrderModal();
         renderOrders();
       } catch (err) {
@@ -479,25 +709,66 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!item.id) continue;
       const qtyToDeduct = Number(item.quantity) || 1;
 
-      // Busca dados atuais do produto
-      const { data: prod, error } = await db.from('products').select('id, stock, sizes').eq('id', item.id).single();
-      if (error || !prod) continue;
+      try {
+        const { data: prod, error } = await client.from('products').select('id, stock, sizes').eq('id', item.id).single();
+        if (error || !prod) continue;
 
-      let newStock = prod.stock || 0;
-      let newSizes = prod.sizes || {};
+        let newStock = Number(prod.stock) || 0;
+        let newSizes = prod.sizes || {};
 
-      if (typeof newSizes === 'string') {
-        try { newSizes = JSON.parse(newSizes); } catch (e) { newSizes = {}; }
+        if (typeof newSizes === 'string') {
+          try { newSizes = JSON.parse(newSizes); } catch (e) { newSizes = {}; }
+        }
+
+        if (item.size && newSizes && typeof newSizes === 'object') {
+          const curAroQty = Number(newSizes[item.size]) || 0;
+          newSizes[item.size] = Math.max(0, curAroQty - qtyToDeduct);
+          newStock = Object.values(newSizes).reduce((acc, q) => acc + (Number(q) || 0), 0);
+          await client.from('products').update({ sizes: newSizes, stock: newStock }).eq('id', item.id);
+        } else {
+          newStock = Math.max(0, newStock - qtyToDeduct);
+          await client.from('products').update({ stock: newStock }).eq('id', item.id);
+        }
+      } catch (err) {
+        console.warn('Erro ao baixar estoque:', item.id, err);
       }
+    }
+  }
 
-      if (item.size && newSizes && typeof newSizes === 'object') {
-        const curAroQty = Number(newSizes[item.size]) || 0;
-        newSizes[item.size] = Math.max(0, curAroQty - qtyToDeduct);
-        newStock = Object.values(newSizes).reduce((acc, q) => acc + Number(q), 0);
-        await db.from('products').update({ sizes: newSizes, stock: newStock }).eq('id', item.id);
-      } else {
-        newStock = Math.max(0, newStock - qtyToDeduct);
-        await db.from('products').update({ stock: newStock }).eq('id', item.id);
+  /**
+   * Restaura peças do pedido de volta ao estoque dos produtos
+   */
+  async function restoreOrderItemsToStock(items) {
+    if (!Array.isArray(items) || items.length === 0) return;
+    const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
+    if (!client || !isSupabaseConfigured()) return;
+
+    for (const item of items) {
+      if (!item.id) continue;
+      const qtyToRestore = Number(item.quantity) || 1;
+
+      try {
+        const { data: prod, error } = await client.from('products').select('id, stock, sizes').eq('id', item.id).single();
+        if (error || !prod) continue;
+
+        let newStock = Number(prod.stock) || 0;
+        let newSizes = prod.sizes || {};
+
+        if (typeof newSizes === 'string') {
+          try { newSizes = JSON.parse(newSizes); } catch (e) { newSizes = {}; }
+        }
+
+        if (item.size && newSizes && typeof newSizes === 'object') {
+          const curAroQty = Number(newSizes[item.size]) || 0;
+          newSizes[item.size] = curAroQty + qtyToRestore;
+          newStock = Object.values(newSizes).reduce((acc, q) => acc + (Number(q) || 0), 0);
+          await client.from('products').update({ sizes: newSizes, stock: newStock }).eq('id', item.id);
+        } else {
+          newStock = newStock + qtyToRestore;
+          await client.from('products').update({ stock: newStock }).eq('id', item.id);
+        }
+      } catch (err) {
+        console.warn('Erro ao restaurar estoque:', item.id, err);
       }
     }
   }

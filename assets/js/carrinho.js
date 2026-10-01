@@ -43,20 +43,59 @@
     return `SOL-${random}`;
   }
 
+  function parseItemSizes(raw) {
+    if (!raw) return {};
+    if (typeof raw === 'object') return raw;
+    try { return JSON.parse(raw); } catch (e) { return {}; }
+  }
+
+  function getProductAvailableStock(product, size = null) {
+    if (!product) return 999;
+    const sizes = parseItemSizes(product.sizes);
+    if (size && typeof sizes === 'object' && sizes[size] !== undefined) {
+      return Number(sizes[size]) || 0;
+    }
+    const sizesValues = Object.values(sizes);
+    if (sizesValues.length > 0) {
+      return sizesValues.reduce((a, b) => a + (Number(b) || 0), 0);
+    }
+    return Number(product.stock) || 0;
+  }
+
   /**
-   * Adiciona um produto à sacola
+   * Adiciona um produto à sacola respeitando os limites de estoque
    */
   function addToCart(product, size = null, quantity = 1) {
     const price = Number(product.sale_price) || 0;
     const images = Array.isArray(product.images) ? product.images : (typeof product.images === 'string' ? [product.images] : []);
     const imgUrl = images[0] || 'assets/images/logo-simbolo.png';
 
+    const maxAvailable = getProductAvailableStock(product, size);
+    if (maxAvailable <= 0) {
+      if (typeof showToast === 'function') {
+        const aroText = size ? ` no Aro ${size}` : '';
+        showToast(`A peça "${product.name}"${aroText} está esgotada no momento.`, 'warning');
+      }
+      return;
+    }
+
     // Verifica se já existe o mesmo item e mesmo aro na sacola
     const existingIndex = cart.findIndex(item => item.id === product.id && item.size === size);
 
     if (existingIndex > -1) {
-      cart[existingIndex].quantity += quantity;
+      const targetQty = cart[existingIndex].quantity + quantity;
+      if (targetQty > maxAvailable) {
+        if (typeof showToast === 'function') {
+          showToast(`Limite atingido: apenas ${maxAvailable} peça(s) disponível(is) no estoque.`, 'warning');
+        }
+        return;
+      }
+      cart[existingIndex].quantity = targetQty;
+      cart[existingIndex].maxStock = maxAvailable;
     } else {
+      if (quantity > maxAvailable) {
+        quantity = maxAvailable;
+      }
       cart.push({
         id: product.id,
         name: product.name,
@@ -65,7 +104,8 @@
         size: size,
         price: price,
         image: imgUrl,
-        quantity: quantity
+        quantity: quantity,
+        maxStock: maxAvailable
       });
     }
 
@@ -92,6 +132,12 @@
 
   function updateQuantity(index, delta) {
     if (index >= 0 && index < cart.length) {
+      if (delta > 0 && cart[index].maxStock && cart[index].quantity >= cart[index].maxStock) {
+        if (typeof showToast === 'function') {
+          showToast(`Limite máximo disponível no estoque atingido (${cart[index].maxStock} un).`, 'warning');
+        }
+        return;
+      }
       cart[index].quantity += delta;
       if (cart[index].quantity <= 0) {
         removeFromCart(index);
@@ -455,6 +501,19 @@
         btnSubmit.disabled = true;
         btnSubmit.innerHTML = '<span>Registrando seu pedido...</span>';
 
+        const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db) ||
+                       (window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
+
+        // Abate o estoque das peças imediatamente para que ninguém mais compre se zerar
+        let stockDeductedInstantly = false;
+        try {
+          if (client && isSupabaseConfigured()) {
+            stockDeductedInstantly = await deductStockFromProducts(itemsCopy, client);
+          }
+        } catch (stkErr) {
+          console.warn('Tentativa de baixa imediata:', stkErr);
+        }
+
         const orderPayload = {
           order_number: orderNumber,
           customer_name: nameInput.value.trim(),
@@ -463,14 +522,14 @@
           customer_address: addressData,
           items: itemsCopy,
           subtotal: subtotal,
+          discount_amount: 0,
           total_amount: subtotal,
           status: 'recebido',
           customer_notes: notesInput?.value.trim() || '',
+          stock_deducted: false, // A baixa oficial e faturamento continuam sob confirmação do Admin
+          stock_reserved_in_db: stockDeductedInstantly,
           created_at: new Date().toISOString()
         };
-
-        const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db) ||
-                       (window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
 
         try {
           if (client && isSupabaseConfigured()) {
@@ -482,15 +541,65 @@
         } catch (err) {
           console.error('Erro ao registrar no Supabase:', err);
         } finally {
-          // Sempre salva cópia de segurança em LocalStorage para garantir rastreio instantâneo no aparelho
+          // Salva cópia de segurança em LocalStorage
           saveOrderLocally(orderPayload);
           cart = [];
           saveCart();
           closeCart();
           showOrderSuccessModal(orderPayload);
+
+          // Notifica qualquer tela de catálogo aberta para atualizar estoque visual
+          try {
+            window.dispatchEvent(new CustomEvent('soleria-stock-updated', { detail: { order: orderPayload } }));
+          } catch (e) {}
         }
       });
     }
+  }
+
+  /**
+   * Abate peças do estoque dos produtos no Supabase
+   */
+  async function deductStockFromProducts(items, client) {
+    if (!Array.isArray(items) || items.length === 0 || !client) return false;
+    let anySuccess = false;
+    for (const item of items) {
+      if (!item.id) continue;
+      const qtyToDeduct = Number(item.quantity) || 1;
+      try {
+        const { data: prod, error } = await client
+          .from('products')
+          .select('id, stock, sizes')
+          .eq('id', item.id)
+          .single();
+
+        if (error || !prod) continue;
+
+        let newStock = Number(prod.stock) || 0;
+        let newSizes = parseItemSizes(prod.sizes);
+
+        if (item.size && newSizes && typeof newSizes === 'object') {
+          const curAroQty = Number(newSizes[item.size]) || 0;
+          newSizes[item.size] = Math.max(0, curAroQty - qtyToDeduct);
+          newStock = Object.values(newSizes).reduce((acc, q) => acc + (Number(q) || 0), 0);
+          const { error: updErr } = await client
+            .from('products')
+            .update({ sizes: newSizes, stock: newStock })
+            .eq('id', item.id);
+          if (!updErr) anySuccess = true;
+        } else {
+          newStock = Math.max(0, newStock - qtyToDeduct);
+          const { error: updErr } = await client
+            .from('products')
+            .update({ stock: newStock })
+            .eq('id', item.id);
+          if (!updErr) anySuccess = true;
+        }
+      } catch (e) {
+        console.warn('Erro ao abater produto:', item.id, e);
+      }
+    }
+    return anySuccess;
   }
 
   function saveOrderLocally(order) {

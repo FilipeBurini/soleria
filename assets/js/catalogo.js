@@ -204,6 +204,51 @@ document.addEventListener('DOMContentLoaded', () => {
           showToast('Não foi possível carregar o catálogo ao vivo. Exibindo acervo demonstrativo.', 'error');
           allProducts = DEMO_PRODUCTS;
         } else if (data && data.length > 0) {
+          // Busca pedidos ativos recentes para garantir reserva em tempo real
+          try {
+            const { data: recentOrders } = await db
+              .from('orders')
+              .select('id, items, status, stock_reserved_in_db')
+              .neq('status', 'cancelado');
+
+            if (recentOrders && recentOrders.length > 0) {
+              const unReservedMap = {};
+              recentOrders.forEach(ord => {
+                if (!ord.stock_reserved_in_db && Array.isArray(ord.items)) {
+                  ord.items.forEach(it => {
+                    if (!it.id) return;
+                    const key = it.size ? `${it.id}_size_${it.size}` : `${it.id}_total`;
+                    unReservedMap[key] = (unReservedMap[key] || 0) + (Number(it.quantity) || 1);
+                  });
+                }
+              });
+
+              data.forEach(prod => {
+                const prodSizes = parseSizes(prod.sizes);
+                let sizesChanged = false;
+                Object.keys(prodSizes).forEach(sz => {
+                  const unDeducted = unReservedMap[`${prod.id}_size_${sz}`] || 0;
+                  if (unDeducted > 0) {
+                    prodSizes[sz] = Math.max(0, (Number(prodSizes[sz]) || 0) - unDeducted);
+                    sizesChanged = true;
+                  }
+                });
+
+                if (sizesChanged) {
+                  prod.sizes = prodSizes;
+                  prod.stock = Object.values(prodSizes).reduce((acc, q) => acc + (Number(q) || 0), 0);
+                } else {
+                  const unDeductedTotal = unReservedMap[`${prod.id}_total`] || 0;
+                  if (unDeductedTotal > 0) {
+                    prod.stock = Math.max(0, (Number(prod.stock) || 0) - unDeductedTotal);
+                  }
+                }
+              });
+            }
+          } catch (ordErr) {
+            console.warn('Verificação de pedidos ativos:', ordErr);
+          }
+
           allProducts = data;
         } else {
           // Sem produtos ativos ainda cadastrados no banco
@@ -294,19 +339,26 @@ document.addEventListener('DOMContentLoaded', () => {
       const mainImgUrl = images[0] || 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=800&q=80';
 
       const sizes = parseSizes(product.sizes);
-      const availableSizesList = Object.entries(sizes)
+      const sizesEntries = Object.entries(sizes);
+      const availableSizesList = sizesEntries
         .filter(([_, qty]) => Number(qty) > 0)
         .sort((a, b) => Number(a[0]) - Number(b[0]))
         .map(([size]) => size);
 
+      const totalStock = sizesEntries.length > 0
+        ? sizesEntries.reduce((acc, [_, q]) => acc + (Number(q) || 0), 0)
+        : (Number(product.stock) || 0);
+
+      const isSoldOut = totalStock <= 0;
+
       const sizesPreviewHtml = availableSizesList.length > 0
         ? `<div class="card-sizes-preview">💍 Aros: ${availableSizesList.join(' · ')}</div>`
-        : '';
+        : (isSoldOut ? `<div class="card-sizes-preview" style="color: #991B1B; font-weight: 600;">⚠️ Esgotado</div>` : '');
 
       const promo = calculatePromotionalPricing(product);
 
       const card = document.createElement('article');
-      card.className = 'product-card';
+      card.className = `product-card ${isSoldOut ? 'is-soldout' : ''}`;
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
       card.setAttribute('aria-label', `Ver detalhes de ${product.name}`);
@@ -314,8 +366,8 @@ document.addEventListener('DOMContentLoaded', () => {
       card.innerHTML = `
         <div class="product-card-image-box">
           <img class="product-card-img" src="${mainImgUrl}" alt="${product.name}" loading="lazy">
-          ${product.category ? `<span class="product-card-category-badge">${product.category}</span>` : ''}
-          ${promo.hasDiscount ? `<span class="product-card-discount-badge">-${promo.discountPct}% OFF</span>` : ''}
+          ${isSoldOut ? `<span class="product-card-badge-soldout">Esgotado</span>` : (product.category ? `<span class="product-card-category-badge">${product.category}</span>` : '')}
+          ${promo.hasDiscount && !isSoldOut ? `<span class="product-card-discount-badge">-${promo.discountPct}% OFF</span>` : ''}
         </div>
         <div class="product-card-content">
           <h2 class="product-card-title">${product.name}</h2>
@@ -329,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
             </div>
             <span class="product-card-action-hint">
-              Detalhes &rarr;
+              ${isSoldOut ? 'Esgotado &rarr;' : 'Detalhes &rarr;'}
             </span>
           </div>
         </div>
@@ -402,9 +454,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Configuração dos Aros / Tamanhos em Estoque
     let selectedSize = null;
     const sizes = parseSizes(product.sizes);
-    const availableSizes = Object.entries(sizes)
-      .filter(([_, qty]) => Number(qty) > 0)
-      .sort((a, b) => Number(a[0]) - Number(b[0]));
+    const allSizesEntries = Object.entries(sizes).sort((a, b) => Number(a[0]) - Number(b[0]));
+    const availableSizes = allSizesEntries.filter(([_, qty]) => Number(qty) > 0);
+    const totalStockCount = allSizesEntries.length > 0 
+      ? allSizesEntries.reduce((acc, [_, q]) => acc + (Number(q) || 0), 0)
+      : (Number(product.stock) || 0);
 
     // Se houver apenas 1 aro disponível, pré-seleciona para facilitar
     if (availableSizes.length === 1) {
@@ -431,15 +485,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const currentSizes = parseSizes(product.sizes);
       const currentAvailable = Object.entries(currentSizes).filter(([_, q]) => Number(q) > 0);
-      const totalStockCount = currentAvailable.length > 0 
+      const currentTotalStock = currentAvailable.length > 0 
         ? Object.values(currentSizes).reduce((acc, q) => acc + Number(q), 0)
         : (Number(product.stock) || 0);
 
       if (modalAdminStockInfo) {
-        modalAdminStockInfo.textContent = `Estoque: ${totalStockCount} un`;
+        modalAdminStockInfo.textContent = `Estoque: ${currentTotalStock} un`;
       }
 
-      const isRing = (product.category && product.category.toLowerCase().includes('an')) || currentAvailable.length > 0;
+      const isRing = (product.category && product.category.toLowerCase().includes('an')) || allSizesEntries.length > 0;
 
       if (!btnAdminModalDeduct) return;
 
@@ -459,10 +513,10 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
       } else {
-        btnAdminModalDeduct.disabled = totalStockCount <= 0;
+        btnAdminModalDeduct.disabled = currentTotalStock <= 0;
         btnAdminModalDeduct.innerHTML = `<span>⚡ Registrar Venda (-1 peça)</span>`;
         if (modalAdminHelp) {
-          modalAdminHelp.textContent = totalStockCount > 0 
+          modalAdminHelp.textContent = currentTotalStock > 0 
             ? `Vendeu esta peça? Clique para abater 1 unidade do estoque no sistema.`
             : `Peça sem estoque no momento.`;
         }
@@ -470,29 +524,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (modalSizesWrapper && modalSizesList) {
-      if (availableSizes.length > 0) {
+      if (allSizesEntries.length > 0) {
         modalSizesWrapper.style.display = 'block';
         modalSizesList.innerHTML = '';
 
-        availableSizes.forEach(([size, qty]) => {
+        allSizesEntries.forEach(([size, qty]) => {
+          const numQty = Number(qty) || 0;
+          const isAroOutOfStock = numQty <= 0;
           const pill = document.createElement('button');
           pill.type = 'button';
-          pill.className = `modal-size-pill ${selectedSize === size ? 'selected' : ''}`;
-          pill.setAttribute('title', `${qty} peça(s) disponível(is) no Aro ${size}`);
-          pill.innerHTML = `<span>Aro ${size}</span><span class="modal-size-stock">(${qty} un)</span>`;
+          pill.className = `modal-size-pill ${selectedSize === size ? 'selected' : ''} ${isAroOutOfStock ? 'out-of-stock' : ''}`;
+          
+          if (isAroOutOfStock) {
+            pill.disabled = true;
+            pill.setAttribute('title', `Aro ${size} esgotado`);
+            pill.innerHTML = `<span>Aro ${size}</span><span class="modal-size-stock">(Esgotado)</span>`;
+          } else {
+            pill.setAttribute('title', `${numQty} peça(s) disponível(is) no Aro ${size}`);
+            pill.innerHTML = `<span>Aro ${size}</span><span class="modal-size-stock">(${numQty} un)</span>`;
 
-          pill.addEventListener('click', () => {
-            if (pill.classList.contains('selected')) {
-              pill.classList.remove('selected');
-              selectedSize = null;
-            } else {
-              modalSizesList.querySelectorAll('.modal-size-pill').forEach(p => p.classList.remove('selected'));
-              pill.classList.add('selected');
-              selectedSize = size;
-            }
-            updateWhatsappLink();
-            updateAdminActionUI();
-          });
+            pill.addEventListener('click', () => {
+              if (pill.classList.contains('selected')) {
+                pill.classList.remove('selected');
+                selectedSize = null;
+              } else {
+                modalSizesList.querySelectorAll('.modal-size-pill').forEach(p => p.classList.remove('selected'));
+                pill.classList.add('selected');
+                selectedSize = size;
+              }
+              updateWhatsappLink();
+              updateAdminActionUI();
+            });
+          }
 
           modalSizesList.appendChild(pill);
         });
@@ -603,18 +666,29 @@ document.addEventListener('DOMContentLoaded', () => {
       const freshCartBtn = btnAddToCart.cloneNode(true);
       btnAddToCart.parentNode.replaceChild(freshCartBtn, btnAddToCart);
 
-      const isRing = (product.category && product.category.toLowerCase().includes('an')) || availableSizes.length > 0;
+      const isRing = (product.category && product.category.toLowerCase().includes('an')) || allSizesEntries.length > 0;
+      const isProductSoldOut = isRing ? (availableSizes.length === 0) : (totalStockCount <= 0);
 
-      freshCartBtn.addEventListener('click', () => {
-        if (isRing && availableSizes.length > 0 && !selectedSize) {
-          showToast('Por favor, selecione um Aro disponível acima antes de adicionar à sacola.', 'warning');
-          return;
-        }
+      if (isProductSoldOut) {
+        freshCartBtn.disabled = true;
+        freshCartBtn.classList.add('btn-modal-soldout');
+        freshCartBtn.innerHTML = '<span>✦ Peça Esgotada no Momento</span>';
+      } else {
+        freshCartBtn.disabled = false;
+        freshCartBtn.classList.remove('btn-modal-soldout');
+        freshCartBtn.innerHTML = '<span>Adicionar à Sacola</span>';
 
-        if (window.SoleriaCart) {
-          window.SoleriaCart.add(product, selectedSize, 1);
-        }
-      });
+        freshCartBtn.addEventListener('click', () => {
+          if (isRing && availableSizes.length > 0 && !selectedSize) {
+            showToast('Por favor, selecione um Aro disponível acima antes de adicionar à sacola.', 'warning');
+            return;
+          }
+
+          if (window.SoleriaCart) {
+            window.SoleriaCart.add(product, selectedSize, 1);
+          }
+        });
+      }
     }
 
     // Exibe modal
@@ -666,6 +740,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 
+
+  // Escuta atualizações de estoque (ex: pedidos realizados na sacola)
+  window.addEventListener('soleria-stock-updated', () => {
+    fetchProducts();
+  });
 
   // Inicializa carregando os dados
   fetchProducts();

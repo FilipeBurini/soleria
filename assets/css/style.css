@@ -3666,5 +3666,131 @@ a {
   }
 }
 
+/* ==========================================================================
+   ESTILOS DE ESTOQUE ESGOTADO & GESTÃO DE PREÇOS DE PEDIDOS
+   ========================================================================== */
+
+/* Cartão de Produto Esgotado */
+.product-card.is-soldout {
+  position: relative;
+}
+
+.product-card.is-soldout .product-card-img {
+  filter: grayscale(15%) opacity(0.82);
+}
+
+.product-card-badge-soldout {
+  position: absolute;
+  top: 0.85rem;
+  left: 0.85rem;
+  background-color: rgba(24, 22, 20, 0.92);
+  color: #FAF8F5;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.28rem 0.7rem;
+  border-radius: var(--radius-full);
+  z-index: 2;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Aros Esgotados no Modal */
+.modal-size-pill.out-of-stock {
+  opacity: 0.45;
+  background-color: #F5F3EF !important;
+  border-color: #E2DDD5 !important;
+  color: var(--text-muted) !important;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+.modal-size-pill.out-of-stock .modal-size-stock {
+  color: #B91C1C;
+  font-weight: 600;
+}
+
+/* Botão Esgotado no Modal de Produto */
+.btn-modal-soldout {
+  background: #E5E1D8 !important;
+  color: #78716C !important;
+  border-color: #D6D0C4 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* Gestão de Preço & Desconto no Admin */
+.admin-order-pricing-box {
+  background: #FCFBF9;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 1.15rem;
+  margin-bottom: 1.25rem;
+}
+
+.admin-price-chip-btn {
+  background: #FAF8F5;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xs);
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+
+.admin-price-chip-btn:hover {
+  background: var(--brand-terracotta);
+  border-color: var(--brand-terracotta);
+  color: #FAF8F5;
+}
+
+.admin-item-edit-input {
+  width: 90px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xs);
+  text-align: right;
+  background: #FFFFFF;
+  transition: border-color var(--trans-fast);
+}
+
+.admin-item-edit-input:focus {
+  outline: none;
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 0 2px rgba(197, 164, 101, 0.2);
+}
+
+.badge-stock-ok {
+  font-size: 0.7rem;
+  color: #046C4E;
+  background: #DEF7EC;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-xs);
+  font-weight: 600;
+  border: 1px solid #BCF0DA;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.badge-stock-pending {
+  font-size: 0.7rem;
+  color: #92400E;
+  background: #FEF3C7;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-xs);
+  font-weight: 600;
+  border: 1px solid #FDE68A;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 
 
