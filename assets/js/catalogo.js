@@ -707,6 +707,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Exibe modal
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
+    const modalWin = modal.querySelector('.modal-window');
+    if (modalWin) modalWin.scrollTop = 0;
     document.body.style.overflow = 'hidden'; // Evita scroll do body
   }
 

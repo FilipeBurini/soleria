@@ -48,6 +48,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
+  // Mapas para resolução dinâmica de SKU em pedidos anteriores
+  const catalogProductsById = new Map();
+  const catalogProductsByName = new Map();
+
+  function resolveItemSku(item) {
+    if (!item) return 'SEM-SKU';
+    if (item.sku && item.sku !== 'N/A' && item.sku.trim() !== '') {
+      return item.sku.trim();
+    }
+    if (item.id && catalogProductsById.has(item.id)) {
+      return catalogProductsById.get(item.id);
+    }
+    const cleanName = (item.name || '').trim().toLowerCase();
+    if (cleanName && catalogProductsByName.has(cleanName)) {
+      return catalogProductsByName.get(cleanName);
+    }
+    for (const [nameKey, sku] of catalogProductsByName.entries()) {
+      if (cleanName.includes(nameKey) || nameKey.includes(cleanName)) {
+        return sku;
+      }
+    }
+    return item.sku && item.sku !== 'N/A' ? item.sku : 'SEM-SKU';
+  }
+
   // ==========================================================================
   // Carregamento de Pedidos (Supabase + Fallback Local)
   // ==========================================================================
@@ -64,6 +88,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                      (window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
 
       if (client && isSupabaseConfigured()) {
+        // Carrega produtos do catálogo para enriquecer SKUs faltantes em pedidos antigos
+        try {
+          const { data: prods } = await client
+            .from('products')
+            .select('id, name, sku');
+          if (prods && Array.isArray(prods)) {
+            prods.forEach(p => {
+              if (p.id && p.sku) catalogProductsById.set(p.id, p.sku);
+              if (p.name && p.sku) catalogProductsByName.set(p.name.trim().toLowerCase(), p.sku);
+            });
+          }
+        } catch (pe) {
+          console.warn('Aviso ao sincronizar catálogo para SKU nos pedidos:', pe);
+        }
+
         const { data, error } = await client
           .from('orders')
           .select('*')
@@ -130,9 +169,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       const matchSearch = !q ||
         (order.order_number && order.order_number.toLowerCase().includes(q)) ||
         (order.customer_name && order.customer_name.toLowerCase().includes(q)) ||
-        (order.customer_cpf && (order.customer_cpf.includes(cleanDigits) || order.customer_cpf.includes(q))) ||
+        (order.customer_cpf && (order.customer_cpf.includes(qDigits) || order.customer_cpf.includes(q))) ||
         matchPhone ||
-        items.some(it => (it.sku && it.sku.toLowerCase().includes(q)) || (it.name && it.name.toLowerCase().includes(q)));
+        items.some(it => {
+          const s = resolveItemSku(it).toLowerCase();
+          return s.includes(q) || (it.sku && it.sku.toLowerCase().includes(q)) || (it.name && it.name.toLowerCase().includes(q));
+        });
 
       return matchStatus && matchSearch;
     });
@@ -176,7 +218,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Resumo visual das peças
       const itemsPreview = items.map(i => {
         const aroText = i.size ? ` <span style="color: var(--brand-terracotta); font-weight: 600;">(Aro ${i.size})</span>` : '';
-        const skuText = (i.sku && i.sku !== 'N/A') ? ` <span style="font-family: monospace; font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">[${i.sku}]</span>` : '';
+        const skuVal = resolveItemSku(i);
+        const skuText = ` <span style="font-family: monospace; font-size: 0.72rem; color: var(--brand-terracotta); font-weight: 700; background: rgba(197, 164, 101, 0.12); padding: 1px 6px; border-radius: 3px; border: 1px solid rgba(197, 164, 101, 0.25);">[SKU: ${skuVal}]</span>`;
         return `• ${i.quantity}x ${i.name}${aroText}${skuText}`;
       }).join('<br>');
 
@@ -272,12 +315,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     function buildItemsRows() {
       return editableItems.map((i, idx) => {
         const aroStr = i.size ? `<span class="cart-item-aro-tag" style="margin-left: 0.35rem;">Aro ${i.size}</span>` : '';
-        const skuStr = (i.sku && i.sku !== 'N/A') ? `<div style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace; margin-top: 0.2rem;">SKU: <strong style="color: var(--brand-terracotta);">${i.sku}</strong></div>` : '';
+        const skuVal = resolveItemSku(i);
+        i.sku = skuVal; // Enriquecimento do item para persistência
+        const skuStr = `<div style="font-size: 0.75rem; color: var(--text-secondary); font-family: monospace; margin-top: 0.25rem;">SKU: <strong style="color: var(--brand-terracotta); background: #FAF3EA; padding: 2px 7px; border-radius: 3px; border: 1px solid #E8DCCB;">${skuVal}</strong></div>`;
         const lineTotal = i.price * i.quantity;
         return `
-          <div class="admin-item-row" data-idx="${idx}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0; border-bottom: 1px solid var(--border-subtle); font-size: 0.85rem; gap: 0.75rem;">
+          <div class="admin-item-row" data-idx="${idx}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border-subtle); font-size: 0.85rem; gap: 0.75rem;">
             <div style="flex-grow: 1;">
-              <strong>${i.quantity}x</strong> ${i.name} ${aroStr}
+              <strong style="color: var(--text-primary); font-size: 0.9rem;">${i.quantity}x</strong> ${i.name} ${aroStr}
               ${skuStr}
             </div>
             <div style="display: flex; align-items: center; gap: 0.35rem;">

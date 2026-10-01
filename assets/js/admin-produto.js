@@ -86,6 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Sugere SKU inicial padrão
     updateGeneratedSku();
     toggleRingSizes();
+    recalculateFinancials();
   }
 
   // ==========================================================================
@@ -492,13 +493,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Calculadora Financeira em Tempo Real & Simulação 300%
   // ==========================================================================
 
+  function parseVal(val) {
+    if (val === null || val === undefined) return 0;
+    if (typeof val === 'number') return isNaN(val) ? 0 : val;
+    const clean = String(val).replace(/[^\d.,-]/g, '').replace(',', '.');
+    const num = parseFloat(clean);
+    return isNaN(num) ? 0 : num;
+  }
+
   function recalculateFinancials() {
-    const prodCost = parseFloat(costInput.value) || 0;
+    const prodCost = parseVal(costInput ? costInput.value : 0);
 
     let suppliesCost = 0;
-    linkedSupplies.forEach(item => {
-      suppliesCost += (item.unit_cost * item.quantity);
-    });
+    if (Array.isArray(linkedSupplies)) {
+      linkedSupplies.forEach(item => {
+        const uCost = parseVal(item.unit_cost);
+        const qty = parseVal(item.quantity);
+        suppliesCost += (uCost * qty);
+      });
+    }
 
     const totalCost = prodCost + suppliesCost;
 
@@ -506,46 +519,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!manualPriceEdited && totalCost > 0) {
       // 300% sobre o valor do custo direto + insumos (ex: R$ 10 vira R$ 40)
       const simulatedPrice = totalCost * 4.0;
-      priceInput.value = simulatedPrice.toFixed(2);
+      if (priceInput) priceInput.value = simulatedPrice.toFixed(2);
       if (originalPriceInput && (!originalPriceInput.value || originalPriceInput.dataset.autoFilled === 'true')) {
         originalPriceInput.value = (simulatedPrice * 1.4).toFixed(2);
         originalPriceInput.dataset.autoFilled = 'true';
       }
     }
 
-    const salePrice = parseFloat(priceInput.value) || 0;
+    const salePrice = parseVal(priceInput ? priceInput.value : 0);
     const unitProfit = salePrice - totalCost;
 
-    calcProdCost.textContent = formatBRL(prodCost);
-    calcSuppliesCost.textContent = formatBRL(suppliesCost);
-    calcTotalCost.textContent = formatBRL(totalCost);
-    calcSalePrice.textContent = formatBRL(salePrice);
-    calcUnitProfit.textContent = formatBRL(unitProfit);
+    if (calcProdCost) calcProdCost.textContent = formatBRL(prodCost);
+    if (calcSuppliesCost) calcSuppliesCost.textContent = formatBRL(suppliesCost);
+    if (calcTotalCost) calcTotalCost.textContent = formatBRL(totalCost);
+    if (calcSalePrice) calcSalePrice.textContent = formatBRL(salePrice);
+    if (calcUnitProfit) calcUnitProfit.textContent = formatBRL(unitProfit);
 
     if (badgeMarkup && totalCost > 0 && salePrice > 0) {
       const markupPct = Math.round(((salePrice - totalCost) / totalCost) * 100);
       badgeMarkup.textContent = `${markupPct}% Markup`;
     }
 
-    if (unitProfit < 0) {
-      calcUnitProfit.classList.remove('highlight-green');
-      calcUnitProfit.style.color = '#dc3545';
-    } else {
-      calcUnitProfit.classList.add('highlight-green');
-      calcUnitProfit.style.color = '';
+    if (calcUnitProfit) {
+      if (unitProfit < 0) {
+        calcUnitProfit.classList.remove('highlight-green');
+        calcUnitProfit.style.color = '#dc3545';
+      } else {
+        calcUnitProfit.classList.add('highlight-green');
+        calcUnitProfit.style.color = '';
+      }
     }
   }
 
   if (btnRecalc300) {
     btnRecalc300.addEventListener('click', () => {
       manualPriceEdited = false;
-      const prodCost = parseFloat(costInput.value) || 0;
+      const prodCost = parseVal(costInput ? costInput.value : 0);
       let suppliesCost = 0;
-      linkedSupplies.forEach(item => suppliesCost += (item.unit_cost * item.quantity));
+      if (Array.isArray(linkedSupplies)) {
+        linkedSupplies.forEach(item => suppliesCost += (parseVal(item.unit_cost) * parseVal(item.quantity)));
+      }
       const totalCost = prodCost + suppliesCost;
       if (totalCost > 0) {
         const simulatedPrice = totalCost * 4.0;
-        priceInput.value = simulatedPrice.toFixed(2);
+        if (priceInput) priceInput.value = simulatedPrice.toFixed(2);
         if (originalPriceInput) {
           originalPriceInput.value = (simulatedPrice * 1.4).toFixed(2);
           originalPriceInput.dataset.autoFilled = 'true';
@@ -559,7 +576,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function autoGenerateOriginalPrice() {
-    const sale = parseFloat(priceInput.value) || 0;
+    const sale = parseVal(priceInput ? priceInput.value : 0);
     if (sale > 0 && originalPriceInput && (!originalPriceInput.value || originalPriceInput.dataset.autoFilled === 'true')) {
       const randomFactor = 1.35 + Math.random() * 0.15; // 35% a 50% acima
       const raw = sale * randomFactor;
@@ -569,14 +586,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  costInput.addEventListener('input', () => {
-    recalculateFinancials();
-  });
-
-  priceInput.addEventListener('input', () => {
-    manualPriceEdited = true;
-    recalculateFinancials();
-    autoGenerateOriginalPrice();
+  ['input', 'change', 'keyup', 'blur', 'paste'].forEach(evt => {
+    if (costInput) {
+      costInput.addEventListener(evt, () => {
+        recalculateFinancials();
+      });
+    }
+    if (priceInput) {
+      priceInput.addEventListener(evt, () => {
+        manualPriceEdited = true;
+        recalculateFinancials();
+        autoGenerateOriginalPrice();
+      });
+    }
   });
 
   if (originalPriceInput) {
@@ -607,9 +629,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       statusInput.value = prod.status || 'ativo';
       categoryInput.value = prod.category || '';
       skuInput.value = prod.sku || '';
-      descInput.value = prod.description || '';
-      costInput.value = Number(prod.product_cost || 0).toFixed(2);
-      priceInput.value = Number(prod.sale_price || 0).toFixed(2);
+      const resolvedCost = Number(prod.product_cost ?? prod.cost ?? 0);
+      const resolvedPrice = Number(prod.sale_price ?? prod.price ?? 0);
+      costInput.value = resolvedCost.toFixed(2);
+      priceInput.value = resolvedPrice.toFixed(2);
+      if (resolvedPrice > 0) {
+        manualPriceEdited = true;
+      }
       if (originalPriceInput) {
         originalPriceInput.value = prod.original_price ? Number(prod.original_price).toFixed(2) : '';
         delete originalPriceInput.dataset.autoFilled;
