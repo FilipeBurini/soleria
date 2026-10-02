@@ -7,6 +7,7 @@
   const CART_STORAGE_KEY = 'soleria_shopping_bag_v1';
   let cart = [];
   let isCheckoutStep = false;
+  let selectedPaymentMethod = 'pix'; // 'pix' ou 'credit_card'
 
   // Carrega carrinho do LocalStorage
   try {
@@ -343,6 +344,7 @@
       document.body.style.overflow = '';
       // Retorna para visualização de itens ao fechar
       isCheckoutStep = false;
+      selectedPaymentMethod = 'pix';
       renderCart();
     }
   }
@@ -505,6 +507,80 @@
             </div>
           </div>
 
+          <!-- SELEÇÃO DE FORMA DE PAGAMENTO (PIX & CARTÃO PAGBANK) -->
+          <div>
+            <div class="checkout-section-title">
+              <span>✦</span> Forma de Pagamento
+            </div>
+            <div class="payment-methods-grid">
+              <button type="button" class="payment-method-btn ${selectedPaymentMethod === 'pix' ? 'selected' : ''}" data-payment="pix" id="opt-payment-pix">
+                <span class="pm-title">💠 PIX Instantâneo</span>
+                <span class="pm-sub">Aprovação imediata</span>
+              </button>
+              <button type="button" class="payment-method-btn ${selectedPaymentMethod === 'credit_card' ? 'selected' : ''}" data-payment="credit_card" id="opt-payment-card">
+                <span class="pm-title">💳 Cartão de Crédito</span>
+                <span class="pm-sub">Até 12x via PagBank</span>
+              </button>
+            </div>
+
+            <!-- Bloco Informativo de PIX -->
+            <div id="pix-payment-info-box" style="${selectedPaymentMethod === 'pix' ? 'display: block;' : 'display: none;'} background: #FAF8F5; border: 1px dashed #DFC9B4; border-radius: var(--radius-sm); padding: 0.75rem 0.85rem; font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.85rem;">
+              <span>💠</span> O QR Code oficial Bacen e o código Copia e Cola serão gerados na próxima tela com envio prioritário.
+            </div>
+
+            <!-- Formulário de Cartão de Crédito PagBank -->
+            <div id="credit-card-fields-box" class="credit-card-form" style="${selectedPaymentMethod === 'credit_card' ? 'display: block;' : 'display: none;'}">
+              <div class="form-group" style="margin-bottom: 0.65rem;">
+                <label class="form-label">Número do Cartão <span class="required">*</span></label>
+                <div class="card-input-with-brand">
+                  <input type="text" id="order-card-number" class="form-input" placeholder="0000 0000 0000 0000" maxlength="19" inputmode="numeric">
+                  <span id="card-brand-badge" class="card-brand-badge">CARTÃO</span>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0.65rem;">
+                <label class="form-label">Nome Impresso no Cartão <span class="required">*</span></label>
+                <input type="text" id="order-card-holder" class="form-input" placeholder="Ex: MARIA L SAMPAIO" style="text-transform: uppercase;">
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.65rem;">
+                <div class="form-group">
+                  <label class="form-label">Validade (MM/AA) <span class="required">*</span></label>
+                  <input type="text" id="order-card-expiry" class="form-input" placeholder="MM/AA" maxlength="5" inputmode="numeric">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">CVV <span class="required">*</span></label>
+                  <input type="text" id="order-card-cvv" class="form-input" placeholder="123" maxlength="4" inputmode="numeric">
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0.65rem;">
+                <label class="form-label">Opções de Parcelamento <span class="required">*</span></label>
+                <select id="order-card-installments" class="form-input" style="background: #fff; cursor: pointer; font-size: 0.8rem;">
+                  <option value="1">1x de ${formatMoney(finalTotal)} à vista</option>
+                </select>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0.4rem;">
+                <label class="form-label">CPF do Titular do Cartão <span class="required">*</span></label>
+                <input type="text" id="order-card-cpf" class="form-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
+                <div style="margin-top: 0.4rem; display: flex; align-items: center; gap: 0.4rem;">
+                  <input type="checkbox" id="chk-same-holder" checked style="accent-color: var(--brand-terracotta); cursor: pointer;">
+                  <label for="chk-same-holder" style="font-size: 0.72rem; color: var(--text-secondary); cursor: pointer; user-select: none;">
+                    Titular do cartão é o mesmo do cadastro acima
+                  </label>
+                </div>
+              </div>
+
+              <div class="pagbank-security-badge">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+                </svg>
+                <span>Pagamento Blindado & Criptografado via <strong>PagBank</strong></span>
+              </div>
+            </div>
+          </div>
+
           <div>
             <div class="checkout-section-title">
               <span>✦</span> Observações Especiais
@@ -543,7 +619,7 @@
           Até 6x de ${formatMoney(installmentVal)} sem juros ou via PIX com QR Code
         </div>
         <button type="button" class="btn-proceed-checkout" id="btn-submit-order">
-          <span>✦ Finalizar Pedido & Gerar Protocolo</span>
+          <span>${selectedPaymentMethod === 'credit_card' ? '✦ Pagar com Cartão via PagBank' : '✦ Finalizar Pedido & Gerar PIX'}</span>
         </button>
       `;
 
@@ -724,6 +800,128 @@
       }
     }
 
+    // Controle de Forma de Pagamento (PIX vs Cartão PagBank)
+    const optPix = document.getElementById('opt-payment-pix');
+    const optCard = document.getElementById('opt-payment-card');
+    const pixBox = document.getElementById('pix-payment-info-box');
+    const cardBox = document.getElementById('credit-card-fields-box');
+    const submitBtn = document.getElementById('btn-submit-order');
+
+    function populateCardInstallments() {
+      const select = document.getElementById('order-card-installments');
+      if (!select) return;
+      const subtotal = getCartSubtotal();
+      const disc = (appliedCoupon && Number(appliedCoupon.discount_amount)) ? Number(appliedCoupon.discount_amount) : 0;
+      const total = Math.max(0, subtotal - disc);
+
+      if (window.SoleriaPagBank && typeof window.SoleriaPagBank.calculateInstallments === 'function') {
+        const installments = window.SoleriaPagBank.calculateInstallments(total);
+        select.innerHTML = installments.map(opt => `
+          <option value="${opt.installments}">${opt.label}</option>
+        `).join('');
+      } else {
+        select.innerHTML = `<option value="1">1x de ${formatMoney(total)} à vista</option>`;
+      }
+    }
+
+    function switchPaymentMethod(method) {
+      selectedPaymentMethod = method;
+      if (method === 'pix') {
+        if (optPix) optPix.classList.add('selected');
+        if (optCard) optCard.classList.remove('selected');
+        if (pixBox) pixBox.style.display = 'block';
+        if (cardBox) cardBox.style.display = 'none';
+        if (submitBtn) submitBtn.innerHTML = '<span>✦ Finalizar Pedido & Gerar PIX</span>';
+      } else {
+        if (optPix) optPix.classList.remove('selected');
+        if (optCard) optCard.classList.add('selected');
+        if (pixBox) pixBox.style.display = 'none';
+        if (cardBox) cardBox.style.display = 'block';
+        if (submitBtn) submitBtn.innerHTML = '<span>✦ Pagar com Cartão via PagBank</span>';
+        populateCardInstallments();
+
+        // Se marcado "mesmo titular", já preenche com os dados de contato
+        const chkSame = document.getElementById('chk-same-holder');
+        if (chkSame && chkSame.checked) {
+          const custName = document.getElementById('order-customer-name')?.value || '';
+          const custCpf = document.getElementById('order-customer-cpf')?.value || '';
+          const cardHolder = document.getElementById('order-card-holder');
+          const cardCpf = document.getElementById('order-card-cpf');
+          if (cardHolder && !cardHolder.value && custName) cardHolder.value = custName.toUpperCase();
+          if (cardCpf && !cardCpf.value && custCpf) cardCpf.value = custCpf;
+        }
+      }
+    }
+
+    if (optPix) optPix.addEventListener('click', () => switchPaymentMethod('pix'));
+    if (optCard) optCard.addEventListener('click', () => switchPaymentMethod('credit_card'));
+
+    // Formatação de Número do Cartão com Detecção de Bandeira
+    const cardNumInp = document.getElementById('order-card-number');
+    const brandBadge = document.getElementById('card-brand-badge');
+    if (cardNumInp) {
+      cardNumInp.addEventListener('input', (e) => {
+        let v = e.target.value.replace(/\D/g, '').slice(0, 16);
+        e.target.value = v.replace(/(\d{4})(?=\d)/g, '$1 ');
+        if (window.SoleriaPagBank && typeof window.SoleriaPagBank.detectCardBrand === 'function') {
+          const detected = window.SoleriaPagBank.detectCardBrand(v);
+          if (brandBadge) brandBadge.textContent = detected.name || 'CARTÃO';
+        }
+      });
+    }
+
+    // Formatação de Validade (MM/AA)
+    const cardExpInp = document.getElementById('order-card-expiry');
+    if (cardExpInp) {
+      cardExpInp.addEventListener('input', (e) => {
+        let v = e.target.value.replace(/\D/g, '').slice(0, 4);
+        if (v.length > 2) {
+          e.target.value = `${v.slice(0, 2)}/${v.slice(2)}`;
+        } else {
+          e.target.value = v;
+        }
+      });
+    }
+
+    // Formatação de CVV
+    const cardCvvInp = document.getElementById('order-card-cvv');
+    if (cardCvvInp) {
+      cardCvvInp.addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
+      });
+    }
+
+    // Formatação de CPF do Titular
+    const cardCpfInp = document.getElementById('order-card-cpf');
+    if (cardCpfInp) {
+      cardCpfInp.addEventListener('input', (e) => {
+        let v = e.target.value.replace(/\D/g, '').slice(0, 11);
+        if (v.length > 9) e.target.value = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+        else if (v.length > 6) e.target.value = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+        else if (v.length > 3) e.target.value = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+        else e.target.value = v;
+      });
+    }
+
+    // Checkbox "Mesmo Titular"
+    const chkSame = document.getElementById('chk-same-holder');
+    if (chkSame) {
+      chkSame.addEventListener('change', () => {
+        if (chkSame.checked) {
+          const custName = document.getElementById('order-customer-name')?.value || '';
+          const custCpf = document.getElementById('order-customer-cpf')?.value || '';
+          const cardHolder = document.getElementById('order-card-holder');
+          if (cardHolder && custName) cardHolder.value = custName.toUpperCase();
+          if (cardCpfInp && custCpf) cardCpfInp.value = custCpf;
+        }
+      });
+    }
+
+    // Inicializa parcelas se cartão já estiver selecionado
+    if (selectedPaymentMethod === 'credit_card') {
+      populateCardInstallments();
+    }
+
     // Máscara de CPF
     const cpfInput = document.getElementById('order-customer-cpf');
     if (cpfInput) {
@@ -833,6 +1031,55 @@
           return;
         }
 
+        // Validação adicional caso seja Cartão de Crédito
+        let cardPayloadData = null;
+        if (selectedPaymentMethod === 'credit_card') {
+          const cardNum = document.getElementById('order-card-number')?.value.replace(/\D/g, '') || '';
+          const cardHolder = document.getElementById('order-card-holder')?.value.trim() || '';
+          const cardExp = document.getElementById('order-card-expiry')?.value.trim() || '';
+          const cardCvv = document.getElementById('order-card-cvv')?.value.trim() || '';
+          const cardHolderCpf = document.getElementById('order-card-cpf')?.value.replace(/\D/g, '') || '';
+          const installmentsVal = parseInt(document.getElementById('order-card-installments')?.value, 10) || 1;
+
+          if (cardNum.length < 13) {
+            showToast('Por favor, informe o número completo do cartão de crédito.', 'warning');
+            document.getElementById('order-card-number')?.focus();
+            return;
+          }
+          if (cardHolder.length < 3) {
+            showToast('Informe o nome do titular impresso no cartão.', 'warning');
+            document.getElementById('order-card-holder')?.focus();
+            return;
+          }
+          const expParts = cardExp.split('/');
+          const expMonth = parseInt(expParts[0], 10);
+          if (!expParts[1] || isNaN(expMonth) || expMonth < 1 || expMonth > 12) {
+            showToast('Validade do cartão inválida. Use o formato MM/AA.', 'warning');
+            document.getElementById('order-card-expiry')?.focus();
+            return;
+          }
+          if (cardCvv.length < 3) {
+            showToast('Código de segurança (CVV) do cartão incompleto.', 'warning');
+            document.getElementById('order-card-cvv')?.focus();
+            return;
+          }
+          if (cardHolderCpf.length !== 11) {
+            showToast('Informe um CPF válido para o titular do cartão.', 'warning');
+            document.getElementById('order-card-cpf')?.focus();
+            return;
+          }
+
+          cardPayloadData = {
+            cardNumber: cardNum,
+            holderName: cardHolder,
+            expMonth: expParts[0],
+            expYear: expParts[1],
+            cvv: cardCvv,
+            holderCpf: cardHolderCpf,
+            installments: installmentsVal
+          };
+        }
+
         const addressData = {
           delivery_type: selectedDelivery,
           cep: document.getElementById('order-cep')?.value || '',
@@ -848,7 +1095,7 @@
         const itemsCopy = [...cart];
 
         btnSubmit.disabled = true;
-        btnSubmit.innerHTML = '<span>Registrando seu pedido...</span>';
+        btnSubmit.innerHTML = `<span>${selectedPaymentMethod === 'credit_card' ? 'Processando com PagBank...' : 'Registrando seu pedido...'}</span>`;
 
         const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db) ||
                        (window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
@@ -873,6 +1120,47 @@
         const finalTotalOrder = Math.max(0, subtotal - discAmount);
         const couponCode = appliedCoupon ? appliedCoupon.code : null;
 
+        let paymentStatus = selectedPaymentMethod === 'credit_card' ? 'pago' : 'recebido';
+        let pagbankDetails = null;
+
+        // Se for Cartão de Crédito, processa cobrança no PagBank
+        if (selectedPaymentMethod === 'credit_card' && window.SoleriaPagBank) {
+          try {
+            const payRes = await window.SoleriaPagBank.processOrderPayment({
+              order: {
+                order_number: orderNumber,
+                customer_name: nameInput.value.trim(),
+                customer_phone: phoneField.value.trim(),
+                customer_cpf: rawCpf,
+                total_amount: finalTotalOrder,
+                items: itemsCopy
+              },
+              cardData: cardPayloadData,
+              paymentMethod: 'CREDIT_CARD'
+            });
+
+            if (!payRes.success) {
+              showToast(payRes.error || 'Cartão de crédito não autorizado pelo PagBank.', 'error');
+              btnSubmit.disabled = false;
+              btnSubmit.innerHTML = '<span>✦ Pagar com Cartão via PagBank</span>';
+              return;
+            }
+
+            paymentStatus = 'pago';
+            pagbankDetails = {
+              brand: payRes.cardBrand || 'Cartão',
+              last4: payRes.cardLast4 || '****',
+              installments: cardPayloadData.installments
+            };
+          } catch (pErr) {
+            console.error('Erro ao processar cartão PagBank:', pErr);
+            showToast('Erro de comunicação com o PagBank. Tente novamente.', 'error');
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<span>✦ Pagar com Cartão via PagBank</span>';
+            return;
+          }
+        }
+
         const orderPayload = {
           order_number: orderNumber,
           customer_name: nameInput.value.trim(),
@@ -885,7 +1173,10 @@
           discount_amount: discAmount,
           discount_code: couponCode,
           total_amount: finalTotalOrder,
-          status: 'recebido',
+          status: paymentStatus,
+          payment_method: selectedPaymentMethod,
+          payment_status: paymentStatus,
+          pagbank_card: pagbankDetails,
           customer_notes: notesInput?.value.trim() || '',
           stock_deducted: true, // Deduzido de forma atômica pela trigger PostgreSQL
           stock_reserved_in_db: true,
@@ -911,6 +1202,7 @@
           saveOrderLocally(orderPayload);
           cart = [];
           appliedCoupon = null; // Reseta cupom para próximas compras
+          selectedPaymentMethod = 'pix'; // Reseta para próximas
           saveCart();
           closeCart();
           showOrderSuccessModal(orderPayload, customerSyncResult);
@@ -1015,18 +1307,23 @@
       ? `\n*Desconto (${order.discount_code}):* -${formatMoney(order.discount_amount)}` 
       : '';
 
+    const isCreditCard = order.payment_method === 'credit_card';
+
     const whatsappText = `Olá, Soléria! Acabei de fazer o pedido *${order.order_number}* no catálogo:\n\n` +
       `*Cliente:* ${order.customer_name}\n` +
       `*Peças:*\n${itemsSummary}\n` +
       `${discountSummary}` +
       `*Total:* ${formatMoney(order.total_amount)}\n` +
+      `*Forma de Pagamento:* ${isCreditCard ? 'Cartão de Crédito (PagBank)' : 'PIX Instantâneo'}\n` +
       `*Tipo:* ${order.delivery_type === 'retirada' ? 'Retirada Exclusiva' : 'Entrega em Domicílio'}\n\n` +
-      `Gostaria de confirmar o pedido e enviar o comprovante de pagamento.`;
+      (isCreditCard
+        ? `Meu pagamento já foi aprovado no cartão via PagBank! Gostaria de acompanhar a preparação e envio das minhas peças.`
+        : `Gostaria de confirmar o pedido e enviar o comprovante de pagamento.`);
 
     const phone = '5516997990729'; // WhatsApp Soléria (Carla)
     const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(whatsappText)}`;
 
-    // Geração do Código PIX Copia e Cola Oficial Bacen e QR Code
+    // Geração do Código PIX Copia e Cola Oficial Bacen e QR Code (se método for PIX)
     const pixPayload = generatePixPayload({
       key: 'carlamotasemijoias@gmail.com',
       name: 'SOLERIA JOIAS',
@@ -1051,28 +1348,29 @@
       </div>
     ` : '';
 
-    const content = modal.querySelector('#order-success-content');
-    content.innerHTML = `
-      <div class="order-success-icon">✓</div>
-      <h2 style="font-family: var(--font-serif); font-size: 1.45rem; margin-bottom: 0.35rem; color: var(--text-primary);">
-        Pedido Registrado com Sucesso!
-      </h2>
-      <p style="font-size: 0.84rem; color: var(--text-secondary); max-width: 400px; margin: 0 auto;">
-        Olá, <strong>${order.customer_name}</strong>. Guarde o protocolo para rastrear a confecção e envio das suas peças.
-      </p>
+    const paymentBoxHtml = isCreditCard ? `
+      <!-- Módulo de Pagamento Aprovado no Cartão de Crédito via PagBank -->
+      <div style="background: #F0FDF4; border: 1.5px solid #86EFAC; border-radius: var(--radius-md); padding: 1.25rem 1.15rem; margin: 1.1rem 0; text-align: center;">
+        <div style="width: 48px; height: 48px; border-radius: 50%; background: #DCFCE7; color: #16A34A; display: inline-flex; align-items: center; justify-content: center; font-size: 1.6rem; margin: 0 auto 0.5rem auto;">
+          ✓
+        </div>
+        <div style="font-family: var(--font-serif); font-size: 1.2rem; font-weight: 700; color: #166534; margin-bottom: 0.25rem;">
+          Pagamento Aprovado com Sucesso!
+        </div>
+        <p style="font-size: 0.84rem; color: #15803D; margin-bottom: 0.85rem;">
+          Cobrança aprovada via <strong>PagBank</strong> em <strong>${order.pagbank_card?.installments || 1}x de ${formatMoney(order.total_amount / (order.pagbank_card?.installments || 1))}</strong>.
+        </p>
 
-      <div class="order-number-banner" style="margin: 0.85rem 0;">
-        <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700;">
-          Número do Seu Pedido (Protocolo de Rastreio)
-        </span>
-        <span class="order-number-val">${order.order_number}</span>
-        <button type="button" class="btn-secondary-action" id="btn-copy-protocol" style="font-size: 0.75rem; padding: 0.3rem 0.7rem;">
-          Copiar Protocolo
-        </button>
+        <div style="background: #FFFFFF; border: 1px solid #BBF7D0; border-radius: 8px; padding: 0.65rem 0.95rem; display: inline-block; font-size: 0.78rem; color: var(--text-primary);">
+          <span>💳 Cartão <strong>${order.pagbank_card?.brand || 'Crédito'}</strong> final <strong>•••• ${order.pagbank_card?.last4 || ''}</strong></span>
+        </div>
+
+        <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 0.85rem; line-height: 1.4;">
+          ✦ Seu pedido já entrou em preparação na nossa oficina de joias.<br>
+          Notificaremos você pelo WhatsApp assim que as peças forem embaladas.
+        </div>
       </div>
-
-      ${newAccountHtml}
-
+    ` : `
       <!-- Módulo de Pagamento Instantâneo via PIX (Etapa 5.1) -->
       <div class="pix-payment-box" style="background: #FCFAF8; border: 1.5px solid #E8DFD8; border-radius: var(--radius-md); padding: 1.15rem; margin: 1.1rem 0; text-align: center;">
         <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.5rem;">
@@ -1112,12 +1410,36 @@
           Após o pagamento, envie o comprovante no WhatsApp abaixo para priorizarmos seu envio.
         </div>
       </div>
+    `;
+
+    const content = modal.querySelector('#order-success-content');
+    content.innerHTML = `
+      <div class="order-success-icon">✓</div>
+      <h2 style="font-family: var(--font-serif); font-size: 1.45rem; margin-bottom: 0.35rem; color: var(--text-primary);">
+        ${isCreditCard ? 'Pedido Confirmado & Pago!' : 'Pedido Registrado com Sucesso!'}
+      </h2>
+      <p style="font-size: 0.84rem; color: var(--text-secondary); max-width: 400px; margin: 0 auto;">
+        Olá, <strong>${order.customer_name}</strong>. Guarde o protocolo para rastrear a confecção e envio das suas peças.
+      </p>
+
+      <div class="order-number-banner" style="margin: 0.85rem 0;">
+        <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700;">
+          Número do Seu Pedido (Protocolo de Rastreio)
+        </span>
+        <span class="order-number-val">${order.order_number}</span>
+        <button type="button" class="btn-secondary-action" id="btn-copy-protocol" style="font-size: 0.75rem; padding: 0.3rem 0.7rem;">
+          Copiar Protocolo
+        </button>
+      </div>
+
+      ${newAccountHtml}
+      ${paymentBoxHtml}
 
       <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp-order">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.63c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.12-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.78 2.71 4.3 3.8 2.53 1.09 2.53.73 2.99.69.45-.05 1.47-.6 1.68-1.18.21-.59.21-1.09.15-1.19-.06-.1-.23-.17-.48-.29z"/>
         </svg>
-        Enviar Pedido / Comprovante no WhatsApp
+        ${isCreditCard ? 'Falar com Carla no WhatsApp' : 'Enviar Pedido / Comprovante no WhatsApp'}
       </a>
 
       <a href="rastreio.html?pedido=${order.order_number}" class="btn-secondary" style="width: 100%; display: block; text-align: center; text-decoration: none; font-size: 0.82rem; padding: 0.65rem; margin-top: 0.6rem;">

@@ -228,6 +228,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
             <span class="admin-order-number">${order.order_number}</span>
             <span class="order-badge ${stInfo.class}">${stInfo.label}</span>
+            ${order.payment_method === 'credit_card'
+              ? `<span style="background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; border-radius: 4px; padding: 2px 7px; font-size: 0.72rem; font-weight: 700;">💳 Cartão PagBank (${order.pagbank_card?.installments || 1}x)</span>`
+              : `<span style="background: #FAF5FF; color: #6B21A8; border: 1px solid #E9D5FF; border-radius: 4px; padding: 2px 7px; font-size: 0.72rem; font-weight: 700;">💠 PIX</span>`
+            }
             ${order.stock_deducted 
               ? `<span class="badge-stock-ok">✓ Baixa Confirmada pelo Admin</span>`
               : `<span class="badge-stock-pending">⚠️ Aguardando Baixa do Admin</span>`

@@ -4111,5 +4111,105 @@ a {
   gap: 0.25rem;
 }
 
+/* ✦ MÓDULO DE PAGAMENTOS PAGBANK (PIX & CARTÃO DE CRÉDITO) ✦ */
+.payment-methods-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.payment-method-btn {
+  background: #FFFFFF;
+  border: 1.5px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 0.6rem;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--trans-fast);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.payment-method-btn:hover {
+  border-color: var(--gold-primary);
+  background: #FAF8F5;
+}
+
+.payment-method-btn.selected {
+  border-color: var(--brand-terracotta);
+  background: var(--brand-terracotta-light);
+  color: var(--brand-terracotta);
+  box-shadow: 0 2px 8px rgba(184, 80, 66, 0.12);
+}
+
+.payment-method-btn .pm-title {
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.payment-method-btn .pm-sub {
+  font-size: 0.68rem;
+  opacity: 0.85;
+  font-weight: 400;
+}
+
+.credit-card-form {
+  background: #FCFAF8;
+  border: 1px solid #EBE3DC;
+  border-radius: var(--radius-md);
+  padding: 1rem 1.15rem;
+  margin-top: 0.75rem;
+}
+
+.card-input-with-brand {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.card-input-with-brand input {
+  padding-right: 75px !important;
+}
+
+.card-brand-badge {
+  position: absolute;
+  right: 8px;
+  background: #FAF6F0;
+  border: 1px solid #D8C8B8;
+  border-radius: 4px;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--brand-terracotta);
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.pagbank-security-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed #E5DBD3;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.pagbank-security-badge svg {
+  color: #059669;
+}
+
+
 
 
