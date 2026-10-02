@@ -410,7 +410,13 @@
               <div class="form-grid">
                 <div class="form-group col-4">
                   <label class="form-label" for="addr-cep">CEP</label>
-                  <input type="text" id="addr-cep" class="form-input" placeholder="00000-000" maxlength="9">
+                  <div style="position: relative;">
+                    <input type="text" id="addr-cep" class="form-input" placeholder="00000-000" maxlength="9">
+                    <span id="addr-cep-loading" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72rem; color: var(--gold-dark); font-weight: 600;">
+                      Buscando...
+                    </span>
+                  </div>
+                  <span class="form-help-text" id="addr-cep-hint" style="font-size: 0.72rem; color: var(--text-muted);">Preenchimento automático via CEP</span>
                 </div>
 
                 <div class="form-group col-8">
@@ -505,6 +511,54 @@
           e.target.value = v;
         });
       });
+
+      // Autocompletar pré-cadastro ao digitar CPF no Novo Cadastro
+      const regCpfInput = document.getElementById('reg-cpf');
+      const regCpfHint = document.getElementById('reg-cpf-hint');
+      if (regCpfInput) {
+        regCpfInput.addEventListener('blur', async () => {
+          const cleanNum = (regCpfInput.value || '').replace(/\D/g, '');
+          if (cleanNum.length !== 11) return;
+
+          try {
+            let found = null;
+            if (typeof getSupabaseClient === 'function' && typeof isSupabaseConfigured === 'function' && isSupabaseConfigured()) {
+              const client = getSupabaseClient();
+              const { data } = await client.from('customers').select('name, phone, email').eq('cpf', cleanNum).maybeSingle();
+              if (data) found = data;
+            }
+            if (!found) {
+              const localList = JSON.parse(localStorage.getItem('soleria_local_customers') || localStorage.getItem('soleria_customers') || '[]');
+              found = localList.find(c => (c.cpf || '').replace(/\D/g, '') === cleanNum);
+            }
+            if (!found) {
+              const orders = JSON.parse(localStorage.getItem('soleria_local_orders') || localStorage.getItem('soleria_orders') || '[]');
+              const prev = orders.find(o => (o.customer_cpf || '').replace(/\D/g, '') === cleanNum);
+              if (prev) found = { name: prev.customer_name, phone: prev.customer_phone, email: prev.customer_email };
+            }
+
+            if (found) {
+              const nameEl = document.getElementById('reg-name');
+              const phoneEl = document.getElementById('reg-phone');
+              const emailEl = document.getElementById('reg-email');
+
+              if (nameEl && (!nameEl.value || nameEl.value.trim() === '')) nameEl.value = found.name || '';
+              if (phoneEl && (!phoneEl.value || phoneEl.value.trim() === '')) {
+                let p = (found.phone || '').replace(/\D/g, '');
+                if (p.length === 11) phoneEl.value = `(${p.slice(0, 2)}) ${p.slice(2, 7)}-${p.slice(7)}`;
+                else if (p.length === 10) phoneEl.value = `(${p.slice(0, 2)}) ${p.slice(2, 6)}-${p.slice(6)}`;
+                else phoneEl.value = found.phone || '';
+              }
+              if (emailEl && (!emailEl.value || emailEl.value.trim() === '')) emailEl.value = found.email || '';
+
+              if (regCpfHint) {
+                regCpfHint.innerHTML = `✨ <strong>Encontramos seu pré-cadastro (${found.name})!</strong> Basta criar sua senha abaixo para concluir o acesso.`;
+                regCpfHint.style.color = '#B45309';
+              }
+            }
+          } catch (e) {}
+        });
+      }
 
       // Máscara de Telefone
       const phoneInput = document.getElementById('reg-phone');
@@ -697,8 +751,16 @@
         btn.textContent = 'Criando cadastro...';
 
         try {
-          await window.SoleriaCustomer.cadastrar({ name, cpf, phone, email, password: pass });
-          if (typeof showToast === 'function') showToast('Conta criada com sucesso! Bem-vinda à Soléria.', 'success');
+          const res = await window.SoleriaCustomer.cadastrar({ name, cpf, phone, email, password: pass });
+          if (res && res.is_upgrade) {
+            if (typeof showToast === 'function') {
+              showToast('Pré-cadastro ativado com sucesso! Suas peças e pedidos já estão disponíveis.', 'success', 5000);
+            } else {
+              alert('Pré-cadastro ativado com sucesso! Suas peças e pedidos já estão disponíveis.');
+            }
+          } else {
+            if (typeof showToast === 'function') showToast('Conta criada com sucesso! Bem-vinda à Soléria.', 'success');
+          }
           renderDashboard();
         } catch (err) {
           if (typeof showToast === 'function') {
@@ -734,6 +796,126 @@
           if (targetElem) targetElem.style.display = 'block';
         });
       });
+
+      // ==========================================================================
+      // Busca Automática de Endereço por CEP (ViaCEP + BrasilAPI Fallback)
+      // ==========================================================================
+      const addrCepInput = document.getElementById('addr-cep');
+      const addrCepLoading = document.getElementById('addr-cep-loading');
+      const addrCepHint = document.getElementById('addr-cep-hint');
+      let lastSearchedAddrCep = '';
+
+      async function buscarEnderecoPorCep(cleanCep) {
+        if (!cleanCep || cleanCep.length !== 8 || cleanCep === lastSearchedAddrCep) return;
+        lastSearchedAddrCep = cleanCep;
+
+        if (addrCepLoading) addrCepLoading.style.display = 'inline-block';
+        if (addrCepHint) {
+          addrCepHint.textContent = 'Consultando base dos Correios...';
+          addrCepHint.style.color = 'var(--gold-dark)';
+        }
+
+        try {
+          let data = null;
+
+          // 1. Tenta ViaCEP (Rápido, sem autenticação)
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3500);
+            const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            const json = await res.json();
+            if (!json.erro) {
+              data = {
+                street: json.logradouro || '',
+                neighborhood: json.bairro || '',
+                city: `${json.localidade} - ${json.uf}`
+              };
+            }
+          } catch (e1) {
+            console.warn('ViaCEP falhou ou expirou, recorrendo a BrasilAPI...');
+          }
+
+          // 2. Fallback de alta disponibilidade: BrasilAPI
+          if (!data) {
+            try {
+              const res2 = await fetch(`https://brasilapi.com.br/api/cep/v1/${cleanCep}`);
+              if (res2.ok) {
+                const json2 = await res2.json();
+                data = {
+                  street: json2.street || '',
+                  neighborhood: json2.neighborhood || '',
+                  city: `${json2.city} - ${json2.state}`
+                };
+              }
+            } catch (e2) {}
+          }
+
+          if (data) {
+            const streetEl = document.getElementById('addr-street');
+            const neighEl = document.getElementById('addr-neighborhood');
+            const cityEl = document.getElementById('addr-city');
+            const numEl = document.getElementById('addr-number');
+
+            if (streetEl && data.street) streetEl.value = data.street;
+            if (neighEl && data.neighborhood) neighEl.value = data.neighborhood;
+            if (cityEl && data.city) cityEl.value = data.city;
+
+            if (addrCepHint) {
+              addrCepHint.textContent = '✓ Endereço preenchido com sucesso!';
+              addrCepHint.style.color = '#15803D';
+            }
+
+            if (typeof showToast === 'function') {
+              showToast('Endereço preenchido automaticamente via CEP!', 'success', 3000);
+            }
+
+            if (numEl) numEl.focus();
+          } else {
+            if (addrCepHint) {
+              addrCepHint.textContent = 'CEP não encontrado. Preencha os campos manualmente.';
+              addrCepHint.style.color = '#B45309';
+            }
+          }
+        } catch (err) {
+          console.warn('Erro ao consultar CEP:', err);
+          if (addrCepHint) {
+            addrCepHint.textContent = 'Não foi possível carregar o CEP. Digite manualmente.';
+            addrCepHint.style.color = '#DC2626';
+          }
+        } finally {
+          if (addrCepLoading) addrCepLoading.style.display = 'none';
+        }
+      }
+
+      if (addrCepInput) {
+        // Máscara 00000-000 e auto-busca ao atingir 8 dígitos
+        addrCepInput.addEventListener('input', (e) => {
+          let v = e.target.value.replace(/\D/g, '').slice(0, 8);
+          if (v.length > 5) {
+            e.target.value = `${v.slice(0, 5)}-${v.slice(5)}`;
+          } else {
+            e.target.value = v;
+          }
+
+          if (v.length === 8) {
+            buscarEnderecoPorCep(v);
+          } else {
+            lastSearchedAddrCep = '';
+            if (addrCepHint) {
+              addrCepHint.textContent = 'Preenchimento automático via CEP';
+              addrCepHint.style.color = 'var(--text-muted)';
+            }
+          }
+        });
+
+        addrCepInput.addEventListener('blur', () => {
+          const clean = addrCepInput.value.replace(/\D/g, '');
+          if (clean.length === 8) {
+            buscarEnderecoPorCep(clean);
+          }
+        });
+      }
 
       // Salvar Endereço
       const formAddr = document.getElementById('form-customer-address');

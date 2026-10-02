@@ -172,15 +172,43 @@
           console.warn('Erro ao chamar RPC customer_register no Supabase:', error);
         } else if (data) {
           if (!data.success) {
-            throw new Error(data.message || 'Erro ao realizar cadastro.');
+            // Se retornar que já possui cadastro (ex: pré-cadastro existente ou SQL antigo no Supabase),
+            // tenta atualizar via RPC customer_sync_checkout com a nova senha escolhida
+            if (data.message && (data.message.includes('já possui cadastro') || data.message.includes('já cadastrado'))) {
+              try {
+                const { data: syncData, error: syncErr } = await client.rpc('customer_sync_checkout', {
+                  p_name: name.trim(),
+                  p_cpf: cleanNum,
+                  p_phone: phone.trim(),
+                  p_email: (email || '').trim().toLowerCase(),
+                  p_default_password_hash: passHash,
+                  p_address: address || {}
+                });
+                if (!syncErr && syncData && syncData.success) {
+                  customerRecord = {
+                    ...syncData.customer,
+                    session_token: syncData.session_token,
+                    is_upgrade: true
+                  };
+                }
+              } catch (syncErr) {
+                console.warn('Tentativa de sincronizar pré-cadastro via sync_checkout:', syncErr);
+              }
+            }
+
+            if (!customerRecord) {
+              throw new Error(data.message || 'Erro ao realizar cadastro.');
+            }
+          } else {
+            customerRecord = {
+              ...data.customer,
+              session_token: data.session_token,
+              is_upgrade: !!data.is_upgrade
+            };
           }
-          customerRecord = {
-            ...data.customer,
-            session_token: data.session_token
-          };
         }
       } catch (err) {
-        if (err.message && (err.message.includes('já possui cadastro') || err.message.includes('Informe') || err.message.includes('CPF'))) {
+        if (err.message && (err.message.includes('Informe') || err.message.includes('CPF deve conter') || err.message.includes('senha'))) {
           throw err;
         }
         console.warn('Falha na requisição segura ao Supabase, tentando fallback local:', err);
@@ -190,22 +218,35 @@
     // 2. Fallback local se o Supabase não estiver configurado ou offline
     if (!customerRecord) {
       const localList = getLocalCustomers();
-      if (localList.some(c => cleanCPF(c.cpf) === cleanNum)) {
-        throw new Error('Este CPF já está cadastrado neste dispositivo.');
-      }
+      const existing = localList.find(c => cleanCPF(c.cpf) === cleanNum);
 
-      customerRecord = {
-        id: 'loc_' + Math.random().toString(36).slice(2, 10),
-        cpf: cleanNum,
-        name: name.trim(),
-        phone: phone.trim(),
-        email: (email || '').trim().toLowerCase(),
-        password_hash: passHash,
-        address: address || {},
-        session_token: 'loc_' + Math.random().toString(36).slice(2, 10),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
+      if (existing) {
+        // Atualiza o pré-cadastro existente com a nova senha e dados completos
+        customerRecord = {
+          ...existing,
+          name: name.trim(),
+          phone: phone.trim(),
+          email: (email || '').trim().toLowerCase(),
+          password_hash: passHash,
+          address: (address && address.street) ? address : (existing.address || {}),
+          session_token: existing.session_token || ('loc_' + Math.random().toString(36).slice(2, 10)),
+          updated_at: new Date().toISOString(),
+          is_upgrade: true
+        };
+      } else {
+        customerRecord = {
+          id: 'loc_' + Math.random().toString(36).slice(2, 10),
+          cpf: cleanNum,
+          name: name.trim(),
+          phone: phone.trim(),
+          email: (email || '').trim().toLowerCase(),
+          password_hash: passHash,
+          address: address || {},
+          session_token: 'loc_' + Math.random().toString(36).slice(2, 10),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+      }
 
       saveLocalCustomer(customerRecord);
     }

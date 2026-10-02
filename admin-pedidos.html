@@ -97,11 +97,18 @@
     <main class="container">
       
       <!-- Cabeçalho da Página -->
-      <div class="admin-page-header">
+      <div class="admin-page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
         <div>
           <h2 class="admin-page-title">Gestão de Pedidos das Clientes</h2>
-          <p class="admin-page-subtitle">Acompanhe novos pedidos, atualize status, cadastre código de rastreio e dê baixa no estoque.</p>
+          <p class="admin-page-subtitle">Acompanhe novos pedidos, gere pedidos presenciais com pré-cadastro por CPF e dê baixa no estoque.</p>
         </div>
+        <button type="button" id="btn-open-manual-order" class="btn-primary" style="padding: 0.65rem 1.25rem; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 14px rgba(184, 115, 51, 0.25);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          + Novo Pedido Presencial
+        </button>
       </div>
 
       <!-- Cards de Métricas de Pedidos -->
@@ -141,6 +148,9 @@
             </select>
           </div>
           <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+            <button id="btn-toolbar-manual-order" class="btn-secondary-action" style="padding: 0.55rem 0.85rem; color: var(--gold-dark); border-color: var(--gold-primary); font-weight: 600;" title="Gerar pedido para atendimento presencial / balcão">
+              ✨ Pedido Presencial
+            </button>
             <button id="btn-export-orders-csv" class="btn-secondary-action" style="padding: 0.55rem 0.85rem;" title="Exportar vendas para planilha Excel / CSV">
               📊 Exportar CSV
             </button>
@@ -244,8 +254,268 @@
     </div>
   </div>
 
+  <!-- Modal de Novo Pedido Presencial / Balcão -->
+  <div class="modal-overlay" id="manual-order-modal" role="dialog" aria-hidden="true">
+    <div class="modal-window" style="max-width: 820px; max-height: 92vh; overflow-y: auto;">
+      <button class="modal-close-btn" id="btn-close-manual-order-modal" aria-label="Fechar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <div style="padding: 1.75rem 2rem;">
+        <!-- Cabeçalho do Modal -->
+        <div style="border-bottom: 1px solid var(--border-light); padding-bottom: 1rem; margin-bottom: 1.25rem;">
+          <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.25rem;">
+            <span style="font-size: 1.35rem;">🛍️</span>
+            <h3 style="font-family: var(--font-serif); font-size: 1.45rem; color: var(--text-primary); margin: 0;">
+              Novo Pedido Presencial / Atendimento Balcão
+            </h3>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+            Gera a venda interna com baixa de estoque imediata e <strong>cria/atualiza o pré-cadastro da cliente via CPF</strong>. Quando a cliente criar conta no site, ela ativará o acesso e terá todo o histórico disponível.
+          </p>
+        </div>
+
+        <form id="form-manual-order">
+          <!-- 1. IDENTIFICAÇÃO DA CLIENTE (VÍNCULO CPF) -->
+          <div style="background: #FAF8F5; border: 1px solid #EFEAE3; border-radius: var(--radius-sm); padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+              <span style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--gold-dark); letter-spacing: 0.06em;">
+                1. Identificação da Cliente (Chave de Vínculo: CPF)
+              </span>
+              <span id="manual-cust-status-badge" style="font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 4px; display: none;"></span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-bottom: 0.75rem;">
+              <div class="form-group">
+                <label class="form-label" for="manual-order-cpf">CPF da Cliente <span class="required" style="color: #DC2626;">*</span></label>
+                <input type="text" id="manual-order-cpf" class="form-input" placeholder="000.000.000-00" maxlength="14" required autocomplete="off">
+                <span class="form-help-text" id="manual-cpf-hint">Digite o CPF para autocompletar cadastro existente ou registrar novo pré-cadastro.</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="manual-order-name">Nome Completo <span class="required" style="color: #DC2626;">*</span></label>
+                <input type="text" id="manual-order-name" class="form-input" placeholder="Nome da cliente" required>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem;">
+              <div class="form-group">
+                <label class="form-label" for="manual-order-phone">WhatsApp / Telefone <span class="required" style="color: #DC2626;">*</span></label>
+                <input type="tel" id="manual-order-phone" class="form-input" placeholder="(16) 99999-9999" maxlength="15" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="manual-order-email">E-mail (Opcional)</label>
+                <input type="email" id="manual-order-email" class="form-input" placeholder="cliente@email.com">
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. SELEÇÃO DE PEÇAS / ITENS DO ESTOQUE -->
+          <div style="background: #FAF8F5; border: 1px solid #EFEAE3; border-radius: var(--radius-sm); padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+            <span style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--gold-dark); letter-spacing: 0.06em; display: block; margin-bottom: 0.75rem;">
+              2. Adicionar Peças do Catálogo & Estoque
+            </span>
+
+            <!-- Barra de seleção de produto -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr 90px 110px auto; gap: 0.6rem; align-items: flex-end; margin-bottom: 1rem;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 0.74rem;">Selecione o Produto</label>
+                <select id="manual-product-select" class="form-select" style="font-size: 0.82rem; height: 38px;">
+                  <option value="">Carregando peças...</option>
+                </select>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 0.74rem;">Aro / Tamanho</label>
+                <select id="manual-size-select" class="form-select" style="font-size: 0.82rem; height: 38px;" disabled>
+                  <option value="">Padrão / Único</option>
+                </select>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 0.74rem;">Qtd</label>
+                <input type="number" id="manual-item-qty" class="form-input" value="1" min="1" max="99" style="font-size: 0.82rem; height: 38px; text-align: center;">
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 0.74rem;">Preço Unit. (R$)</label>
+                <input type="number" id="manual-item-price" class="form-input" step="0.01" min="0" placeholder="0.00" style="font-size: 0.82rem; height: 38px;">
+              </div>
+
+              <button type="button" id="btn-manual-add-item" class="btn-primary" style="height: 38px; padding: 0 1rem; font-size: 0.82rem; white-space: nowrap;">
+                + Adicionar
+              </button>
+            </div>
+
+            <!-- Tabela de Peças Selecionadas -->
+            <div id="manual-items-table-wrapper" style="border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: #fff; overflow: hidden;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+                <thead>
+                  <tr style="background: #F8F6F2; text-align: left; border-bottom: 1px solid var(--border-light); font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">
+                    <th style="padding: 0.6rem 0.85rem;">Peça</th>
+                    <th style="padding: 0.6rem 0.85rem; text-align: center;">Qtd</th>
+                    <th style="padding: 0.6rem 0.85rem; text-align: right;">Unitário</th>
+                    <th style="padding: 0.6rem 0.85rem; text-align: right;">Subtotal</th>
+                    <th style="padding: 0.6rem 0.85rem; text-align: center; width: 50px;">Ação</th>
+                  </tr>
+                </thead>
+                <tbody id="manual-items-tbody">
+                  <tr>
+                    <td colspan="5" style="text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.8rem;">
+                      Nenhuma peça adicionada ainda. Selecione um produto acima e clique em "+ Adicionar".
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 3. CONDIÇÕES COMERCIAIS & PAGAMENTO -->
+          <div style="background: #FAF8F5; border: 1px solid #EFEAE3; border-radius: var(--radius-sm); padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+            <span style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--gold-dark); letter-spacing: 0.06em; display: block; margin-bottom: 0.75rem;">
+              3. Forma de Pagamento, Entrega & Valores
+            </span>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.85rem; margin-bottom: 1rem;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Forma de Pagamento</label>
+                <select id="manual-order-payment" class="form-select" style="font-size: 0.82rem;">
+                  <option value="pix" selected>PIX (À Vista)</option>
+                  <option value="cartao_credito">Cartão de Crédito</option>
+                  <option value="cartao_debito">Cartão de Débito</option>
+                  <option value="dinheiro">Dinheiro em Espécie</option>
+                  <option value="transferencia">Transferência Bancária</option>
+                  <option value="a_combinar">A Combinar / Outro</option>
+                </select>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Status Inicial do Pedido</label>
+                <select id="manual-order-status" class="form-select" style="font-size: 0.82rem;">
+                  <option value="confirmado" selected>Confirmado / Pago</option>
+                  <option value="entregue">Entregue / Concluído no Ato</option>
+                  <option value="preparacao">Em Preparação / Ajuste</option>
+                  <option value="recebido">Recebido (Aguardando Pgto)</option>
+                </select>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Tipo de Entrega</label>
+                <select id="manual-order-delivery" class="form-select" style="font-size: 0.82rem;">
+                  <option value="retirada" selected>Retirada no Local / Balcão</option>
+                  <option value="entrega">Entrega em Domicílio / Envio</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Campos de endereço se for entrega -->
+            <div id="manual-delivery-address-group" style="display: none; background: #fff; border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 1rem;">
+              <div style="font-size: 0.74rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.4rem;">Endereço de Entrega da Cliente:</div>
+              <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <input type="text" id="manual-addr-street" class="form-input" placeholder="Rua / Avenida, Número e Bairro" style="font-size: 0.8rem;">
+                <input type="text" id="manual-addr-city" class="form-input" placeholder="Cidade / UF" style="font-size: 0.8rem;">
+              </div>
+              <input type="text" id="manual-addr-cep" class="form-input" placeholder="CEP (00000-000)" maxlength="9" style="font-size: 0.8rem; max-width: 180px;">
+            </div>
+
+            <!-- Resumo Financeiro & Desconto -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #E0D9D0; padding-top: 0.85rem; flex-wrap: wrap; gap: 1rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 0.74rem;">Desconto Comercial (R$)</label>
+                  <input type="number" id="manual-order-discount" class="form-input" step="0.01" min="0" value="0.00" style="font-size: 0.85rem; width: 140px;">
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 1rem;">
+                  Subtotal: <strong id="manual-subtotal-display">R$ 0,00</strong>
+                </div>
+              </div>
+
+              <div style="text-align: right;">
+                <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block;">Valor Total Final</span>
+                <div id="manual-total-display" style="font-size: 1.55rem; font-weight: 700; color: var(--brand-terracotta); font-family: var(--font-serif);">
+                  R$ 0,00
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 0.85rem; margin-bottom: 0.5rem;">
+              <label class="form-label" style="font-size: 0.74rem;">Observações Internas da Venda (Opcional)</label>
+              <textarea id="manual-order-notes" class="form-input" rows="2" placeholder="Ex: Atendimento realizado no showroom; anel aro 16 polido; cliente levará certificado..." style="font-size: 0.8rem; resize: vertical;"></textarea>
+            </div>
+
+            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; cursor: pointer; color: var(--text-primary); margin-top: 0.75rem;">
+              <input type="checkbox" id="manual-order-deduct-stock" checked style="accent-color: var(--gold-primary); width: 16px; height: 16px;">
+              <span><strong>Dar baixa imediata no estoque</strong> das peças e aros selecionados</span>
+            </label>
+          </div>
+
+          <!-- Botões do Rodapé -->
+          <div style="display: flex; justify-content: flex-end; gap: 0.65rem; border-top: 1px solid var(--border-light); padding-top: 1.25rem;">
+            <button type="button" class="btn-secondary-action" id="btn-cancel-manual-order" style="padding: 0.65rem 1.25rem; font-size: 0.85rem;">
+              Cancelar
+            </button>
+            <button type="submit" id="btn-submit-manual-order" class="btn-primary" style="padding: 0.65rem 1.75rem; font-size: 0.88rem; box-shadow: 0 4px 14px rgba(184, 115, 51, 0.3);">
+              ✨ Salvar e Gerar Pedido Presencial
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Sucesso com WhatsApp do Pedido Presencial -->
+  <div class="modal-overlay" id="manual-order-success-modal" role="dialog" aria-hidden="true">
+    <div class="modal-window" style="max-width: 520px; text-align: center;">
+      <button class="modal-close-btn" id="btn-close-manual-success-modal" aria-label="Fechar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <div style="padding: 2rem 1.75rem;">
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: #ECFDF5; border: 2px solid #A7F3D0; color: #16A34A; display: flex; align-items: center; justify-content: center; font-size: 1.75rem; margin: 0 auto 1rem;">
+          ✓
+        </div>
+
+        <h3 style="font-family: var(--font-serif); font-size: 1.55rem; color: var(--text-primary); margin-bottom: 0.4rem;">
+          Pedido Presencial Concluído!
+        </h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+          Pedido <strong id="success-manual-order-number" style="color: var(--brand-terracotta);">#SOL-00000</strong> gerado com sucesso.
+        </p>
+
+        <div style="background: #FDF9F5; border: 1px solid #EFE4DC; border-radius: var(--radius-sm); padding: 1rem; text-align: left; margin-bottom: 1.5rem; font-size: 0.82rem; line-height: 1.5;">
+          <div>👤 <strong>Cliente:</strong> <span id="success-manual-customer-name">—</span></div>
+          <div>💳 <strong>CPF Vinculado:</strong> <span id="success-manual-customer-cpf">—</span></div>
+          <div>💰 <strong>Valor Total:</strong> <span id="success-manual-order-total" style="font-weight: 700; color: var(--brand-terracotta);">R$ 0,00</span></div>
+          <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #e2d9d0; font-size: 0.76rem; color: var(--text-muted);">
+            ✨ <strong>Pré-cadastro ativo:</strong> Quando esta cliente acessar "Minha Conta" no site, todas as peças e este pedido aparecerão imediatamente para ela.
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+          <a id="btn-manual-whatsapp-receipt" href="#" target="_blank" rel="noopener noreferrer" class="btn-primary" style="background: #16A34A; justify-content: center; height: 44px; font-size: 0.88rem; text-decoration: none; display: flex; align-items: center; gap: 0.4rem;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.63c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.12-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.78 2.71 4.3 3.8 2.53 1.09 2.53.73 2.99.69.45-.05 1.47-.6 1.68-1.18.21-.59.21-1.09.15-1.19-.06-.1-.23-.17-.48-.29z"/>
+            </svg>
+            Enviar Comprovante no WhatsApp
+          </a>
+
+          <button type="button" class="btn-secondary-action" id="btn-close-manual-success" style="height: 40px; justify-content: center;">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="assets/js/supabase.js?v=3.1"></script>
-  <script src="assets/js/admin-pedidos.js?v=3.1"></script>
+  <script src="assets/js/admin-pedidos.js?v=3.2"></script>
 </body>
 </html>

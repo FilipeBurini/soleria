@@ -316,6 +316,7 @@ DECLARE
   clean_num TEXT;
   new_token UUID;
   created_cust RECORD;
+  existing RECORD;
 BEGIN
   clean_num := regexp_replace(COALESCE(p_cpf, ''), '\D', '', 'g');
 
@@ -327,37 +328,70 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'message', 'Informe seu nome completo.');
   END IF;
 
-  IF EXISTS (SELECT 1 FROM customers WHERE cpf = clean_num) THEN
-    RETURN jsonb_build_object('success', false, 'message', 'Este CPF já possui cadastro. Faça login para acessar.');
-  END IF;
+  SELECT * INTO existing FROM customers WHERE cpf = clean_num;
 
   new_token := gen_random_uuid();
 
-  INSERT INTO customers (cpf, name, phone, email, password_hash, address, session_token)
-  VALUES (
-    clean_num,
-    trim(p_name),
-    trim(COALESCE(p_phone, '')),
-    lower(trim(COALESCE(p_email, ''))),
-    p_password_hash,
-    COALESCE(p_address, '{}'::jsonb),
-    new_token
-  )
-  RETURNING * INTO created_cust;
+  IF FOUND THEN
+    -- Atualiza o pré-cadastro existente (gerado presencialmente no admin ou no checkout) com os dados e a senha escolhida pelo cliente
+    UPDATE customers SET
+      name = trim(p_name),
+      phone = trim(COALESCE(p_phone, phone)),
+      email = lower(trim(COALESCE(p_email, email))),
+      password_hash = p_password_hash,
+      address = CASE 
+        WHEN p_address IS NOT NULL AND p_address != '{}'::jsonb THEN p_address 
+        ELSE address 
+      END,
+      session_token = new_token,
+      updated_at = now()
+    WHERE id = existing.id
+    RETURNING * INTO created_cust;
 
-  RETURN jsonb_build_object(
-    'success', true,
-    'session_token', new_token,
-    'customer', jsonb_build_object(
-      'id', created_cust.id,
-      'cpf', created_cust.cpf,
-      'name', created_cust.name,
-      'phone', created_cust.phone,
-      'email', created_cust.email,
-      'address', created_cust.address,
-      'created_at', created_cust.created_at
+    RETURN jsonb_build_object(
+      'success', true,
+      'is_upgrade', true,
+      'message', 'Seu pré-cadastro foi ativado e atualizado com sucesso!',
+      'session_token', new_token,
+      'customer', jsonb_build_object(
+        'id', created_cust.id,
+        'cpf', created_cust.cpf,
+        'name', created_cust.name,
+        'phone', created_cust.phone,
+        'email', created_cust.email,
+        'address', created_cust.address,
+        'created_at', created_cust.created_at
+      )
+    );
+  ELSE
+    -- Novo cadastro direto
+    INSERT INTO customers (cpf, name, phone, email, password_hash, address, session_token)
+    VALUES (
+      clean_num,
+      trim(p_name),
+      trim(COALESCE(p_phone, '')),
+      lower(trim(COALESCE(p_email, ''))),
+      p_password_hash,
+      COALESCE(p_address, '{}'::jsonb),
+      new_token
     )
-  );
+    RETURNING * INTO created_cust;
+
+    RETURN jsonb_build_object(
+      'success', true,
+      'is_upgrade', false,
+      'session_token', new_token,
+      'customer', jsonb_build_object(
+        'id', created_cust.id,
+        'cpf', created_cust.cpf,
+        'name', created_cust.name,
+        'phone', created_cust.phone,
+        'email', created_cust.email,
+        'address', created_cust.address,
+        'created_at', created_cust.created_at
+      )
+    );
+  END IF;
 END;
 $$;
 

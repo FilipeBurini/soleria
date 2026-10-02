@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const currentUser = await requireAuth();
   if (!currentUser) return;
 
+  const adminApp = document.getElementById('admin-app');
+  if (adminApp) adminApp.style.display = 'block';
+
   const adminUserEmail = document.getElementById('admin-user-email');
   if (adminUserEmail) adminUserEmail.textContent = currentUser.email || 'Operador Autenticado';
 
@@ -127,9 +130,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       try {
         const localOrd = JSON.parse(localStorage.getItem('soleria_orders') || '[]');
-        if (Array.isArray(localOrd) && localOrd.length > 0) {
-          localOrd.forEach(lo => {
-            if (!orders.some(o => o.order_number === lo.order_number)) {
+        const localPedidos = JSON.parse(localStorage.getItem('soleria_local_orders') || '[]');
+        const combinedLocalOrders = [...localOrd, ...localPedidos];
+
+        if (Array.isArray(combinedLocalOrders) && combinedLocalOrders.length > 0) {
+          combinedLocalOrders.forEach(lo => {
+            if (lo && lo.order_number && !orders.some(o => o.order_number === lo.order_number)) {
               orders.push(lo);
             }
           });

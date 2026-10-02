@@ -1191,6 +1191,774 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // ==========================================================================
+  // MÓDULO: NOVO PEDIDO PRESENCIAL / ATENDIMENTO BALCÃO COM PRÉ-CADASTRO CPF
+  // ==========================================================================
+
+  function cleanCPF(cpf) {
+    return (cpf || '').toString().replace(/\D/g, '');
+  }
+
+  function formatCPFInput(raw) {
+    let v = cleanCPF(raw).slice(0, 11);
+    if (v.length > 9) return `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9)}`;
+    if (v.length > 6) return `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6)}`;
+    if (v.length > 3) return `${v.slice(0, 3)}.${v.slice(3)}`;
+    return v;
+  }
+
+  function formatPhoneInput(raw) {
+    let v = (raw || '').toString().replace(/\D/g, '').slice(0, 11);
+    if (v.length > 10) return `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`;
+    if (v.length > 6) return `(${v.slice(0, 2)}) ${v.slice(2, 6)}-${v.slice(6)}`;
+    if (v.length > 2) return `(${v.slice(0, 2)}) ${v.slice(2)}`;
+    if (v.length > 0) return `(${v}`;
+    return '';
+  }
+
+  function isValidCPFDigits(cpf) {
+    const digits = cleanCPF(cpf);
+    if (digits.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(digits)) return false;
+
+    let sum = 0;
+    for (let i = 0; i < 9; i++) sum += parseInt(digits.charAt(i), 10) * (10 - i);
+    let rev = 11 - (sum % 11);
+    if (rev === 10 || rev === 11) rev = 0;
+    if (rev !== parseInt(digits.charAt(9), 10)) return false;
+
+    sum = 0;
+    for (let i = 0; i < 10; i++) sum += parseInt(digits.charAt(i), 10) * (11 - i);
+    rev = 11 - (sum % 11);
+    if (rev === 10 || rev === 11) rev = 0;
+    if (rev !== parseInt(digits.charAt(10), 10)) return false;
+
+    return true;
+  }
+
+  async function hashPasswordLocal(plainPassword) {
+    if (!plainPassword) return '';
+    try {
+      const msgBuffer = new TextEncoder().encode(`soleria_salt_2026_${plainPassword}`);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch (e) {
+      let hash = 0;
+      const str = `soleria_salt_2026_${plainPassword}`;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
+      }
+      return 'fb_' + Math.abs(hash).toString(16);
+    }
+  }
+
+  // Estado do Modal de Pedido Manual
+  let manualProductsList = [];
+  let manualSelectedItems = [];
+
+  async function loadProductsForManualOrder() {
+    const productSelect = document.getElementById('manual-product-select');
+    if (!productSelect) return;
+
+    productSelect.innerHTML = '<option value="">Carregando produtos...</option>';
+
+    let products = [];
+    const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
+
+    if (client && isSupabaseConfigured()) {
+      try {
+        const { data, error } = await client.from('products').select('*').order('name');
+        if (!error && Array.isArray(data)) {
+          products = data;
+        }
+      } catch (e) {
+        console.warn('Erro ao carregar produtos do Supabase:', e);
+      }
+    }
+
+    if (products.length === 0) {
+      try {
+        products = JSON.parse(localStorage.getItem('soleria_local_products') || '[]');
+      } catch (e) {}
+    }
+
+    manualProductsList = products;
+
+    if (products.length === 0) {
+      productSelect.innerHTML = '<option value="">Nenhum produto cadastrado no estoque</option>';
+      return;
+    }
+
+    let opts = '<option value="">-- Selecione uma peça do estoque --</option>';
+    products.forEach(p => {
+      const stockNum = Number(p.stock) || 0;
+      const priceStr = formatMoney(p.price);
+      const skuStr = p.sku ? `[${p.sku}] ` : '';
+      const stockBadge = stockNum > 0 ? `(Estoque: ${stockNum})` : '(Sem estoque)';
+      opts += `<option value="${p.id}" ${stockNum <= 0 ? 'data-out="1"' : ''}>${skuStr}${p.name} — ${priceStr} ${stockBadge}</option>`;
+    });
+
+    productSelect.innerHTML = opts;
+  }
+
+  function setupManualOrderModal() {
+    const btnOpen = document.getElementById('btn-open-manual-order');
+    const btnToolbarOpen = document.getElementById('btn-toolbar-manual-order');
+    const modal = document.getElementById('manual-order-modal');
+    const btnClose = document.getElementById('btn-close-manual-order-modal');
+    const btnCancel = document.getElementById('btn-cancel-manual-order');
+    const form = document.getElementById('form-manual-order');
+
+    const cpfInput = document.getElementById('manual-order-cpf');
+    const nameInput = document.getElementById('manual-order-name');
+    const phoneInput = document.getElementById('manual-order-phone');
+    const emailInput = document.getElementById('manual-order-email');
+    const custBadge = document.getElementById('manual-cust-status-badge');
+    const cpfHint = document.getElementById('manual-cpf-hint');
+
+    const productSelect = document.getElementById('manual-product-select');
+    const sizeSelect = document.getElementById('manual-size-select');
+    const qtyInput = document.getElementById('manual-item-qty');
+    const priceInput = document.getElementById('manual-item-price');
+    const btnAddItem = document.getElementById('btn-manual-add-item');
+    const itemsTbody = document.getElementById('manual-items-tbody');
+
+    const deliverySelect = document.getElementById('manual-order-delivery');
+    const addrGroup = document.getElementById('manual-delivery-address-group');
+    const discountInput = document.getElementById('manual-order-discount');
+    const subtotalDisplay = document.getElementById('manual-subtotal-display');
+    const totalDisplay = document.getElementById('manual-total-display');
+    const deductStockCheck = document.getElementById('manual-order-deduct-stock');
+
+    const successModal = document.getElementById('manual-order-success-modal');
+    const btnCloseSuccess = document.getElementById('btn-close-manual-success-modal');
+    const btnCloseSuccessBottom = document.getElementById('btn-close-manual-success');
+
+    if (!modal) return;
+
+    function openModal() {
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      loadProductsForManualOrder();
+      resetForm();
+    }
+
+    function closeModal() {
+      modal.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function resetForm() {
+      if (form) form.reset();
+      manualSelectedItems = [];
+      renderManualItemsTable();
+      if (custBadge) custBadge.style.display = 'none';
+      if (sizeSelect) {
+        sizeSelect.innerHTML = '<option value="">Padrão / Único</option>';
+        sizeSelect.disabled = true;
+      }
+      if (addrGroup) addrGroup.style.display = 'none';
+      recalculateTotals();
+    }
+
+    if (btnOpen) btnOpen.addEventListener('click', openModal);
+    if (btnToolbarOpen) btnToolbarOpen.addEventListener('click', openModal);
+    if (btnClose) btnClose.addEventListener('click', closeModal);
+    if (btnCancel) btnCancel.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    if (btnCloseSuccess) btnCloseSuccess.addEventListener('click', () => {
+      if (successModal) successModal.classList.remove('active');
+      document.body.style.overflow = '';
+    });
+    if (btnCloseSuccessBottom) btnCloseSuccessBottom.addEventListener('click', () => {
+      if (successModal) successModal.classList.remove('active');
+      document.body.style.overflow = '';
+    });
+
+    // Formatação de CPF e Live Lookup
+    if (cpfInput) {
+      cpfInput.addEventListener('input', (e) => {
+        e.target.value = formatCPFInput(e.target.value);
+        const clean = cleanCPF(e.target.value);
+        if (clean.length === 11) {
+          lookupCustomerByCPF(clean);
+        } else {
+          if (custBadge) custBadge.style.display = 'none';
+        }
+      });
+
+      cpfInput.addEventListener('blur', () => {
+        const clean = cleanCPF(cpfInput.value);
+        if (clean.length === 11) {
+          lookupCustomerByCPF(clean);
+        }
+      });
+    }
+
+    // Formatação de WhatsApp
+    if (phoneInput) {
+      phoneInput.addEventListener('input', (e) => {
+        e.target.value = formatPhoneInput(e.target.value);
+      });
+    }
+
+    async function lookupCustomerByCPF(cleanNum) {
+      if (!cleanNum || cleanNum.length !== 11) return;
+
+      let foundCustomer = null;
+      const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
+
+      // 1. Busca no Supabase
+      if (client && isSupabaseConfigured()) {
+        try {
+          const { data, error } = await client.from('customers').select('*').eq('cpf', cleanNum).maybeSingle();
+          if (!error && data) {
+            foundCustomer = data;
+          }
+        } catch (e) {}
+      }
+
+      // 2. Busca no histórico de pedidos
+      if (!foundCustomer && Array.isArray(rawOrders)) {
+        const previousOrder = rawOrders.find(o => cleanCPF(o.customer_cpf) === cleanNum);
+        if (previousOrder) {
+          foundCustomer = {
+            name: previousOrder.customer_name,
+            phone: previousOrder.customer_phone,
+            email: previousOrder.customer_email,
+            is_from_order: true
+          };
+        }
+      }
+
+      // 3. Busca no LocalStorage
+      if (!foundCustomer) {
+        try {
+          const localCusts = JSON.parse(localStorage.getItem('soleria_local_customers') || localStorage.getItem('soleria_customers') || '[]');
+          foundCustomer = localCusts.find(c => cleanCPF(c.cpf) === cleanNum);
+        } catch (e) {}
+      }
+
+      if (foundCustomer) {
+        if (!nameInput.value || nameInput.value.trim() === '') {
+          nameInput.value = foundCustomer.name || '';
+        }
+        if (!phoneInput.value || phoneInput.value.trim() === '') {
+          phoneInput.value = formatPhoneInput(foundCustomer.phone || '');
+        }
+        if (emailInput && (!emailInput.value || emailInput.value.trim() === '')) {
+          emailInput.value = foundCustomer.email || '';
+        }
+
+        if (custBadge) {
+          custBadge.textContent = '✓ Cliente já identificada no sistema';
+          custBadge.style.background = '#DCFCE7';
+          custBadge.style.color = '#15803D';
+          custBadge.style.border = '1px solid #BBF7D0';
+          custBadge.style.display = 'inline-block';
+        }
+        if (cpfHint) {
+          cpfHint.innerHTML = `Cliente localizada: <strong>${foundCustomer.name}</strong>. Os dados foram preenchidos automaticamente.`;
+        }
+      } else {
+        if (custBadge) {
+          custBadge.textContent = '✨ Novo pré-cadastro será criado';
+          custBadge.style.background = '#FEF3C7';
+          custBadge.style.color = '#92400E';
+          custBadge.style.border = '1px solid #FDE68A';
+          custBadge.style.display = 'inline-block';
+        }
+        if (cpfHint) {
+          cpfHint.textContent = 'Ao salvar, um pré-cadastro com este CPF será gerado e poderá ser ativado na Área da Cliente.';
+        }
+      }
+    }
+
+    // Seleção de Produto
+    if (productSelect) {
+      productSelect.addEventListener('change', () => {
+        const prodId = productSelect.value;
+        const prod = manualProductsList.find(p => String(p.id) === String(prodId));
+
+        if (!prod) {
+          priceInput.value = '';
+          sizeSelect.innerHTML = '<option value="">Padrão / Único</option>';
+          sizeSelect.disabled = true;
+          return;
+        }
+
+        priceInput.value = (Number(prod.price) || 0).toFixed(2);
+
+        // Grade de tamanhos / aros
+        let sizesObj = prod.sizes || {};
+        if (typeof sizesObj === 'string') {
+          try { sizesObj = JSON.parse(sizesObj); } catch (e) { sizesObj = {}; }
+        }
+
+        const ringAros = Object.keys(sizesObj).filter(k => sizesObj[k] !== undefined && sizesObj[k] !== null);
+
+        if (ringAros.length > 0) {
+          let sizeOpts = '<option value="">Selecione o Aro</option>';
+          ringAros.forEach(aro => {
+            const stockAro = Number(sizesObj[aro]) || 0;
+            sizeOpts += `<option value="${aro}" ${stockAro <= 0 ? 'data-out="1"' : ''}>Aro ${aro} (${stockAro} disp.)</option>`;
+          });
+          sizeSelect.innerHTML = sizeOpts;
+          sizeSelect.disabled = false;
+        } else {
+          sizeSelect.innerHTML = '<option value="">Padrão / Peça Única</option>';
+          sizeSelect.disabled = true;
+        }
+      });
+    }
+
+    // Adicionar Item à Lista
+    if (btnAddItem) {
+      btnAddItem.addEventListener('click', () => {
+        const prodId = productSelect.value;
+        if (!prodId) {
+          showToast('Selecione uma peça do catálogo.', 'warning');
+          productSelect.focus();
+          return;
+        }
+
+        const prod = manualProductsList.find(p => String(p.id) === String(prodId));
+        if (!prod) return;
+
+        const qty = parseInt(qtyInput.value, 10);
+        if (isNaN(qty) || qty <= 0) {
+          showToast('Informe uma quantidade válida.', 'warning');
+          qtyInput.focus();
+          return;
+        }
+
+        const price = parseFloat(priceInput.value);
+        if (isNaN(price) || price < 0) {
+          showToast('Informe um valor unitário válido.', 'warning');
+          priceInput.focus();
+          return;
+        }
+
+        let selectedSize = null;
+        if (!sizeSelect.disabled && sizeSelect.value) {
+          selectedSize = sizeSelect.value;
+        }
+
+        // Validação de aro obrigatório se houver grade
+        if (!sizeSelect.disabled && !selectedSize) {
+          showToast('Por favor, selecione o aro desejado.', 'warning');
+          sizeSelect.focus();
+          return;
+        }
+
+        // Pega imagem
+        let imgUrl = 'assets/images/logo-simbolo.png';
+        if (Array.isArray(prod.images) && prod.images.length > 0) {
+          imgUrl = prod.images[0];
+        } else if (typeof prod.images === 'string') {
+          try {
+            const pImgs = JSON.parse(prod.images);
+            if (Array.isArray(pImgs) && pImgs[0]) imgUrl = pImgs[0];
+          } catch (e) {
+            imgUrl = prod.images;
+          }
+        }
+
+        // Adiciona ou acumula
+        const existingIdx = manualSelectedItems.findIndex(it => it.id === prod.id && it.size === selectedSize);
+        if (existingIdx >= 0) {
+          manualSelectedItems[existingIdx].quantity += qty;
+          manualSelectedItems[existingIdx].price = price;
+        } else {
+          manualSelectedItems.push({
+            id: prod.id,
+            sku: prod.sku || 'N/A',
+            name: prod.name,
+            size: selectedSize,
+            quantity: qty,
+            price: price,
+            image: imgUrl
+          });
+        }
+
+        renderManualItemsTable();
+        recalculateTotals();
+
+        // Reseta campo de produto para próxima peça
+        productSelect.value = '';
+        sizeSelect.innerHTML = '<option value="">Padrão / Único</option>';
+        sizeSelect.disabled = true;
+        qtyInput.value = '1';
+        priceInput.value = '';
+        productSelect.focus();
+      });
+    }
+
+    function renderManualItemsTable() {
+      if (!itemsTbody) return;
+
+      if (manualSelectedItems.length === 0) {
+        itemsTbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.8rem;">
+              Nenhuma peça adicionada ainda. Selecione um produto acima e clique em "+ Adicionar".
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      let rows = '';
+      manualSelectedItems.forEach((it, idx) => {
+        const sub = it.quantity * it.price;
+        const aroTag = it.size ? `<span style="background: #FAF5F0; border: 1px solid var(--gold-primary); color: var(--gold-dark); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.72rem; font-weight: 700; margin-left: 0.3rem;">Aro ${it.size}</span>` : '';
+        const skuStr = it.sku && it.sku !== 'N/A' ? `<span style="font-family: monospace; font-size: 0.72rem; color: var(--text-muted); display: block;">SKU: ${it.sku}</span>` : '';
+
+        rows += `
+          <tr style="border-bottom: 1px solid var(--border-light);">
+            <td style="padding: 0.65rem 0.85rem;">
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <img src="${it.image}" alt="${it.name}" style="width: 34px; height: 34px; border-radius: 4px; object-fit: cover; border: 1px solid var(--border-light);" onerror="this.src='assets/images/logo-simbolo.png'">
+                <div>
+                  <strong style="color: var(--text-primary); font-size: 0.84rem;">${it.name}</strong> ${aroTag}
+                  ${skuStr}
+                </div>
+              </div>
+            </td>
+            <td style="padding: 0.65rem 0.85rem; text-align: center; font-weight: 600;">
+              ${it.quantity} un
+            </td>
+            <td style="padding: 0.65rem 0.85rem; text-align: right; color: var(--text-secondary);">
+              ${formatMoney(it.price)}
+            </td>
+            <td style="padding: 0.65rem 0.85rem; text-align: right; font-weight: 700; color: var(--brand-terracotta);">
+              ${formatMoney(sub)}
+            </td>
+            <td style="padding: 0.65rem 0.85rem; text-align: center;">
+              <button type="button" class="btn-remove-manual-item" data-idx="${idx}" style="background: none; border: none; color: #DC2626; cursor: pointer; padding: 0.25rem; font-size: 1rem;" title="Remover Peça">
+                🗑️
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      itemsTbody.innerHTML = rows;
+
+      // Eventos de exclusão
+      itemsTbody.querySelectorAll('.btn-remove-manual-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.dataset.idx);
+          manualSelectedItems.splice(idx, 1);
+          renderManualItemsTable();
+          recalculateTotals();
+        });
+      });
+    }
+
+    function recalculateTotals() {
+      const subtotal = manualSelectedItems.reduce((acc, it) => acc + (it.quantity * it.price), 0);
+      const discount = parseFloat(discountInput?.value) || 0;
+      const total = Math.max(0, subtotal - discount);
+
+      if (subtotalDisplay) subtotalDisplay.textContent = formatMoney(subtotal);
+      if (totalDisplay) totalDisplay.textContent = formatMoney(total);
+    }
+
+    if (discountInput) discountInput.addEventListener('input', recalculateTotals);
+
+    if (deliverySelect) {
+      deliverySelect.addEventListener('change', () => {
+        if (deliverySelect.value === 'entrega') {
+          if (addrGroup) addrGroup.style.display = 'block';
+        } else {
+          if (addrGroup) addrGroup.style.display = 'none';
+        }
+      });
+    }
+
+    // Auto-preenchimento de CEP na entrega do pedido presencial
+    const manualCepInput = document.getElementById('manual-addr-cep');
+    if (manualCepInput) {
+      manualCepInput.addEventListener('input', (e) => {
+        let v = e.target.value.replace(/\D/g, '').slice(0, 8);
+        if (v.length > 5) {
+          e.target.value = `${v.slice(0, 5)}-${v.slice(5)}`;
+        } else {
+          e.target.value = v;
+        }
+        if (v.length === 8) {
+          buscarCepManual(v);
+        }
+      });
+      manualCepInput.addEventListener('blur', () => {
+        const clean = manualCepInput.value.replace(/\D/g, '');
+        if (clean.length === 8) {
+          buscarCepManual(clean);
+        }
+      });
+    }
+
+    async function buscarCepManual(cleanCep) {
+      try {
+        let street = '';
+        let city = '';
+        const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+        const json = await res.json();
+        if (!json.erro) {
+          street = json.logradouro ? `${json.logradouro}, ` : '';
+          if (json.bairro) street += `${json.bairro}`;
+          city = `${json.localidade} - ${json.uf}`;
+        } else {
+          const res2 = await fetch(`https://brasilapi.com.br/api/cep/v1/${cleanCep}`);
+          if (res2.ok) {
+            const j2 = await res2.json();
+            street = j2.street ? `${j2.street}, ` : '';
+            if (j2.neighborhood) street += `${j2.neighborhood}`;
+            city = `${j2.city} - ${j2.state}`;
+          }
+        }
+        if (city) {
+          const streetEl = document.getElementById('manual-addr-street');
+          const cityEl = document.getElementById('manual-addr-city');
+          if (streetEl && street && (!streetEl.value || streetEl.value.trim() === '')) streetEl.value = street;
+          if (cityEl && city) cityEl.value = city;
+          showToast('Endereço preenchido via CEP!', 'info', 2500);
+        }
+      } catch (e) {}
+    }
+
+    // Submit do Pedido Presencial
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const cpfRaw = cpfInput.value;
+        const cleanCpf = cleanCPF(cpfRaw);
+        if (!isValidCPFDigits(cleanCpf)) {
+          showToast('Informe um CPF válido com 11 dígitos para vincular a cliente.', 'error');
+          cpfInput.focus();
+          return;
+        }
+
+        const name = nameInput.value.trim();
+        if (name.length < 3) {
+          showToast('Informe o nome completo da cliente.', 'error');
+          nameInput.focus();
+          return;
+        }
+
+        const phone = phoneInput.value.trim();
+        if (cleanCPF(phone).length < 10) {
+          showToast('Informe um WhatsApp/telefone válido com DDD.', 'error');
+          phoneInput.focus();
+          return;
+        }
+
+        if (manualSelectedItems.length === 0) {
+          showToast('Adicione pelo menos uma peça à venda.', 'error');
+          return;
+        }
+
+        const btnSubmit = document.getElementById('btn-submit-manual-order');
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = 'Salvando pedido e pré-cadastro...';
+
+        try {
+          const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
+          const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+          const deliveryType = deliverySelect.value;
+          const status = document.getElementById('manual-order-status').value;
+          const paymentMethod = document.getElementById('manual-order-payment').value;
+          const notes = document.getElementById('manual-order-notes').value.trim();
+          const deductStock = deductStockCheck ? deductStockCheck.checked : true;
+
+          const subtotal = manualSelectedItems.reduce((acc, it) => acc + (it.quantity * it.price), 0);
+          const discount = parseFloat(discountInput?.value) || 0;
+          const total = Math.max(0, subtotal - discount);
+
+          let addressObj = { delivery_type: deliveryType };
+          if (deliveryType === 'entrega') {
+            addressObj.street = document.getElementById('manual-addr-street')?.value.trim() || '';
+            addressObj.city = document.getElementById('manual-addr-city')?.value.trim() || '';
+            addressObj.cep = document.getElementById('manual-addr-cep')?.value.trim() || '';
+          } else {
+            addressObj.notes = 'Retirada presencial / Balcão';
+          }
+
+          // 1. Número do pedido
+          const orderNumber = `SOL-${Math.floor(10000 + Math.random() * 90000)}`;
+
+          // 2. Pré-Cadastro da Cliente (Senha padrão: 4 primeiros dígitos do CPF)
+          const defaultPassword = cleanCpf.slice(0, 4) || '1234';
+          const passHash = await hashPasswordLocal(defaultPassword);
+
+          if (client && isSupabaseConfigured()) {
+            try {
+              // Verifica se já existe cliente
+              const { data: existingCust } = await client.from('customers').select('id, email, phone').eq('cpf', cleanCpf).maybeSingle();
+
+              if (existingCust) {
+                await client.from('customers').update({
+                  name: name,
+                  phone: phone,
+                  email: email || existingCust.email || null,
+                  updated_at: new Date().toISOString()
+                }).eq('id', existingCust.id);
+              } else {
+                await client.from('customers').insert({
+                  cpf: cleanCpf,
+                  name: name,
+                  phone: phone,
+                  email: email || null,
+                  password_hash: passHash,
+                  address: addressObj,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                });
+              }
+            } catch (custErr) {
+              console.warn('Erro ao atualizar customers no Supabase:', custErr);
+            }
+          }
+
+          // Sincroniza também no LocalStorage
+          try {
+            const localCusts = JSON.parse(localStorage.getItem('soleria_local_customers') || localStorage.getItem('soleria_customers') || '[]');
+            const cIdx = localCusts.findIndex(c => cleanCPF(c.cpf) === cleanCpf);
+            if (cIdx >= 0) {
+              localCusts[cIdx] = { ...localCusts[cIdx], name, phone, email: email || localCusts[cIdx].email, updated_at: new Date().toISOString() };
+            } else {
+              localCusts.push({
+                id: 'cust_' + Math.random().toString(36).slice(2, 9),
+                cpf: cleanCpf,
+                name,
+                phone,
+                email: email || '',
+                password_hash: passHash,
+                address: addressObj,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+            }
+            localStorage.setItem('soleria_local_customers', JSON.stringify(localCusts));
+            localStorage.setItem('soleria_customers', JSON.stringify(localCusts));
+          } catch (e) {}
+
+          // 3. Criação do Pedido
+          const orderRecord = {
+            order_number: orderNumber,
+            customer_name: name,
+            customer_cpf: cleanCpf,
+            customer_phone: phone,
+            customer_email: email || null,
+            delivery_type: deliveryType,
+            customer_address: addressObj,
+            items: manualSelectedItems,
+            subtotal: subtotal,
+            discount_amount: discount,
+            total_amount: total,
+            status: status,
+            payment_method: paymentMethod,
+            customer_notes: 'Atendimento Presencial / Balcão',
+            admin_notes: notes || 'Pedido presencial gerado diretamente no balcão.',
+            stock_deducted: deductStock,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+
+          if (client && isSupabaseConfigured()) {
+            const { error: ordErr } = await client.from('orders').insert([orderRecord]);
+            if (ordErr) {
+              console.warn('Erro ao salvar pedido no Supabase:', ordErr);
+            }
+          }
+
+          // Salva no LocalStorage
+          try {
+            const localOrds = JSON.parse(localStorage.getItem('soleria_local_orders') || '[]');
+            localOrds.unshift(orderRecord);
+            localStorage.setItem('soleria_local_orders', JSON.stringify(localOrds));
+
+            const localAlt = JSON.parse(localStorage.getItem('soleria_orders') || '[]');
+            localAlt.unshift(orderRecord);
+            localStorage.setItem('soleria_orders', JSON.stringify(localAlt));
+          } catch (e) {}
+
+          // 4. Baixa no Estoque se selecionado
+          if (deductStock) {
+            await deductOrderItemsFromStock(manualSelectedItems);
+          }
+
+          // Atualiza dados na tela sem refresh
+          rawOrders.unshift(orderRecord);
+          renderOrders();
+          closeModal();
+
+          // Abre modal de sucesso com link de WhatsApp
+          const cleanPhoneDigits = phone.replace(/\D/g, '');
+          const waPhone = cleanPhoneDigits.startsWith('55') ? cleanPhoneDigits : `55${cleanPhoneDigits}`;
+
+          const paymentLabels = {
+            pix: 'PIX (À Vista)',
+            cartao_credito: 'Cartão de Crédito',
+            cartao_debito: 'Cartão de Débito',
+            dinheiro: 'Dinheiro em Espécie',
+            transferencia: 'Transferência Bancária',
+            a_combinar: 'A Combinar'
+          };
+
+          const itemsText = manualSelectedItems.map(it => `• ${it.quantity}x ${it.name}${it.size ? ` (Aro ${it.size})` : ''} - ${formatMoney(it.price * it.quantity)}`).join('\n');
+
+          const waMsg = `Olá, ${name.split(' ')[0]}! ✨
+Aqui é da *Soléria Joias*.
+Confirmamos o registro do seu pedido *#${orderNumber}* realizado presencialmente em nosso atendimento.
+
+🛍️ *Peças:*
+${itemsText}
+
+💰 *Valor Total:* ${formatMoney(total)}
+💳 *Pagamento:* ${paymentLabels[paymentMethod] || paymentMethod}
+📦 *Entrega:* ${deliveryType === 'retirada' ? 'Retirada Presencial no Balcão' : 'Entrega em Domicílio'}
+
+💡 *Acesso à sua Área da Cliente:*
+Seus pedidos já estão vinculados ao seu CPF (*${formatCPFInput(cleanCpf)}*). Para acompanhar suas peças a qualquer momento, acesse:
+https://soleria.carlamota.com.br/minha-conta
+
+Agradecemos imensamente a sua preferência e confiança! 💎`;
+
+          const waLink = `https://wa.me/${waPhone}?text=${encodeURIComponent(waMsg)}`;
+
+          document.getElementById('success-manual-order-number').textContent = `#${orderNumber}`;
+          document.getElementById('success-manual-customer-name').textContent = name;
+          document.getElementById('success-manual-customer-cpf').textContent = formatCPFInput(cleanCpf);
+          document.getElementById('success-manual-order-total').textContent = formatMoney(total);
+          document.getElementById('btn-manual-whatsapp-receipt').href = waLink;
+
+          if (successModal) {
+            successModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+          }
+
+          showToast(`Pedido presencial #${orderNumber} gerado com sucesso!`, 'success', 5000);
+
+        } catch (err) {
+          console.error('Erro ao gerar pedido presencial:', err);
+          showToast('Erro ao criar pedido: ' + err.message, 'error');
+        } finally {
+          btnSubmit.disabled = false;
+          btnSubmit.innerHTML = '✨ Salvar e Gerar Pedido Presencial';
+        }
+      });
+    }
+  }
+
   // Listeners de filtro
   if (searchInput) {
     searchInput.addEventListener('input', () => {
@@ -1211,7 +1979,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Inicializa carregando os pedidos
+  // Inicializa módulo de pedido presencial e carrega pedidos
+  setupManualOrderModal();
   loadOrders();
 });
 

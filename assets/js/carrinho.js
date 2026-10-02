@@ -80,21 +80,38 @@
     return `${id}${len}${strVal}`;
   }
 
+  function normalizePixKey(key) {
+    if (!key) return '+5516997990729';
+    const clean = key.trim();
+    if (clean.includes('@') || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean)) {
+      return clean;
+    }
+    const digits = clean.replace(/\D/g, '');
+    if (digits.length === 10 || digits.length === 11) {
+      return `+55${digits}`;
+    }
+    if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) {
+      return `+${digits}`;
+    }
+    return clean;
+  }
+
   /**
    * Gera o código padrão EMVCo do Banco Central para PIX Copia e Cola
    */
-  function generatePixPayload({ key = '16997990729', name = 'SOLERIA JOIAS', city = 'FRANCA', amount = 0, txid = 'SOLERIA' }) {
-    const cleanKey = key.trim();
+  function generatePixPayload({ key = '+5516997990729', name = 'SOLERIA JOIAS', city = 'FRANCA', amount = 0, txid = '***' }) {
+    const cleanKey = normalizePixKey(key);
     const cleanName = (name || 'SOLERIA JOIAS').normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 25).toUpperCase();
     const cleanCity = (city || 'FRANCA').normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 15).toUpperCase();
-    const cleanTxId = (txid || 'SOLERIA').replace(/[^a-zA-Z0-9]/g, '').slice(0, 25) || '***';
+    // No padrão Bacen para QR Code Estático, identificador sem PSP deve ser '***'
+    const cleanTxId = (txid && txid !== 'SOLERIA' && !txid.startsWith('SOL')) ? txid.replace(/[^a-zA-Z0-9]/g, '').slice(0, 25) : '***';
     const amountStr = Number(amount || 0).toFixed(2);
 
     const gui = emvFormat('00', 'br.gov.bcb.pix');
     const pixKey = emvFormat('01', cleanKey);
     const merchantAccountInfo = emvFormat('26', gui + pixKey);
 
-    const refLabel = emvFormat('05', cleanTxId);
+    const refLabel = emvFormat('05', cleanTxId || '***');
     const additionalData = emvFormat('62', refLabel);
 
     let raw = 
@@ -1011,11 +1028,11 @@
 
     // Geração do Código PIX Copia e Cola Oficial Bacen e QR Code
     const pixPayload = generatePixPayload({
-      key: '16997990729',
+      key: '+5516997990729',
       name: 'SOLERIA JOIAS',
       city: 'FRANCA',
       amount: order.total_amount,
-      txid: order.order_number
+      txid: '***'
     });
 
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=6&data=${encodeURIComponent(pixPayload)}`;
