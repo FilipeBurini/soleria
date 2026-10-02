@@ -81,7 +81,7 @@
   }
 
   function normalizePixKey(key) {
-    if (!key) return '+5516997990729';
+    if (!key) return 'carlamotasemijoias@gmail.com';
     const clean = key.trim();
     if (clean.includes('@') || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean)) {
       return clean;
@@ -99,7 +99,7 @@
   /**
    * Gera o código padrão EMVCo do Banco Central para PIX Copia e Cola
    */
-  function generatePixPayload({ key = '+5516997990729', name = 'SOLERIA JOIAS', city = 'FRANCA', amount = 0, txid = '***' }) {
+  function generatePixPayload({ key = 'carlamotasemijoias@gmail.com', name = 'SOLERIA JOIAS', city = 'FRANCA', amount = 0, txid = '***' }) {
     const cleanKey = normalizePixKey(key);
     const cleanName = (name || 'SOLERIA JOIAS').normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 25).toUpperCase();
     const cleanCity = (city || 'FRANCA').normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 15).toUpperCase();
@@ -1028,7 +1028,7 @@
 
     // Geração do Código PIX Copia e Cola Oficial Bacen e QR Code
     const pixPayload = generatePixPayload({
-      key: '+5516997990729',
+      key: 'carlamotasemijoias@gmail.com',
       name: 'SOLERIA JOIAS',
       city: 'FRANCA',
       amount: order.total_amount,
@@ -1108,7 +1108,7 @@
         </div>
 
         <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 0.75rem; line-height: 1.4;">
-          ✦ Chave PIX: <strong>(16) 99799-0729</strong> (Telefone / Carla)<br>
+          ✦ Chave PIX (E-mail): <strong>carlamotasemijoias@gmail.com</strong> (Carla Mota)<br>
           Após o pagamento, envie o comprovante no WhatsApp abaixo para priorizarmos seu envio.
         </div>
       </div>
@@ -1194,6 +1194,154 @@
     });
   });
 
+  /**
+   * Exibe o modal dedicado para pagamento via PIX de qualquer pedido (área do cliente e rastreio)
+   */
+  function openPixPaymentModal(order) {
+    if (!order) return;
+    let modal = document.getElementById('pix-payment-modal-overlay');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'pix-payment-modal-overlay';
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-window" style="max-width: 500px; padding: 2rem 1.75rem; position: relative;">
+          <button class="modal-close-btn" id="btn-close-pix-modal" aria-label="Fechar" style="position: absolute; top: 1rem; right: 1rem;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+          <div id="pix-payment-modal-content"></div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      modal.querySelector('#btn-close-pix-modal').addEventListener('click', () => {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+      });
+
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('active');
+          document.body.style.overflow = '';
+        }
+      });
+    }
+
+    const totalAmount = Number(order.total_amount) || 0;
+    const orderNum = order.order_number || 'SOL-PEDIDO';
+    const customerName = order.customer_name || 'Cliente Soléria';
+
+    // Geração do Código PIX Copia e Cola Oficial Bacen
+    const pixPayload = generatePixPayload({
+      key: 'carlamotasemijoias@gmail.com',
+      name: 'SOLERIA JOIAS',
+      city: 'FRANCA',
+      amount: totalAmount,
+      txid: '***'
+    });
+
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=6&data=${encodeURIComponent(pixPayload)}`;
+
+    const waMsg = `Olá, Carla! Segue o comprovante de pagamento do pedido *${orderNum}* no valor de ${formatMoney(totalAmount)}.`;
+    const waUrl = `https://wa.me/5516997990729?text=${encodeURIComponent(waMsg)}`;
+
+    const content = modal.querySelector('#pix-payment-modal-content');
+    content.innerHTML = `
+      <div style="text-align: center;">
+        <div style="width: 48px; height: 48px; border-radius: 50%; background: #DCFCE7; color: #16A34A; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 0.75rem;">
+          ✓
+        </div>
+        <h3 style="font-family: var(--font-serif); font-size: 1.45rem; color: var(--text-primary); margin-bottom: 0.25rem;">
+          Pague com PIX Instantâneo
+        </h3>
+        <p style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 0.85rem;">
+          Pedido <strong>${orderNum}</strong> • ${customerName}
+        </p>
+
+        <div style="background: #FAF8F5; border: 1.5px dashed var(--gold-primary); border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1rem;">
+          <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.15rem;">Valor a Pagar</span>
+          <span style="font-size: 1.45rem; font-weight: 700; color: var(--brand-terracotta);">${formatMoney(totalAmount)}</span>
+        </div>
+
+        <!-- Imagem do QR Code -->
+        <div style="display: inline-block; background: #ffffff; padding: 12px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); margin-bottom: 1rem;">
+          <img src="${qrCodeUrl}" alt="QR Code PIX Soléria" style="width: 200px; height: 200px; display: block;" onerror="this.alt='Erro ao carregar QR Code'">
+        </div>
+
+        <!-- Código Copia e Cola -->
+        <div style="text-align: left; margin-bottom: 1rem;">
+          <label style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.35rem;">
+            Código PIX Copia e Cola
+          </label>
+          <div style="display: flex; gap: 0.4rem;">
+            <input type="text" id="pix-direct-input" readonly value="${pixPayload}" style="flex: 1; font-family: monospace; font-size: 0.74rem; background: #fff; border: 1px solid #dcd3cb; padding: 0.55rem 0.65rem; border-radius: 6px; color: #333;">
+            <button type="button" id="btn-copy-pix-direct" class="btn-primary" style="padding: 0.55rem 0.95rem; font-size: 0.76rem; white-space: nowrap; cursor: pointer;">
+              Copiar PIX
+            </button>
+          </div>
+          <div id="pix-direct-feedback" style="font-size: 0.74rem; color: #16A34A; font-weight: 600; display: none; margin-top: 0.35rem;">
+            ✓ Código PIX copiado com sucesso! Abra o aplicativo do seu banco e escolha a opção PIX Copia e Cola.
+          </div>
+        </div>
+
+        <div style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.45;">
+          ✦ Chave PIX (E-mail): <strong>carlamotasemijoias@gmail.com</strong> (Carla Mota)<br>
+          Após o pagamento, envie o comprovante no WhatsApp abaixo para priorizarmos o envio das suas peças.
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.55rem;">
+          <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="background: #16A34A; border-color: #16A34A; justify-content: center; height: 44px; font-size: 0.88rem; text-decoration: none; display: flex; align-items: center; gap: 0.45rem;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.63c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.12-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.78 2.71 4.3 3.8 2.53 1.09 2.53.73 2.99.69.45-.05 1.47-.6 1.68-1.18.21-.59.21-1.09.15-1.19-.06-.1-.23-.17-.48-.29z"/>
+            </svg>
+            Enviar Comprovante no WhatsApp
+          </a>
+
+          <button type="button" class="btn-secondary-action" id="btn-close-pix-action" style="height: 40px; justify-content: center; font-size: 0.82rem;">
+            Fechar
+          </button>
+        </div>
+      </div>
+    `;
+
+    const btnCopy = content.querySelector('#btn-copy-pix-direct');
+    const feedback = content.querySelector('#pix-direct-feedback');
+    if (btnCopy) {
+      btnCopy.addEventListener('click', () => {
+        navigator.clipboard.writeText(pixPayload).then(() => {
+          btnCopy.textContent = 'Copiado!';
+          if (feedback) feedback.style.display = 'block';
+          setTimeout(() => {
+            btnCopy.textContent = 'Copiar PIX';
+          }, 3000);
+        }).catch(() => {
+          const input = content.querySelector('#pix-direct-input');
+          if (input) {
+            input.select();
+            document.execCommand('copy');
+            btnCopy.textContent = 'Copiado!';
+            if (feedback) feedback.style.display = 'block';
+            setTimeout(() => { btnCopy.textContent = 'Copiar PIX'; }, 3000);
+          }
+        });
+      });
+    }
+
+    const btnCloseBottom = content.querySelector('#btn-close-pix-action');
+    if (btnCloseBottom) {
+      btnCloseBottom.addEventListener('click', () => {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+      });
+    }
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
   // Interface global
   window.SoleriaCart = {
     add: addToCart,
@@ -1205,4 +1353,7 @@
     count: () => cart.reduce((acc, i) => acc + i.quantity, 0),
     items: () => cart
   };
+
+  window.openPixPaymentModal = openPixPaymentModal;
+  window.generatePixPayload = generatePixPayload;
 })();

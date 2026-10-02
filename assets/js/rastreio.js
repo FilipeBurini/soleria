@@ -382,6 +382,27 @@ document.addEventListener('DOMContentLoaded', () => {
         <!-- Linha do Tempo -->
         ${timelineHtml}
 
+        <!-- Banner de Pagamento PIX se pedido estiver aguardando/recebido -->
+        ${(order.status === 'recebido' || order.status === 'aguardando_pagamento' || order.status === 'pendente') ? `
+          <div style="background: #FEFCE8; border: 1.5px dashed #CA8A04; border-radius: var(--radius-sm); padding: 1rem 1.25rem; margin: 1.25rem 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <span style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: #854D0E; display: block; margin-bottom: 0.2rem;">
+                💠 Pagamento Pendente via PIX
+              </span>
+              <div style="font-size: 0.85rem; color: var(--text-primary);">
+                Valor deste pedido: <strong style="font-size: 1.1rem; color: var(--brand-terracotta);">${formatMoney(order.total_amount)}</strong>
+              </div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-top: 0.15rem;">
+                Realize o pagamento por QR Code ou Copia e Cola para confirmarmos a confecção e envio das suas peças.
+              </span>
+            </div>
+            <button type="button" class="btn-primary" id="btn-rastreio-pix" style="background: #16A34A; border-color: #16A34A; font-size: 0.82rem; padding: 0.5rem 1.1rem; display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; white-space: nowrap;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+              Pagar com PIX / Abrir QR Code
+            </button>
+          </div>
+        ` : ''}
+
         <!-- Código de Rastreio -->
         ${trackingCodeHtml}
 
@@ -445,6 +466,15 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
 
     resultBox.style.display = 'block';
+
+    const btnRastreioPix = resultBox.querySelector('#btn-rastreio-pix');
+    if (btnRastreioPix) {
+      btnRastreioPix.addEventListener('click', () => {
+        if (typeof window.openPixPaymentModal === 'function') {
+          window.openPixPaymentModal(order);
+        }
+      });
+    }
 
     if (showBackBtn) {
       const btnBack = resultBox.querySelector('#btn-back-to-orders-list');

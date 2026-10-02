@@ -3,14 +3,8 @@
  * Cadastro e Edição de Produtos com Vínculo de Insumos e Geração Automática de SKU
  */
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // Guarda de rota autenticada
-  const currentUser = await requireAuth();
-  if (!currentUser) return;
-
+document.addEventListener('DOMContentLoaded', () => {
   const adminEmailElem = document.getElementById('admin-user-email');
-  if (adminEmailElem) adminEmailElem.textContent = currentUser.email || 'Operador Autenticado';
-
   const btnLogout = document.getElementById('btn-logout');
   if (btnLogout) btnLogout.addEventListener('click', () => logoutAdmin());
 
@@ -83,29 +77,37 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentImages = [];
   let manualPriceEdited = false;
 
-  // ==========================================================================
-  // Carregamento Inicial (Insumos e Dados do Produto se Edição)
-  // ==========================================================================
-
   if (isEditMode) {
-    pageTitle.textContent = 'Editar Produto';
-    btnSave.textContent = 'Atualizar Produto & Insumos';
+    if (pageTitle) pageTitle.textContent = 'Editar Produto';
+    if (btnSave) btnSave.textContent = 'Atualizar Produto & Insumos';
   }
 
-  await loadAvailableSupplies();
-
-  if (isEditMode) {
-    await loadProductData(productId);
-  } else {
-    // Sugere SKU inicial padrão
-    updateGeneratedSku();
-    toggleRingSizes();
-    recalculateFinancials();
-  }
-
-  // Garante renderização imediata de miniaturas após a carga dos dados
+  // Inicialização visual e de eventos imediatos
+  toggleRingSizes();
+  recalculateFinancials();
   renderImagePreviews();
-  window.addEventListener('load', () => renderImagePreviews());
+
+  // Inicialização assíncrona de dados (autenticação, insumos e banco)
+  (async function initAsyncData() {
+    try {
+      const currentUser = await requireAuth();
+      if (!currentUser) return;
+      if (adminEmailElem) adminEmailElem.textContent = currentUser.email || 'Operador Autenticado';
+
+      await loadAvailableSupplies();
+
+      if (isEditMode) {
+        await loadProductData(productId);
+      } else {
+        await updateGeneratedSku();
+      }
+    } catch (err) {
+      console.warn('Aviso ao sincronizar dados iniciais:', err);
+    } finally {
+      renderImagePreviews();
+      recalculateFinancials();
+    }
+  })();
 
   // ==========================================================================
   // Geração Automática de SKU (PREFIXO-0000)
@@ -349,27 +351,43 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Seleção e buffer de fotos (upload diferido para o clique em Salvar)
-  uploadZone.addEventListener('click', () => imageFileInput.click());
-  uploadZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    uploadZone.style.borderColor = 'var(--gold-primary)';
-  });
-  uploadZone.addEventListener('dragleave', () => {
-    uploadZone.style.borderColor = '';
-  });
-  uploadZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    uploadZone.style.borderColor = '';
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      bufferFilesForDeferredUpload(e.dataTransfer.files);
-    }
-  });
+  if (imageFileInput) {
+    imageFileInput.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+    imageFileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        bufferFilesForDeferredUpload(e.target.files);
+      }
+    });
+  }
 
-  imageFileInput.addEventListener('change', (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-      bufferFilesForDeferredUpload(e.target.files);
-    }
-  });
+  if (uploadZone) {
+    uploadZone.addEventListener('click', (e) => {
+      if (e.target === imageFileInput) return;
+      // Se o container for um label com for="image-file-input", o navegador já aciona nativamente
+      if (uploadZone.tagName === 'LABEL' && uploadZone.getAttribute('for') === 'image-file-input') return;
+      if (imageFileInput) imageFileInput.click();
+    });
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.style.borderColor = 'var(--gold-primary)';
+      uploadZone.style.backgroundColor = 'var(--gold-light)';
+    });
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.style.borderColor = '';
+      uploadZone.style.backgroundColor = '';
+    });
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.style.borderColor = '';
+      uploadZone.style.backgroundColor = '';
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        bufferFilesForDeferredUpload(e.dataTransfer.files);
+      }
+    });
+  }
 
   function bufferFilesForDeferredUpload(fileList) {
     const currentValid = getValidImages();
@@ -526,7 +544,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     return isNaN(num) ? 0 : num;
   }
 
-  function recalculateFinancials() {
+  function recalculateFinancials(autoMarkup = false) {
     const prodCost = parseVal(costInput ? costInput.value : 0);
 
     let suppliesCost = 0;
@@ -539,13 +557,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const totalCost = prodCost + suppliesCost;
+    const currentPrice = parseVal(priceInput ? priceInput.value : 0);
 
-    // Se o preço ainda não foi editado manualmente e custo total > 0, já simula 300% automaticamente
-    if (!manualPriceEdited && totalCost > 0) {
-      // 300% sobre o valor do custo direto + insumos (ex: R$ 10 vira R$ 40)
+    // Se autoMarkup for solicitado OU se o preço ainda não foi editado manualmente ou está zerado
+    if (totalCost > 0 && (autoMarkup || !manualPriceEdited || currentPrice <= 0)) {
+      // 300% de markup sobre o custo total (preço = custo * 4)
       const simulatedPrice = totalCost * 4.0;
       if (priceInput) priceInput.value = simulatedPrice.toFixed(2);
-      if (originalPriceInput && (!originalPriceInput.value || originalPriceInput.dataset.autoFilled === 'true')) {
+      if (originalPriceInput && (!originalPriceInput.value || originalPriceInput.dataset.autoFilled === 'true' || currentPrice <= 0)) {
         originalPriceInput.value = (simulatedPrice * 1.4).toFixed(2);
         originalPriceInput.dataset.autoFilled = 'true';
       }
@@ -560,9 +579,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (calcSalePrice) calcSalePrice.textContent = formatBRL(salePrice);
     if (calcUnitProfit) calcUnitProfit.textContent = formatBRL(unitProfit);
 
-    if (badgeMarkup && totalCost > 0 && salePrice > 0) {
-      const markupPct = Math.round(((salePrice - totalCost) / totalCost) * 100);
-      badgeMarkup.textContent = `${markupPct}% Markup`;
+    if (badgeMarkup) {
+      if (totalCost > 0 && salePrice > 0) {
+        const markupPct = Math.round(((salePrice - totalCost) / totalCost) * 100);
+        badgeMarkup.textContent = `${markupPct}% Markup`;
+      } else {
+        badgeMarkup.textContent = '300% Simulado';
+      }
     }
 
     if (calcUnitProfit) {
@@ -577,7 +600,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (btnRecalc300) {
-    btnRecalc300.addEventListener('click', () => {
+    btnRecalc300.addEventListener('click', (e) => {
+      if (e) e.preventDefault();
       manualPriceEdited = false;
       const prodCost = parseVal(costInput ? costInput.value : 0);
       let suppliesCost = 0;
@@ -592,10 +616,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           originalPriceInput.value = (simulatedPrice * 1.4).toFixed(2);
           originalPriceInput.dataset.autoFilled = 'true';
         }
-        recalculateFinancials();
+        recalculateFinancials(true);
         showToast(`Preço recalculado para ${formatBRL(simulatedPrice)} (300% sobre custo total de ${formatBRL(totalCost)}).`, 'success');
       } else {
-        showToast('Informe o custo direto da peça para simular 300%.', 'info');
+        showToast('Informe o custo direto da peça para calcular os 300%.', 'info');
+        if (costInput) costInput.focus();
       }
     });
   }
@@ -611,17 +636,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  ['input', 'change', 'keyup', 'blur', 'paste'].forEach(evt => {
+  ['input', 'change', 'keyup', 'paste'].forEach(evt => {
     if (costInput) {
       costInput.addEventListener(evt, () => {
-        recalculateFinancials();
+        const curPrice = parseVal(priceInput ? priceInput.value : 0);
+        const shouldAutoMarkup = !manualPriceEdited || curPrice <= 0;
+        recalculateFinancials(shouldAutoMarkup);
       });
     }
     if (priceInput) {
       priceInput.addEventListener(evt, () => {
-        manualPriceEdited = true;
-        recalculateFinancials();
-        autoGenerateOriginalPrice();
+        const val = parseVal(priceInput.value);
+        if (val > 0) {
+          manualPriceEdited = true;
+          recalculateFinancials(false);
+          autoGenerateOriginalPrice();
+        } else {
+          manualPriceEdited = false;
+          recalculateFinancials(true);
+        }
       });
     }
   });

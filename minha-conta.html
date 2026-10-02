@@ -1030,7 +1030,7 @@
             ordersEmpty.style.display = 'block';
           } else {
             ordersEmpty.style.display = 'none';
-            orders.forEach(o => {
+            orders.forEach((o, oIndex) => {
               const card = document.createElement('div');
               card.className = 'customer-order-card';
               
@@ -1080,19 +1080,39 @@
 
                 ${trackingHtml}
 
-                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 0.75rem; margin-top: 0.75rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 0.75rem; margin-top: 0.75rem; flex-wrap: wrap; gap: 0.6rem;">
                   <div>
                     <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Total</span>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--gold-dark);">${totalVal}</div>
+                    <div style="font-size: 1.15rem; font-weight: 700; color: var(--gold-dark);">${totalVal}</div>
                   </div>
-                  <div>
-                    <a href="rastreio.html?pedido=${encodeURIComponent(o.order_number)}" class="btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                    ${o.status !== 'cancelado' && o.status !== 'entregue' ? `
+                      <button type="button" class="btn-primary btn-order-pix" data-order-idx="${oIndex}" style="background: #16A34A; border-color: #16A34A; font-size: 0.78rem; padding: 0.4rem 0.85rem; display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                        Pagar com PIX
+                      </button>
+                    ` : ''}
+                    <a href="rastreio.html?pedido=${encodeURIComponent(o.order_number)}" class="btn-secondary" style="font-size: 0.78rem; padding: 0.4rem 0.75rem; text-decoration: none;">
                       Ver Detalhes no Rastreio &rarr;
                     </a>
                   </div>
                 </div>
               `;
               ordersContainer.appendChild(card);
+            });
+
+            // Eventos do botão de pagamento PIX nos pedidos
+            ordersContainer.querySelectorAll('.btn-order-pix').forEach(btn => {
+              btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.orderIdx, 10);
+                const targetOrder = orders[idx];
+                if (targetOrder && typeof window.openPixPaymentModal === 'function') {
+                  window.openPixPaymentModal(targetOrder);
+                } else if (targetOrder && typeof generatePixPayload === 'function') {
+                  // Fallback se carrinho estiver carregado de forma diferente
+                  alert(`PIX para o pedido ${targetOrder.order_number}: R$ ${targetOrder.total_amount}`);
+                }
+              });
             });
           }
 

@@ -153,17 +153,29 @@
 
       <div class="form-grid">
         <div class="form-group col-12">
-          <label class="form-label">Upload de Fotos (Supabase Storage)</label>
-          <div class="image-upload-zone" id="upload-zone">
-            <input type="file" id="image-file-input" accept="image/*" multiple style="display: none;">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 0.5rem; color: var(--gold-primary);">
+          <label class="form-label" for="image-file-input">Upload de Fotos (Supabase Storage)</label>
+          <label class="image-upload-zone" id="upload-zone" for="image-file-input" style="display: block; cursor: pointer;">
+            <input type="file" id="image-file-input" accept="image/png,image/jpeg,image/webp,image/jpg" multiple style="position: absolute; opacity: 0; width: 0.1px; height: 0.1px; overflow: hidden; z-index: -1;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 0.5rem; color: var(--gold-primary);">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
               <circle cx="8.5" cy="8.5" r="1.5"></circle>
               <polyline points="21 15 16 10 5 21"></polyline>
             </svg>
-            <p style="font-size: 0.82rem; font-weight: 500;">Clique ou arraste imagens aqui para enviar ao storage</p>
-            <span style="font-size: 0.72rem; color: var(--text-muted);">Suporta JPG, PNG e WEBP</span>
-          </div>
+            <p style="font-size: 0.86rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.2rem;">
+              Clique para escolher fotos ou arraste imagens aqui
+            </p>
+            <span style="font-size: 0.74rem; color: var(--text-muted); display: block; margin-bottom: 0.6rem;">
+              Suporta JPG, PNG e WEBP (Até 6 fotos no total)
+            </span>
+            <span class="btn-secondary-action" style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.76rem; padding: 0.35rem 0.85rem; pointer-events: none; border-color: var(--gold-primary); color: var(--brand-terracotta);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              Selecionar do Dispositivo
+            </span>
+          </label>
         </div>
 
         <div class="form-group col-12">
@@ -227,7 +239,7 @@
               </div>
               <div style="display: flex; align-items: center; background: #FFFFFF; border: 1px solid var(--border-medium); border-radius: var(--radius-sm); padding: 0 0.65rem;">
                 <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-right: 0.35rem;">R$</span>
-                <input type="number" step="0.01" min="0" id="prod-cost" class="form-input" placeholder="0.00" value="0.00" required style="border: none; padding-left: 0; font-weight: 600; font-size: 1rem;">
+                <input type="number" step="0.01" min="0" id="prod-cost" class="form-input" placeholder="0.00" value="" required style="border: none; padding-left: 0; font-weight: 600; font-size: 1rem;">
               </div>
             </div>
             <span class="form-help-text" style="margin-top: 0.4rem; font-size: 0.72rem; color: var(--text-muted);">
@@ -248,13 +260,13 @@
               </div>
               <div style="display: flex; align-items: center; background: #FFFFFF; border: 1px solid var(--gold-primary); border-radius: var(--radius-sm); padding: 0 0.65rem;">
                 <span style="font-size: 0.82rem; font-weight: 700; color: var(--brand-terracotta); margin-right: 0.35rem;">R$</span>
-                <input type="number" step="0.01" min="0" id="prod-price" class="form-input" placeholder="0.00" value="0.00" required style="border: none; padding-left: 0; font-weight: 700; font-size: 1.05rem; color: var(--brand-terracotta);">
+                <input type="number" step="0.01" min="0" id="prod-price" class="form-input" placeholder="0.00" value="" required style="border: none; padding-left: 0; font-weight: 700; font-size: 1.05rem; color: var(--brand-terracotta);">
               </div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.4rem;">
               <span class="form-help-text" style="font-size: 0.72rem; margin-bottom: 0;">Valor cobrado do cliente</span>
-              <button type="button" id="btn-recalc-300" style="background: none; border: none; color: var(--gold-dark); font-size: 0.7rem; font-weight: 700; cursor: pointer; text-decoration: underline; padding: 0;">
-                Recalcular 300%
+              <button type="button" id="btn-recalc-300" style="background: rgba(197, 164, 101, 0.12); border: 1px solid var(--gold-primary); color: var(--brand-terracotta); font-size: 0.72rem; font-weight: 700; cursor: pointer; padding: 2px 8px; border-radius: 4px; transition: all 0.2s ease;">
+                ⚡ Recalcular 300%
               </button>
             </div>
           </div>
@@ -463,7 +475,7 @@
   </div>
 
   <!-- Scripts -->
-  <script src="assets/js/supabase.js?v=3.5"></script>
-  <script src="assets/js/admin-produto.js?v=3.5"></script>
+  <script src="assets/js/supabase.js?v=3.6"></script>
+  <script src="assets/js/admin-produto.js?v=3.6"></script>
 </body>
 </html>
