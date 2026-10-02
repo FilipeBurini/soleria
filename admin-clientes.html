@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Soléria — Painel de Gestão e Estoque</title>
+  <title>Soléria — Painel de Clientes (CRM)</title>
   <link rel="icon" type="image/png" href="assets/images/logo-simbolo.png">
   <link rel="stylesheet" href="assets/css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -15,11 +15,11 @@
     <div class="auth-card">
       <div class="auth-brand-logo">
         <img src="assets/images/logo-sem-fundo.png" alt="Soléria — Joias que contam sua luz" class="auth-brand-logo-img">
-        <div class="brand-subtitle">Gestão & Controle Financeiro</div>
+        <div class="brand-subtitle">Gestão & CRM de Clientes</div>
       </div>
       
       <h2 class="auth-title">Acesso Restrito</h2>
-      <p class="auth-subtitle">Informe suas credenciais para gerenciar catálogo e insumos.</p>
+      <p class="auth-subtitle">Informe suas credenciais para acessar o painel de clientes.</p>
 
       <form id="login-form">
         <div class="form-group" style="text-align: left; margin-bottom: 1.25rem;">
@@ -59,7 +59,7 @@
 
         <!-- Navegação Interna -->
         <nav class="admin-nav">
-          <a href="admin.html" class="admin-nav-item active">
+          <a href="admin.html" class="admin-nav-item">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="3" width="7" height="7"></rect>
               <rect x="14" y="3" width="7" height="7"></rect>
@@ -76,14 +76,14 @@
             </svg>
             Pedidos
           </a>
-          <a href="admin-clientes.html" class="admin-nav-item">
+          <a href="admin-clientes.html" class="admin-nav-item active">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
               <circle cx="9" cy="7" r="4"></circle>
               <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
               <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
             </svg>
-            Clientes
+            Clientes (CRM)
           </a>
           <a href="admin-produto.html" class="admin-nav-item">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -99,7 +99,7 @@
             </svg>
             Insumos
           </a>
-          <a href="index.html" target="_blank" class="admin-nav-item" title="Abrir catálogo público em nova aba">
+          <a href="index.html" target="_blank" class="admin-nav-item" title="Abrir catálogo público">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
               <polyline points="15 3 21 3 21 9"></polyline>
@@ -123,111 +123,111 @@
       <!-- Cabeçalho da Página -->
       <div class="admin-page-header">
         <div>
-          <h2 class="admin-page-title">Dashboard & Posição de Estoque</h2>
-          <p class="admin-page-subtitle">Visão consolidada de custos de produção, estoque e margens de lucro.</p>
-        </div>
-        <div style="display: flex; gap: 0.75rem;">
-          <a href="admin-produto.html" class="btn-primary">
-            + Cadastrar Produto
-          </a>
+          <h2 class="admin-page-title">Gestão de Clientes & CRM</h2>
+          <p class="admin-page-subtitle">Acompanhe a base de clientes, histórico de compras, LTV acumulado e contato direto no WhatsApp.</p>
         </div>
       </div>
 
-      <!-- Cards de Resumo Financeiro (KPIs) -->
+      <!-- Cards de Métricas de CRM -->
       <section class="metrics-grid">
         <div class="metric-card accent-terracotta">
-          <div class="metric-card-label">Capital Investido em Estoque</div>
-          <div class="metric-card-value" id="kpi-capital-investido">R$ 0,00</div>
-          <div class="metric-card-footer">Custo Total (produto + insumos) &times; Unidades em estoque</div>
-        </div>
-
-        <div class="metric-card accent-green">
-          <div class="metric-card-label">Lucro Total Projetado</div>
-          <div class="metric-card-value" id="kpi-lucro-projetado" style="color: #216E39;">R$ 0,00</div>
-          <div class="metric-card-footer">Lucro Unitário &times; Unidades em estoque</div>
+          <div class="metric-card-label">Total de Clientes Cadastradas</div>
+          <div class="metric-card-value" id="kpi-customers-total">0</div>
+          <div class="metric-card-footer">Base de dados unificada</div>
         </div>
 
         <div class="metric-card accent-blue">
-          <div class="metric-card-label">Total de Itens em Acervo</div>
-          <div class="metric-card-value" id="kpi-total-itens">0 peças</div>
-          <div class="metric-card-footer" id="kpi-skus-count">0 modelos cadastrados</div>
+          <div class="metric-card-label">Clientes com Pedidos</div>
+          <div class="metric-card-value" id="kpi-customers-active">0</div>
+          <div class="metric-card-footer" id="kpi-customers-conversion">Taxa de conversão: 0%</div>
+        </div>
+
+        <div class="metric-card accent-green">
+          <div class="metric-card-label">Ticket Médio (LTV)</div>
+          <div class="metric-card-value" id="kpi-customers-avg-ltv">R$ 0,00</div>
+          <div class="metric-card-footer">Valor médio por cliente compradora</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-card-label">Volume Total Gerado</div>
+          <div class="metric-card-value" id="kpi-customers-total-revenue">R$ 0,00</div>
+          <div class="metric-card-footer">Faturamento acumulado da base</div>
         </div>
       </section>
 
-      <!-- Tabela de Produtos & Dados Financeiros -->
+      <!-- Painel de Clientes & Filtros -->
       <section class="table-card">
         <div class="table-toolbar">
-          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-            <!-- Alternador de Visualização: Vitrine de Baixa vs Planilha -->
-            <div class="admin-view-toggle">
-              <button type="button" id="btn-view-visual" class="btn-view-toggle active" title="Visualização em cards com fotos para baixa rápida">
-                <span>⊞</span> Vitrine de Baixa Rápida
-              </button>
-              <button type="button" id="btn-view-table" class="btn-view-toggle" title="Visualização em tabela de planilha financeira">
-                <span>☰</span> Planilha Financeira
-              </button>
-            </div>
-
-            <input type="text" id="admin-search-input" class="table-search-input" placeholder="Filtrar por SKU, nome ou categoria...">
-            <select id="admin-status-filter" class="form-select" style="width: auto; padding: 0.5rem 0.75rem; font-size: 0.82rem;">
-              <option value="todos">Todos os Status</option>
-              <option value="ativo">Apenas Ativos</option>
-              <option value="inativo">Apenas Inativos</option>
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; flex: 1;">
+            <input type="text" id="admin-customer-search" class="table-search-input" placeholder="Buscar por Nome, CPF, WhatsApp, E-mail ou Cidade..." style="max-width: 420px;">
+            <select id="admin-customer-segment-filter" class="form-select" style="width: auto; padding: 0.5rem 0.75rem; font-size: 0.82rem;">
+              <option value="todos">Todos os Clientes</option>
+              <option value="com_pedidos">Apenas com Pedidos</option>
+              <option value="vip">Clientes VIP (Acima de R$ 500)</option>
+              <option value="sem_pedidos">Novos / Sem Pedidos Ainda</option>
             </select>
           </div>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button id="btn-export-inventory-csv" class="btn-secondary-action" style="padding: 0.55rem 0.9rem;" title="Exportar dados de estoque e custos para planilha Excel / CSV">
-              📊 Exportar Inventário (CSV)
+            <button id="btn-export-customers-csv" class="btn-secondary-action" style="padding: 0.55rem 0.9rem;" title="Exportar tabela de clientes para Excel / CSV">
+              📊 Exportar CSV
             </button>
-            <button id="btn-refresh-table" class="btn-secondary-action" style="padding: 0.55rem 0.9rem;">
-              Atualizar Dados
+            <button id="btn-refresh-customers" class="btn-secondary-action" style="padding: 0.55rem 0.9rem;">
+              Atualizar
             </button>
           </div>
         </div>
 
-        <!-- Vitrine Visual para Baixa Rápida de Estoque (padrão) -->
-        <div id="admin-visual-grid" class="admin-visual-grid">
-          <!-- Cards com fotos e botões de aro injetados via admin.js -->
+        <!-- Spinner e Mensagem Vazia -->
+        <div id="customers-spinner" class="spinner" style="margin: 3rem auto;"></div>
+        
+        <div id="customers-empty-state" class="empty-state" style="display: none; padding: 3rem 1rem;">
+          <div class="empty-state-icon">👥</div>
+          <h3 class="empty-state-title">Nenhuma cliente encontrada</h3>
+          <p class="empty-state-desc">Clientes que fizerem pedidos ou se cadastrarem no catálogo aparecerão aqui automaticamente.</p>
         </div>
 
-        <div class="table-responsive" id="table-responsive-container" style="display: none;">
-          <table class="data-table" id="financials-table">
+        <!-- Tabela de Clientes -->
+        <div id="customers-table-container" style="overflow-x: auto; display: none;">
+          <table class="admin-table" style="width: 100%; border-collapse: collapse;">
             <thead>
-              <tr>
-                <th>SKU</th>
-                <th>Nome</th>
-                <th>Categoria</th>
-                <th style="text-align: right;">Custo Produto</th>
-                <th style="text-align: right;">Custo Insumos</th>
-                <th style="text-align: right;">Custo Total</th>
-                <th style="text-align: right;">Preço de Venda</th>
-                <th style="text-align: right;">Lucro Unitário</th>
-                <th style="text-align: center;">Estoque</th>
-                <th style="text-align: right;">Lucro Total Item</th>
-                <th style="text-align: center;">Status</th>
-                <th style="text-align: center;">Ações</th>
+              <tr style="text-align: left; border-bottom: 2px solid var(--border-light); font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">
+                <th style="padding: 0.85rem 1rem;">Cliente</th>
+                <th style="padding: 0.85rem 1rem;">Contato / WhatsApp</th>
+                <th style="padding: 0.85rem 1rem;">Localização</th>
+                <th style="padding: 0.85rem 1rem;">Pedidos</th>
+                <th style="padding: 0.85rem 1rem;">Total Gasto (LTV)</th>
+                <th style="padding: 0.85rem 1rem; text-align: center;">Ações</th>
               </tr>
             </thead>
-            <tbody id="financials-tbody">
-              <!-- Linhas preenchidas via admin.js -->
+            <tbody id="customers-table-body">
+              <!-- Injetado dinamicamente -->
             </tbody>
           </table>
         </div>
 
-        <div id="table-loading-spinner" class="spinner" style="margin: 3rem auto;"></div>
-        <div id="table-empty-msg" class="empty-state" style="display: none; padding: 3rem 1rem;">
-          <div class="empty-state-icon">📋</div>
-          <h3 class="empty-state-title">Nenhum registro encontrado</h3>
-          <p class="empty-state-desc">Cadastre produtos e vincule seus insumos para visualizar a posição de estoque e lucro.</p>
-          <a href="admin-produto.html" class="btn-primary">+ Cadastrar Primeiro Produto</a>
-        </div>
       </section>
 
     </main>
   </div>
 
+  <!-- Modal de Histórico de Pedidos da Cliente -->
+  <div class="modal-overlay" id="customer-orders-modal" role="dialog" aria-hidden="true">
+    <div class="modal-window" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+      <button class="modal-close-btn" id="btn-close-customer-orders-modal" aria-label="Fechar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <div id="customer-orders-modal-content" style="padding: 1.5rem 1.75rem;">
+        <!-- Injetado dinamicamente -->
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
-  <script src="assets/js/supabase.js"></script>
-  <script src="assets/js/admin.js"></script>
+  <script src="assets/js/supabase.js?v=3.1"></script>
+  <script src="assets/js/admin-clientes.js?v=1.0"></script>
 </body>
 </html>

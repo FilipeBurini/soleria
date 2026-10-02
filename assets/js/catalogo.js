@@ -204,51 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
           showToast('Não foi possível carregar o catálogo ao vivo. Exibindo acervo demonstrativo.', 'error');
           allProducts = DEMO_PRODUCTS;
         } else if (data && data.length > 0) {
-          // Busca pedidos ativos recentes para garantir reserva em tempo real
-          try {
-            const { data: recentOrders } = await db
-              .from('orders')
-              .select('id, items, status, stock_reserved_in_db')
-              .neq('status', 'cancelado');
-
-            if (recentOrders && recentOrders.length > 0) {
-              const unReservedMap = {};
-              recentOrders.forEach(ord => {
-                if (!ord.stock_reserved_in_db && Array.isArray(ord.items)) {
-                  ord.items.forEach(it => {
-                    if (!it.id) return;
-                    const key = it.size ? `${it.id}_size_${it.size}` : `${it.id}_total`;
-                    unReservedMap[key] = (unReservedMap[key] || 0) + (Number(it.quantity) || 1);
-                  });
-                }
-              });
-
-              data.forEach(prod => {
-                const prodSizes = parseSizes(prod.sizes);
-                let sizesChanged = false;
-                Object.keys(prodSizes).forEach(sz => {
-                  const unDeducted = unReservedMap[`${prod.id}_size_${sz}`] || 0;
-                  if (unDeducted > 0) {
-                    prodSizes[sz] = Math.max(0, (Number(prodSizes[sz]) || 0) - unDeducted);
-                    sizesChanged = true;
-                  }
-                });
-
-                if (sizesChanged) {
-                  prod.sizes = prodSizes;
-                  prod.stock = Object.values(prodSizes).reduce((acc, q) => acc + (Number(q) || 0), 0);
-                } else {
-                  const unDeductedTotal = unReservedMap[`${prod.id}_total`] || 0;
-                  if (unDeductedTotal > 0) {
-                    prod.stock = Math.max(0, (Number(prod.stock) || 0) - unDeductedTotal);
-                  }
-                }
-              });
-            }
-          } catch (ordErr) {
-            console.warn('Verificação de pedidos ativos:', ordErr);
-          }
-
+          // O estoque dos produtos já é mantido sincronizado atomicamente via triggers do banco
           allProducts = data;
         } else {
           // Sem produtos ativos ainda cadastrados no banco

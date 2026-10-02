@@ -57,17 +57,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnAddSupply = document.getElementById('btn-add-supply');
   const linkedSuppliesTbody = document.getElementById('linked-supplies-tbody');
 
-  // Elementos do Cálculo ao Vivo
+  // Elementos do Cálculo ao Vivo e Markup
   const calcProdCost = document.getElementById('calc-prod-cost');
   const calcSuppliesCost = document.getElementById('calc-supplies-cost');
   const calcTotalCost = document.getElementById('calc-total-cost');
   const calcSalePrice = document.getElementById('calc-sale-price');
   const calcUnitProfit = document.getElementById('calc-unit-profit');
+  const btnRecalc300 = document.getElementById('btn-recalc-300');
+  const badgeMarkup = document.getElementById('badge-markup-300');
+
+  // Elementos dos Modais (Confirmação de SKU e Upload de Fotos)
+  const skuConfirmModal = document.getElementById('sku-confirm-modal');
+  const btnCancelSkuConfirm = document.getElementById('btn-cancel-sku-confirm');
+  const btnProceedSkuConfirm = document.getElementById('btn-proceed-sku-confirm');
+  const confirmSkuDisplay = document.getElementById('confirm-sku-display');
+
+  const uploadProgressModal = document.getElementById('upload-progress-modal');
+  const uploadProgressBar = document.getElementById('upload-progress-bar');
+  const uploadProgressPct = document.getElementById('upload-progress-pct');
+  const uploadProgressStatus = document.getElementById('upload-progress-status');
 
   // Estado Local
   let availableSupplies = [];
   let linkedSupplies = []; // [{ supply_id, name, unit_cost, unit, quantity }]
   let currentImages = [];
+  let manualPriceEdited = false;
 
   // ==========================================================================
   // Carregamento Inicial (Insumos e Dados do Produto se Edição)
@@ -88,6 +102,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     toggleRingSizes();
     recalculateFinancials();
   }
+
+  // Garante renderização imediata de miniaturas após a carga dos dados
+  renderImagePreviews();
+  window.addEventListener('load', () => renderImagePreviews());
 
   // ==========================================================================
   // Geração Automática de SKU (PREFIXO-0000)
@@ -196,6 +214,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ==========================================================================
 
   /**
+   * Valida se uma string representa um link ou caminho de imagem válido.
+   * Suporta links absolutos (https/http), Data URLs, Supabase Storage e caminhos locais/relativos (assets/...).
+   */
+  function isValidImageUrl(val) {
+    if (!val || typeof val !== 'string') return false;
+    const v = val.trim();
+    if (!v) return false;
+    if (v.startsWith('http://') || v.startsWith('https://') || v.startsWith('data:image/') || v.startsWith('blob:') || v.startsWith('/') || v.startsWith('./') || v.startsWith('assets/')) {
+      return true;
+    }
+    if (/\.(jpg|jpeg|png|webp|avif|gif|svg)(\?.*)?$/i.test(v)) {
+      return true;
+    }
+    if (v.includes('supabase.co')) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Obtém a lista consolidada de URLs válidas (campos vazios são ignorados).
    * Garante no máximo 6 fotos.
    */
@@ -204,8 +242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     photoSlots.forEach(slot => {
       if (!slot) return;
       const val = slot.value.trim();
-      // Ignora campos vazios e valida links razoáveis
-      if (val && (val.startsWith('http://') || val.startsWith('https://') || val.startsWith('data:image/'))) {
+      if (val && isValidImageUrl(val)) {
         valid.push(val);
       }
     });
@@ -256,7 +293,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       item.className = 'image-preview-item';
       item.style.position = 'relative';
       item.innerHTML = `
-        <img src="${url}" alt="Foto ${idx + 1}" onerror="this.src='https://via.placeholder.com/80?text=Inválida'">
+        <img src="${url}" alt="Foto ${idx + 1}" onerror="this.onerror=null; this.src='assets/images/logo-simbolo.png';">
         ${idx === 0 && pendingImageFiles.length === 0 ? '<span style="position: absolute; bottom: 2px; left: 2px; background: rgba(197, 164, 101, 0.95); color: #181614; font-size: 0.55rem; font-weight: 700; padding: 1px 4px; border-radius: 2px; text-transform: uppercase;">Capa</span>' : ''}
         <button type="button" class="image-preview-remove btn-remove-saved" data-index="${idx}" title="Remover esta foto">&times;</button>
       `;
@@ -307,6 +344,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!slot) return;
     slot.addEventListener('input', () => renderImagePreviews());
     slot.addEventListener('change', () => renderImagePreviews());
+    slot.addEventListener('paste', () => setTimeout(renderImagePreviews, 60));
+    slot.addEventListener('blur', () => renderImagePreviews());
   });
 
   // Seleção e buffer de fotos (upload diferido para o clique em Salvar)
@@ -474,20 +513,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast('Insumo vinculado com sucesso!', 'success');
   });
 
-  // Elementos dos Modais
-  const skuConfirmModal = document.getElementById('sku-confirm-modal');
-  const btnCancelSkuConfirm = document.getElementById('btn-cancel-sku-confirm');
-  const btnProceedSkuConfirm = document.getElementById('btn-proceed-sku-confirm');
-  const confirmSkuDisplay = document.getElementById('confirm-sku-display');
-
-  const uploadProgressModal = document.getElementById('upload-progress-modal');
-  const uploadProgressBar = document.getElementById('upload-progress-bar');
-  const uploadProgressPct = document.getElementById('upload-progress-pct');
-  const uploadProgressStatus = document.getElementById('upload-progress-status');
-
-  const btnRecalc300 = document.getElementById('btn-recalc-300');
-  const badgeMarkup = document.getElementById('badge-markup-300');
-  let manualPriceEdited = false;
 
   // ==========================================================================
   // Calculadora Financeira em Tempo Real & Simulação 300%
@@ -628,7 +653,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       nameInput.value = prod.name || '';
       statusInput.value = prod.status || 'ativo';
       categoryInput.value = prod.category || '';
-      skuInput.value = prod.sku || '';
+      
+      // SKU com fallback e sugestão automática caso ausente no registro
+      skuInput.value = prod.sku || prod.SKU || prod.codigo || '';
+      if (!skuInput.value && prod.category) {
+        await updateGeneratedSku();
+      }
+
+      // Descrição completa da semijoia
+      descInput.value = prod.description ?? prod.desc ?? prod.descricao ?? prod.detalhes ?? '';
+
       const resolvedCost = Number(prod.product_cost ?? prod.cost ?? 0);
       const resolvedPrice = Number(prod.sale_price ?? prod.price ?? 0);
       costInput.value = resolvedCost.toFixed(2);
@@ -676,17 +710,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
       }
 
-      // Imagens (limita em até 6)
+      // Imagens (suporta Array nativo, string JSON, formato PostgreSQL text[] e strings avulsas)
+      const rawImgs = prod.images ?? prod.image ?? prod.photos ?? prod.image_url ?? prod.fotos;
       let loadedImages = [];
-      if (Array.isArray(prod.images)) {
-        loadedImages = prod.images;
-      } else if (typeof prod.images === 'string') {
-        try {
-          loadedImages = JSON.parse(prod.images);
-        } catch (e) {
-          loadedImages = prod.images.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+      if (Array.isArray(rawImgs)) {
+        loadedImages = rawImgs;
+      } else if (typeof rawImgs === 'string') {
+        const clean = rawImgs.trim();
+        if (clean.startsWith('[') && clean.endsWith(']')) {
+          try {
+            loadedImages = JSON.parse(clean);
+          } catch (e) {
+            loadedImages = [];
+          }
+        } else if (clean.startsWith('{') && clean.endsWith('}')) {
+          // Formato PostgreSQL array: {"url1","url2"}
+          loadedImages = clean.slice(1, -1)
+            .split(',')
+            .map(s => s.replace(/^"|"$/g, '').trim())
+            .filter(Boolean);
+        } else if (clean.length > 0) {
+          loadedImages = clean.split(/[\n,]/).map(s => s.replace(/^"|"$/g, '').trim()).filter(Boolean);
         }
       }
+
+      // Caso ainda não tenha carregado e exista imagem singular
+      if (loadedImages.length === 0 && (prod.image || prod.image_url)) {
+        const single = (prod.image || prod.image_url).toString().trim();
+        if (single) loadedImages = [single];
+      }
+
       syncSlotsFromImages(loadedImages);
 
       // 2. Busca insumos vinculados (product_supplies)

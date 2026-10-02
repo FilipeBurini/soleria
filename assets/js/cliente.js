@@ -27,6 +27,25 @@
   }
 
   /**
+   * Formata telefone dinamicamente para 10 ou 11 dígitos
+   * (00) 0000-0000 ou (00) 00000-0000
+   */
+  function formatPhone(phone) {
+    let v = (phone || '').toString().replace(/\D/g, '');
+    if (v.length > 11) v = v.slice(0, 11);
+    if (v.length > 10) {
+      return `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`;
+    } else if (v.length > 6) {
+      return `(${v.slice(0, 2)}) ${v.slice(2, 6)}-${v.slice(6)}`;
+    } else if (v.length > 2) {
+      return `(${v.slice(0, 2)}) ${v.slice(2)}`;
+    } else if (v.length > 0) {
+      return `(${v}`;
+    }
+    return '';
+  }
+
+  /**
    * Validação básica do formato de CPF
    */
   function isValidCPF(cpf) {
@@ -135,67 +154,64 @@
 
     const passHash = await hashPassword(password);
     const client = getDb();
+    let customerRecord = null;
 
-    // 1. Verifica se já existe no Supabase
+    // 1. Tenta cadastrar via RPC segura no Supabase (LGPD: sem expor hash no SELECT)
     if (client && typeof isSupabaseConfigured === 'function' && isSupabaseConfigured()) {
       try {
-        const { data: existing } = await client
-          .from('customers')
-          .select('id, cpf')
-          .eq('cpf', cleanNum)
-          .maybeSingle();
-
-        if (existing) {
-          throw new Error('Este CPF já possui cadastro. Faça login ou recupere seu acesso.');
-        }
-      } catch (err) {
-        if (err.message && err.message.includes('Este CPF')) throw err;
-        console.warn('Aviso ao consultar clientes no Supabase:', err);
-      }
-    }
-
-    // 2. Verifica duplicidade local
-    const localList = getLocalCustomers();
-    if (localList.some(c => cleanCPF(c.cpf) === cleanNum)) {
-      throw new Error('Este CPF já está cadastrado neste dispositivo.');
-    }
-
-    const customerRecord = {
-      cpf: cleanNum,
-      name: name.trim(),
-      phone: phone.trim(),
-      email: (email || '').trim().toLowerCase(),
-      password_hash: passHash,
-      address: address || {},
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    // 3. Salva no Supabase se disponível
-    if (client && typeof isSupabaseConfigured === 'function' && isSupabaseConfigured()) {
-      try {
-        const { data, error } = await client
-          .from('customers')
-          .insert([customerRecord])
-          .select()
-          .maybeSingle();
+        const { data, error } = await client.rpc('customer_register', {
+          p_name: name.trim(),
+          p_cpf: cleanNum,
+          p_phone: phone.trim(),
+          p_email: (email || '').trim().toLowerCase(),
+          p_password_hash: passHash,
+          p_address: address || {}
+        });
 
         if (error) {
-          console.warn('Erro ao inserir cliente no Supabase, salvando localmente:', error);
+          console.warn('Erro ao chamar RPC customer_register no Supabase:', error);
         } else if (data) {
-          customerRecord.id = data.id;
+          if (!data.success) {
+            throw new Error(data.message || 'Erro ao realizar cadastro.');
+          }
+          customerRecord = {
+            ...data.customer,
+            session_token: data.session_token
+          };
         }
-      } catch (e) {
-        console.warn('Falha na requisição ao Supabase:', e);
+      } catch (err) {
+        if (err.message && (err.message.includes('já possui cadastro') || err.message.includes('Informe') || err.message.includes('CPF'))) {
+          throw err;
+        }
+        console.warn('Falha na requisição segura ao Supabase, tentando fallback local:', err);
       }
     }
 
-    // 4. Salva localmente
-    saveLocalCustomer(customerRecord);
+    // 2. Fallback local se o Supabase não estiver configurado ou offline
+    if (!customerRecord) {
+      const localList = getLocalCustomers();
+      if (localList.some(c => cleanCPF(c.cpf) === cleanNum)) {
+        throw new Error('Este CPF já está cadastrado neste dispositivo.');
+      }
 
-    // 5. Inicia sessão do cliente
+      customerRecord = {
+        id: 'loc_' + Math.random().toString(36).slice(2, 10),
+        cpf: cleanNum,
+        name: name.trim(),
+        phone: phone.trim(),
+        email: (email || '').trim().toLowerCase(),
+        password_hash: passHash,
+        address: address || {},
+        session_token: 'loc_' + Math.random().toString(36).slice(2, 10),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      saveLocalCustomer(customerRecord);
+    }
+
+    // 3. Inicia sessão da cliente
     setCustomerSession(customerRecord);
-
     return customerRecord;
   }
 
@@ -215,35 +231,43 @@
     const client = getDb();
     let customer = null;
 
-    // 1. Tenta no Supabase
+    // 1. Tenta autenticação via RPC segura no Supabase (validação no banco sem vazar hashes)
     if (client && typeof isSupabaseConfigured === 'function' && isSupabaseConfigured()) {
       try {
-        const { data, error } = await client
-          .from('customers')
-          .select('*')
-          .eq('cpf', cleanNum)
-          .maybeSingle();
+        const { data, error } = await client.rpc('customer_authenticate', {
+          p_cpf: cleanNum,
+          p_password_hash: passHash
+        });
 
-        if (data && !error) {
-          if (data.password_hash === passHash) {
-            customer = data;
-          } else {
-            throw new Error('Senha incorreta para o CPF informado.');
+        if (error) {
+          console.warn('Erro ao chamar RPC customer_authenticate:', error);
+        } else if (data) {
+          if (!data.success) {
+            throw new Error(data.message || 'Credenciais inválidas.');
           }
+          customer = {
+            ...data.customer,
+            session_token: data.session_token
+          };
         }
       } catch (err) {
-        if (err.message && err.message.includes('Senha incorreta')) throw err;
+        if (err.message && (err.message.includes('Senha incorreta') || err.message.includes('CPF não encontrado'))) {
+          throw err;
+        }
         console.warn('Busca no Supabase falhou, buscando local:', err);
       }
     }
 
-    // 2. Se não encontrou no Supabase, busca no LocalStorage
+    // 2. Se não conectou via RPC, busca no LocalStorage (fallback local/offline)
     if (!customer) {
       const localList = getLocalCustomers();
       const localFound = localList.find(c => cleanCPF(c.cpf) === cleanNum);
       if (localFound) {
         if (localFound.password_hash === passHash) {
-          customer = localFound;
+          customer = {
+            ...localFound,
+            session_token: localFound.session_token || ('loc_' + Math.random().toString(36).slice(2, 10))
+          };
         } else {
           throw new Error('Senha incorreta para o CPF informado.');
         }
@@ -259,7 +283,7 @@
   }
 
   /**
-   * Salva sessão ativa no LocalStorage
+   * Salva sessão ativa no LocalStorage (sem expor hash de senha)
    */
   function setCustomerSession(customer) {
     const safeData = {
@@ -269,6 +293,7 @@
       phone: customer.phone,
       email: customer.email || '',
       address: customer.address || {},
+      session_token: customer.session_token || null,
       logged_at: new Date().toISOString()
     };
     localStorage.setItem(CUSTOMER_SESSION_KEY, JSON.stringify(safeData));
@@ -307,27 +332,33 @@
     if (!current) throw new Error('Cliente não autenticado.');
 
     const cleanNum = cleanCPF(current.cpf);
-    const updatedCustomer = {
+    const client = getDb();
+    let updatedCustomer = {
       ...current,
       ...updates,
       updated_at: new Date().toISOString()
     };
 
-    const client = getDb();
-    if (client && typeof isSupabaseConfigured === 'function' && isSupabaseConfigured()) {
+    if (client && typeof isSupabaseConfigured === 'function' && isSupabaseConfigured() && current.session_token) {
       try {
-        await client
-          .from('customers')
-          .update({
-            name: updatedCustomer.name,
-            phone: updatedCustomer.phone,
-            email: updatedCustomer.email,
-            address: updatedCustomer.address,
-            updated_at: updatedCustomer.updated_at
-          })
-          .eq('cpf', cleanNum);
+        const { data, error } = await client.rpc('customer_update_profile', {
+          p_cpf: cleanNum,
+          p_session_token: current.session_token,
+          p_name: updates.name || null,
+          p_phone: updates.phone || null,
+          p_email: updates.email || null,
+          p_address: updates.address || null,
+          p_new_password_hash: updates.new_password_hash || null
+        });
+
+        if (!error && data && data.success && data.customer) {
+          updatedCustomer = {
+            ...updatedCustomer,
+            ...data.customer
+          };
+        }
       } catch (e) {
-        console.warn('Erro ao atualizar cliente no Supabase:', e);
+        console.warn('Erro ao atualizar cliente via RPC no Supabase:', e);
       }
     }
 
@@ -337,7 +368,7 @@
   }
 
   /**
-   * Busca todos os pedidos associados a este CPF
+   * Busca todos os pedidos associados a este CPF autenticado
    */
   async function getCustomerOrders(cpf) {
     const cleanNum = cleanCPF(cpf);
@@ -345,37 +376,27 @@
 
     let orders = [];
     const client = getDb();
+    const currentCust = getCurrentCustomer();
 
-    if (client && typeof isSupabaseConfigured === 'function' && isSupabaseConfigured()) {
+    // 1. Busca autenticada via RPC no Supabase (LGPD: sem expor dados de terceiros)
+    if (client && typeof isSupabaseConfigured === 'function' && isSupabaseConfigured() && currentCust && currentCust.session_token) {
       try {
-        // Tenta buscar por customer_cpf ou por telefone
-        const currentCust = getCurrentCustomer();
-        const phoneDigits = currentCust ? (currentCust.phone || '').replace(/\D/g, '') : '';
+        const { data, error } = await client.rpc('customer_get_orders', {
+          p_cpf: cleanNum,
+          p_session_token: currentCust.session_token
+        });
 
-        let query = client
-          .from('orders')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (phoneDigits && phoneDigits.length >= 8) {
-          query = query.or(`customer_cpf.eq.${cleanNum},customer_phone.ilike.*${phoneDigits.slice(-8)}*`);
-        } else {
-          query = query.eq('customer_cpf', cleanNum);
-        }
-
-        const { data, error } = await query;
-        if (!error && data) {
-          orders = data;
+        if (!error && data && data.success && Array.isArray(data.orders)) {
+          orders = data.orders;
         }
       } catch (err) {
-        console.warn('Erro ao buscar pedidos no Supabase:', err);
+        console.warn('Erro ao buscar pedidos autenticados no Supabase:', err);
       }
     }
 
-    // Mescla com pedidos salvos localmente
+    // 2. Mescla com pedidos salvos localmente
     try {
       const local = JSON.parse(localStorage.getItem('soleria_local_orders') || '[]');
-      const currentCust = getCurrentCustomer();
       const phoneDigits = currentCust ? (currentCust.phone || '').replace(/\D/g, '') : '';
 
       local.forEach(o => {
@@ -465,18 +486,158 @@
     updateNavAccountUI();
   });
 
+  /**
+   * Sincroniza ou cadastra automaticamente a cliente ao concluir um pedido no Checkout
+   */
+  async function syncCustomerFromCheckout({ name, cpf, phone, email = '', address = {} }) {
+    const cleanNum = cleanCPF(cpf);
+    if (!cleanNum || cleanNum.length !== 11) return null;
+
+    const defaultPassword = cleanNum.slice(0, 4);
+    const passHash = await hashPassword(defaultPassword);
+    const client = getDb();
+
+    let customer = null;
+    let isNew = false;
+
+    // 1. Tenta sincronização segura via RPC no Supabase (upsert protegido)
+    if (client && typeof isSupabaseConfigured === 'function' && isSupabaseConfigured()) {
+      try {
+        const { data, error } = await client.rpc('customer_sync_checkout', {
+          p_name: (name || '').trim(),
+          p_cpf: cleanNum,
+          p_phone: (phone || '').trim(),
+          p_email: (email || '').trim().toLowerCase(),
+          p_default_password_hash: passHash,
+          p_address: (address && address.street) ? address : {}
+        });
+
+        if (!error && data && data.success && data.customer) {
+          customer = {
+            ...data.customer,
+            session_token: data.session_token
+          };
+          isNew = !!data.is_new;
+        }
+      } catch (err) {
+        console.warn('Aviso ao sincronizar cliente via RPC no Supabase:', err);
+      }
+    }
+
+    // 2. Fallback no LocalStorage
+    if (!customer) {
+      const localList = getLocalCustomers();
+      const existing = localList.find(c => cleanCPF(c.cpf) === cleanNum);
+
+      if (existing) {
+        isNew = false;
+        customer = {
+          ...existing,
+          name: (name && name.trim().length >= 3) ? name.trim() : existing.name,
+          phone: (phone && phone.replace(/\D/g, '').length >= 10) ? phone.trim() : existing.phone,
+          email: (email && email.trim()) ? email.trim().toLowerCase() : (existing.email || ''),
+          address: (address && address.street) ? address : (existing.address || {}),
+          session_token: existing.session_token || ('loc_' + Math.random().toString(36).slice(2, 10)),
+          updated_at: new Date().toISOString()
+        };
+      } else {
+        isNew = true;
+        customer = {
+          id: 'loc_' + Math.random().toString(36).slice(2, 10),
+          cpf: cleanNum,
+          name: (name || 'Cliente Soléria').trim(),
+          phone: (phone || '').trim(),
+          email: (email || '').trim().toLowerCase(),
+          password_hash: passHash,
+          address: address || {},
+          session_token: 'loc_' + Math.random().toString(36).slice(2, 10),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+      }
+      saveLocalCustomer(customer);
+    }
+
+    setCustomerSession(customer);
+    return { customer, isNew, initialPassword: isNew ? defaultPassword : null };
+  }
+
+  /**
+   * Redefine senha da cliente mediante confirmação de CPF e telefone
+   */
+  async function recuperarSenhaCliente({ cpf, phone, newPassword }) {
+    const cleanNum = cleanCPF(cpf);
+    if (!cleanNum || cleanNum.length !== 11) {
+      throw new Error('Informe um CPF válido com 11 dígitos.');
+    }
+    const cleanPh = (phone || '').replace(/\D/g, '');
+    if (cleanPh.length < 8) {
+      throw new Error('Informe o telefone ou WhatsApp com DDD para confirmação.');
+    }
+    if (!newPassword || newPassword.length < 4) {
+      throw new Error('A nova senha deve ter pelo menos 4 caracteres.');
+    }
+
+    const passHash = await hashPassword(newPassword);
+    const client = getDb();
+
+    // 1. Tenta redefinir no Supabase via RPC segura
+    if (client && typeof isSupabaseConfigured === 'function' && isSupabaseConfigured()) {
+      try {
+        const { data, error } = await client.rpc('customer_reset_password', {
+          p_cpf: cleanNum,
+          p_phone: cleanPh,
+          p_new_password_hash: passHash
+        });
+
+        if (error) {
+          console.warn('Erro ao chamar customer_reset_password:', error);
+        } else if (data) {
+          if (!data.success) {
+            throw new Error(data.message || 'Não foi possível redefinir a senha.');
+          }
+          return { success: true, message: data.message };
+        }
+      } catch (err) {
+        if (err.message && (err.message.includes('não confere') || err.message.includes('não encontrado') || err.message.includes('Informe'))) {
+          throw err;
+        }
+        console.warn('Falha na redefinição via Supabase, tentando local:', err);
+      }
+    }
+
+    // 2. Fallback no LocalStorage
+    const localList = getLocalCustomers();
+    const existingIdx = localList.findIndex(c => cleanCPF(c.cpf) === cleanNum);
+    if (existingIdx !== -1) {
+      const storedPh = (localList[existingIdx].phone || '').replace(/\D/g, '');
+      if (storedPh.slice(-8) !== cleanPh.slice(-8)) {
+        throw new Error('O telefone informado não confere com o cadastrado neste CPF.');
+      }
+      localList[existingIdx].password_hash = passHash;
+      localList[existingIdx].updated_at = new Date().toISOString();
+      localStorage.setItem(LOCAL_CUSTOMERS_KEY, JSON.stringify(localList));
+      return { success: true, message: 'Senha redefinida com sucesso!' };
+    }
+
+    throw new Error('CPF não localizado. Se você realizou compras recentes, sua senha inicial padrão são os 4 primeiros dígitos do CPF, ou solicite auxílio via WhatsApp.');
+  }
+
   // Exporta para escopo global window.SoleriaCustomer
   window.SoleriaCustomer = {
     cleanCPF,
     formatCPF,
+    formatPhone,
     isValidCPF,
     cadastrar: cadastrarCliente,
     login: loginCliente,
     logout: logoutCliente,
+    recuperarSenha: recuperarSenhaCliente,
     getCurrent: getCurrentCustomer,
     updateProfile: updateCustomerProfile,
     getOrders: getCustomerOrders,
     getPiecesSummary: getCustomerPiecesSummary,
+    syncFromCheckout: syncCustomerFromCheckout,
     updateNav: updateNavAccountUI
   };
 })();

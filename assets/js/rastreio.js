@@ -24,9 +24,9 @@ document.addEventListener('DOMContentLoaded', () => {
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
-  // Verifica se veio parâmetro de pedido na URL (ex: rastreio.html?pedido=SOL-84920)
+  // Verifica se veio parâmetro de pedido na URL (ex: rastreio.html?pedido=SOL-84920 ou ?q=SOL-84920)
   const urlParams = new URLSearchParams(window.location.search);
-  const paramOrder = urlParams.get('pedido') || urlParams.get('order');
+  const paramOrder = urlParams.get('pedido') || urlParams.get('order') || urlParams.get('q') || urlParams.get('codigo');
   if (paramOrder && trackingInput) {
     trackingInput.value = paramOrder.trim();
     searchOrder(paramOrder.trim());
@@ -66,64 +66,63 @@ document.addEventListener('DOMContentLoaded', () => {
                    (window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
 
     try {
-      // 1. Tenta buscar no Supabase
+      // 1. Tenta buscar no Supabase via RPC segura (LGPD: dados ofuscados)
       if (client && isSupabaseConfigured()) {
-        const safeQ = cleanQ.replace(/[(),]/g, '').trim();
-        const conditions = [];
-
-        // Busca por código de pedido (ex: SOL-77620 ou apenas 77620)
-        if (safeQ && cleanDigits.length < 8) {
-          conditions.push(`order_number.ilike.*${safeQ}*`);
-        }
-        if (cleanDigits.length >= 4) {
-          conditions.push(`order_number.ilike.*${cleanDigits}*`);
+        try {
+          const { data, error } = await client.rpc('get_order_tracking', { p_query: query });
+          if (!error && data && data.success && Array.isArray(data.orders)) {
+            foundOrders = data.orders;
+          }
+        } catch (rpcErr) {
+          console.warn('Aviso: RPC get_order_tracking indisponível, usando fallback:', rpcErr);
         }
 
-        // Se tem dígitos suficientes para ser telefone (com ou sem formatação)
-        if (cleanDigits.length >= 8) {
-          // Dígitos puros
-          conditions.push(`customer_phone.ilike.*${cleanDigits}*`);
+        // Fallback de consulta direta caso o RPC ainda não tenha sido aplicado no banco
+        if (foundOrders.length === 0) {
+          const safeQ = cleanQ.replace(/[(),]/g, '').trim();
+          const conditions = [];
 
-          // Com DDD padrão celular (11 dígitos, ex: 16997096789)
-          if (cleanDigits.length === 11) {
-            const ddd = cleanDigits.slice(0, 2);
-            const p1 = cleanDigits.slice(2, 7);
-            const p2 = cleanDigits.slice(7);
-            conditions.push(`customer_phone.ilike.*${ddd}*${p1}*${p2}*`);
-            conditions.push(`customer_phone.ilike.*${p1}*${p2}*`);
-          } else if (cleanDigits.length === 10) {
-            const ddd = cleanDigits.slice(0, 2);
-            const p1 = cleanDigits.slice(2, 6);
-            const p2 = cleanDigits.slice(6);
-            conditions.push(`customer_phone.ilike.*${ddd}*${p1}*${p2}*`);
-            conditions.push(`customer_phone.ilike.*${p1}*${p2}*`);
-          } else if (cleanDigits.length >= 12 && cleanDigits.startsWith('55')) {
-            const without55 = cleanDigits.slice(2);
-            conditions.push(`customer_phone.ilike.*${without55}*`);
-            if (without55.length === 11) {
-              const ddd = without55.slice(0, 2);
-              const p1 = without55.slice(2, 7);
-              const p2 = without55.slice(7);
-              conditions.push(`customer_phone.ilike.*${ddd}*${p1}*${p2}*`);
-            }
+          if (safeQ && cleanDigits.length < 8) {
+            conditions.push(`order_number.ilike.*${safeQ}*`);
+          }
+          if (cleanDigits.length >= 4) {
+            conditions.push(`order_number.ilike.*${cleanDigits}*`);
           }
 
-          // Busca pelos últimos 8 ou 9 dígitos para casar independente de DDD ou prefixo
-          conditions.push(`customer_phone.ilike.*${cleanDigits.slice(-8)}*`);
-          conditions.push(`customer_phone.ilike.*${cleanDigits.slice(-9)}*`);
-        }
+          if (cleanDigits.length >= 8) {
+            conditions.push(`customer_phone.ilike.*${cleanDigits}*`);
 
-        const uniqueConditions = Array.from(new Set(conditions));
+            if (cleanDigits.length === 11) {
+              const ddd = cleanDigits.slice(0, 2);
+              const p1 = cleanDigits.slice(2, 7);
+              const p2 = cleanDigits.slice(7);
+              conditions.push(`customer_phone.ilike.*${ddd}*${p1}*${p2}*`);
+              conditions.push(`customer_phone.ilike.*${p1}*${p2}*`);
+            } else if (cleanDigits.length === 10) {
+              const ddd = cleanDigits.slice(0, 2);
+              const p1 = cleanDigits.slice(2, 6);
+              const p2 = cleanDigits.slice(6);
+              conditions.push(`customer_phone.ilike.*${ddd}*${p1}*${p2}*`);
+              conditions.push(`customer_phone.ilike.*${p1}*${p2}*`);
+            }
 
-        if (uniqueConditions.length > 0) {
-          const { data, error } = await client
-            .from('orders')
-            .select('*')
-            .or(uniqueConditions.join(','))
-            .order('created_at', { ascending: false });
+            conditions.push(`customer_phone.ilike.*${cleanDigits.slice(-8)}*`);
+          }
 
-          if (data && data.length > 0) {
-            foundOrders = data;
+          const uniqueConditions = Array.from(new Set(conditions));
+
+          if (uniqueConditions.length > 0) {
+            try {
+              const { data } = await client
+                .from('orders')
+                .select('*')
+                .or(uniqueConditions.join(','))
+                .order('created_at', { ascending: false });
+
+              if (data && data.length > 0) {
+                foundOrders = data;
+              }
+            } catch (dirErr) {}
           }
         }
       }

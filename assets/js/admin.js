@@ -527,6 +527,61 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // ==========================================================================
+  // Etapa 5.5: Exportação de Inventário e Custos para Planilha CSV
+  // ==========================================================================
+
+  function exportInventoryToCSV() {
+    if (!rawFinancialsData || rawFinancialsData.length === 0) {
+      showToast('Nenhum produto disponível para exportar.', 'warning');
+      return;
+    }
+
+    const headers = [
+      'SKU',
+      'Produto',
+      'Categoria',
+      'Estoque_Atual',
+      'Custo_Peca_RS',
+      'Custo_Insumos_RS',
+      'Custo_Total_RS',
+      'Preco_Venda_RS',
+      'Lucro_Unitario_RS',
+      'Lucro_Total_Projetado_RS',
+      'Status'
+    ];
+
+    const rows = rawFinancialsData.map(p => [
+      `"${p.sku}"`,
+      `"${(p.name || '').replace(/"/g, '""')}"`,
+      `"${(p.category || '').replace(/"/g, '""')}"`,
+      p.stock,
+      p.productCost.toFixed(2),
+      p.suppliesCost.toFixed(2),
+      p.totalCost.toFixed(2),
+      p.salePrice.toFixed(2),
+      p.unitProfit.toFixed(2),
+      p.totalProfit.toFixed(2),
+      `"${p.status}"`
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `soleria_inventario_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Planilha de inventário exportada com sucesso!', 'success');
+  }
+
+  const btnExportInv = document.getElementById('btn-export-inventory-csv');
+  if (btnExportInv) {
+    btnExportInv.addEventListener('click', exportInventoryToCSV);
+  }
+
   // Listeners de filtro e busca
   if (searchInput) {
     searchInput.addEventListener('input', () => {
@@ -550,3 +605,4 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Inicializa verificação de autenticação
   checkAuthAndInit();
 });
+

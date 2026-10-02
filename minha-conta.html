@@ -224,14 +224,54 @@
             <input type="text" id="login-cpf" class="form-input" placeholder="000.000.000-00" maxlength="14" required inputmode="numeric">
           </div>
 
-          <div class="form-group" style="margin-bottom: 1.5rem;">
-            <label class="form-label" for="login-pass">Sua Senha <span class="required">*</span></label>
+          <div class="form-group" style="margin-bottom: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <label class="form-label" for="login-pass" style="margin-bottom: 0;">Sua Senha <span class="required">*</span></label>
+              <button type="button" id="btn-show-recovery" style="background: none; border: none; font-size: 0.76rem; color: var(--brand-terracotta); cursor: pointer; text-decoration: underline; padding: 0;">
+                Esqueci minha senha
+              </button>
+            </div>
             <input type="password" id="login-pass" class="form-input" placeholder="••••••••" required>
           </div>
 
           <button type="submit" id="btn-submit-login" class="btn-primary" style="width: 100%; justify-content: center; height: 44px;">
             Acessar Minha Conta &rarr;
           </button>
+        </form>
+
+        <!-- Formulário de Recuperação de Senha / Acesso -->
+        <form id="form-customer-recovery" style="display: none;">
+          <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: var(--radius-sm); padding: 0.75rem 0.85rem; font-size: 0.78rem; color: #92400E; margin-bottom: 1.1rem; line-height: 1.4;">
+            💡 <strong>Dica de Acesso Rápido:</strong> Se você fez um pedido recente no catálogo, sua senha padrão inicial são os <strong>4 primeiros dígitos do seu CPF</strong>.
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label" for="recov-cpf">Seu CPF Cadastrado <span class="required">*</span></label>
+            <input type="text" id="recov-cpf" class="form-input" placeholder="000.000.000-00" maxlength="14" required inputmode="numeric">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label" for="recov-phone">WhatsApp Cadastrado (confirmação) <span class="required">*</span></label>
+            <input type="tel" id="recov-phone" class="form-input" placeholder="(16) 99999-9999" maxlength="15" required>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1.25rem;">
+            <label class="form-label" for="recov-newpass">Nova Senha Desejada <span class="required">*</span></label>
+            <input type="password" id="recov-newpass" class="form-input" placeholder="Mínimo 4 caracteres" minlength="4" required>
+          </div>
+
+          <button type="submit" id="btn-submit-recovery" class="btn-primary" style="width: 100%; justify-content: center; height: 44px; margin-bottom: 0.75rem;">
+            Redefinir Minha Senha &rarr;
+          </button>
+
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button type="button" id="btn-cancel-recovery" class="btn-secondary" style="flex: 1; justify-content: center; font-size: 0.8rem; height: 38px;">
+              &larr; Voltar ao Login
+            </button>
+            <a id="btn-whatsapp-recovery" href="https://wa.me/5516997990729?text=Ol%C3%A1%2C%20Carla!%20Esqueci%20minha%20senha%20de%20acesso%20%C3%A0%20%C3%81rea%20da%20Cliente%20Sol%C3%A9ria." target="_blank" rel="noopener noreferrer" class="btn-secondary-action" style="flex: 1; justify-content: center; font-size: 0.78rem; height: 38px; color: #166534; border-color: #86EFAC; display: flex; align-items: center; gap: 0.35rem; text-decoration: none;">
+              💬 Ajuda no WhatsApp
+            </a>
+          </div>
         </form>
 
         <!-- Formulário de Cadastro Simples -->
@@ -418,29 +458,25 @@
     </div>
   </footer>
 
-  <!-- Drawer da Sacola Compartilhado -->
-  <div class="cart-overlay" id="cart-overlay" aria-hidden="true"></div>
-  <aside class="cart-drawer" id="cart-drawer" aria-hidden="true" role="dialog" aria-label="Sacola de Compras">
-    <div class="cart-header">
-      <div class="cart-title">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-          <line x1="3" y1="6" x2="21" y2="6"></line>
-          <path d="M16 10a4 4 0 0 1-8 0"></path>
-        </svg>
-        <span>Sua Sacola Soléria</span>
+  <!-- Drawer da Sacola de Compras -->
+  <div class="cart-drawer-overlay" id="cart-drawer-overlay">
+    <aside class="cart-drawer">
+      <div class="cart-drawer-header">
+        <div class="cart-drawer-title-wrap">
+          <h2 class="cart-drawer-title">Sua Sacola</h2>
+          <span class="cart-drawer-count" id="cart-drawer-count">0 peças</span>
+        </div>
+        <button type="button" class="cart-drawer-close" id="cart-drawer-close" aria-label="Fechar sacola">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
-      <button class="cart-close-btn" id="btn-close-cart" aria-label="Fechar Sacola">&times;</button>
-    </div>
-    <div class="cart-items-list" id="cart-items-list"></div>
-    <div class="cart-footer" id="cart-footer">
-      <div class="cart-total-row">
-        <span>Subtotal Estimado:</span>
-        <strong id="cart-total-price">R$ 0,00</strong>
-      </div>
-      <button type="button" class="btn-checkout" id="btn-checkout">Finalizar Pedido via WhatsApp</button>
-    </div>
-  </aside>
+      <div class="cart-drawer-body" id="cart-drawer-body"></div>
+      <div class="cart-drawer-footer" id="cart-drawer-footer"></div>
+    </aside>
+  </div>
 
   <!-- Scripts -->
   <script src="assets/js/supabase.js?v=2.2"></script>
@@ -487,17 +523,130 @@
         });
       }
 
-      // Alternância de Abas Auth
+      // Alternância de Abas Auth e Recuperação de Senha
       const tabLogin = document.getElementById('tab-btn-login');
       const tabReg = document.getElementById('tab-btn-register');
+      const authTabsBar = document.querySelector('.auth-tab-buttons');
       const formLogin = document.getElementById('form-customer-login');
       const formReg = document.getElementById('form-customer-register');
+      const formRecovery = document.getElementById('form-customer-recovery');
+      const btnShowRecovery = document.getElementById('btn-show-recovery');
+      const btnCancelRecovery = document.getElementById('btn-cancel-recovery');
+      const btnWaRecovery = document.getElementById('btn-whatsapp-recovery');
+
+      // Máscara do telefone na recuperação
+      const recovPhoneInput = document.getElementById('recov-phone');
+      if (recovPhoneInput) {
+        recovPhoneInput.addEventListener('input', (e) => {
+          let v = e.target.value.replace(/\D/g, '');
+          if (v.length > 11) v = v.slice(0, 11);
+          if (v.length > 10) {
+            e.target.value = `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`;
+          } else if (v.length > 6) {
+            e.target.value = `(${v.slice(0, 2)}) ${v.slice(2, 6)}-${v.slice(6)}`;
+          } else if (v.length > 2) {
+            e.target.value = `(${v.slice(0, 2)}) ${v.slice(2)}`;
+          } else if (v.length > 0) {
+            e.target.value = `(${v}`;
+          }
+        });
+      }
+
+      // Máscara do CPF na recuperação e link dinâmico WhatsApp
+      const recovCpfInput = document.getElementById('recov-cpf');
+      if (recovCpfInput) {
+        recovCpfInput.addEventListener('input', (e) => {
+          let v = e.target.value.replace(/\D/g, '');
+          if (v.length > 11) v = v.slice(0, 11);
+          if (v.length > 9) {
+            e.target.value = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+          } else if (v.length > 6) {
+            e.target.value = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+          } else if (v.length > 3) {
+            e.target.value = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+          } else {
+            e.target.value = v;
+          }
+
+          if (btnWaRecovery) {
+            const raw = e.target.value.trim();
+            const msg = `Olá, Carla! Esqueci minha senha de acesso à Área da Cliente Soléria. Meu CPF cadastrado é ${raw || 'informado no chat'}.`;
+            btnWaRecovery.href = `https://wa.me/5516997990729?text=${encodeURIComponent(msg)}`;
+          }
+        });
+      }
+
+      // Abrir tela de recuperação
+      if (btnShowRecovery) {
+        btnShowRecovery.addEventListener('click', () => {
+          formLogin.style.display = 'none';
+          formReg.style.display = 'none';
+          if (formRecovery) formRecovery.style.display = 'block';
+          if (authTabsBar) authTabsBar.style.display = 'none';
+
+          const currentLoginCpf = document.getElementById('login-cpf').value;
+          if (recovCpfInput && currentLoginCpf) {
+            recovCpfInput.value = currentLoginCpf;
+            recovCpfInput.dispatchEvent(new Event('input'));
+          }
+        });
+      }
+
+      // Voltar ao login
+      if (btnCancelRecovery) {
+        btnCancelRecovery.addEventListener('click', () => {
+          if (formRecovery) formRecovery.style.display = 'none';
+          formLogin.style.display = 'block';
+          if (authTabsBar) authTabsBar.style.display = 'flex';
+        });
+      }
+
+      // Submit Recuperação de Senha
+      if (formRecovery) {
+        formRecovery.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const cpf = document.getElementById('recov-cpf').value;
+          const phone = document.getElementById('recov-phone').value;
+          const newPassword = document.getElementById('recov-newpass').value;
+          const btn = document.getElementById('btn-submit-recovery');
+
+          btn.disabled = true;
+          btn.textContent = 'Redefinindo senha...';
+
+          try {
+            const res = await window.SoleriaCustomer.recuperarSenha({ cpf, phone, newPassword });
+            if (typeof showToast === 'function') {
+              showToast(res.message || 'Senha redefinida com sucesso!', 'success', 5000);
+            } else {
+              alert(res.message || 'Senha redefinida com sucesso!');
+            }
+
+            // Retorna ao login com campos preenchidos
+            if (formRecovery) formRecovery.style.display = 'none';
+            formLogin.style.display = 'block';
+            if (authTabsBar) authTabsBar.style.display = 'flex';
+            document.getElementById('login-cpf').value = cpf;
+            document.getElementById('login-pass').value = newPassword;
+            document.getElementById('login-pass').focus();
+          } catch (err) {
+            if (typeof showToast === 'function') {
+              showToast(err.message, 'error', 5500);
+            } else {
+              alert(err.message);
+            }
+          } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Redefinir Minha Senha &rarr;';
+          }
+        });
+      }
 
       tabLogin.addEventListener('click', () => {
         tabLogin.classList.add('active');
         tabReg.classList.remove('active');
         formLogin.style.display = 'block';
         formReg.style.display = 'none';
+        if (formRecovery) formRecovery.style.display = 'none';
       });
 
       tabReg.addEventListener('click', () => {
@@ -505,6 +654,7 @@
         tabLogin.classList.remove('active');
         formReg.style.display = 'block';
         formLogin.style.display = 'none';
+        if (formRecovery) formRecovery.style.display = 'none';
       });
 
       // Submit Login
@@ -754,7 +904,7 @@
                     <div style="font-size: 1.1rem; font-weight: 700; color: var(--gold-dark);">${totalVal}</div>
                   </div>
                   <div>
-                    <a href="rastreio.html?q=${encodeURIComponent(o.order_number)}" class="btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
+                    <a href="rastreio.html?pedido=${encodeURIComponent(o.order_number)}" class="btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
                       Ver Detalhes no Rastreio &rarr;
                     </a>
                   </div>

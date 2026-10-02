@@ -43,6 +43,165 @@
     return `SOL-${random}`;
   }
 
+  // ==========================================================================
+  // FASE 5: CUPONS DE DESCONTO & PIX COPIA E COLA
+  // ==========================================================================
+  let appliedCoupon = null;
+
+  // Cupons locais de contingência caso Supabase esteja temporariamente inacessível
+  const LOCAL_COUPONS = {
+    'BEMVINDA10': { code: 'BEMVINDA10', discount_type: 'percentage', discount_value: 10, min_order_value: 150 },
+    'LUZ15': { code: 'LUZ15', discount_type: 'percentage', discount_value: 15, min_order_value: 300 },
+    'FRETEGRATIS': { code: 'FRETEGRATIS', discount_type: 'fixed', discount_value: 30, min_order_value: 200 },
+    'SOLERIA50': { code: 'SOLERIA50', discount_type: 'fixed', discount_value: 50, min_order_value: 500 }
+  };
+
+  /**
+   * Cálculo CRC16-CCITT (Polinômio 0x1021, Init 0xFFFF) padrão Bacen para PIX
+   */
+  function crc16Pix(payload) {
+    let crc = 0xFFFF;
+    for (let i = 0; i < payload.length; i++) {
+      crc ^= (payload.charCodeAt(i) << 8);
+      for (let j = 0; j < 8; j++) {
+        if ((crc & 0x8000) !== 0) {
+          crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
+        } else {
+          crc = (crc << 1) & 0xFFFF;
+        }
+      }
+    }
+    return crc.toString(16).toUpperCase().padStart(4, '0');
+  }
+
+  function emvFormat(id, value) {
+    const strVal = String(value);
+    const len = String(strVal.length).padStart(2, '0');
+    return `${id}${len}${strVal}`;
+  }
+
+  /**
+   * Gera o código padrão EMVCo do Banco Central para PIX Copia e Cola
+   */
+  function generatePixPayload({ key = '16997990729', name = 'SOLERIA JOIAS', city = 'FRANCA', amount = 0, txid = 'SOLERIA' }) {
+    const cleanKey = key.trim();
+    const cleanName = (name || 'SOLERIA JOIAS').normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 25).toUpperCase();
+    const cleanCity = (city || 'FRANCA').normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 15).toUpperCase();
+    const cleanTxId = (txid || 'SOLERIA').replace(/[^a-zA-Z0-9]/g, '').slice(0, 25) || '***';
+    const amountStr = Number(amount || 0).toFixed(2);
+
+    const gui = emvFormat('00', 'br.gov.bcb.pix');
+    const pixKey = emvFormat('01', cleanKey);
+    const merchantAccountInfo = emvFormat('26', gui + pixKey);
+
+    const refLabel = emvFormat('05', cleanTxId);
+    const additionalData = emvFormat('62', refLabel);
+
+    let raw = 
+      emvFormat('00', '01') +
+      merchantAccountInfo +
+      emvFormat('52', '0000') +
+      emvFormat('53', '986') +
+      (Number(amount) > 0 ? emvFormat('54', amountStr) : '') +
+      emvFormat('58', 'BR') +
+      emvFormat('59', cleanName) +
+      emvFormat('60', cleanCity) +
+      additionalData +
+      '6304';
+
+    const crc = crc16Pix(raw);
+    return raw + crc;
+  }
+
+  /**
+   * Validação de cupom de desconto com Supabase RPC e fallback local
+   */
+  async function applyCouponCode(code) {
+    const cleanCode = (code || '').trim().toUpperCase();
+    if (!cleanCode) {
+      if (typeof showToast === 'function') showToast('Informe o código do cupom.', 'warning');
+      return;
+    }
+
+    const subtotal = getCartSubtotal();
+    if (subtotal <= 0) {
+      if (typeof showToast === 'function') showToast('Sua sacola está vazia.', 'warning');
+      return;
+    }
+
+    const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db) ||
+                   (window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
+
+    let result = null;
+    if (client && isSupabaseConfigured()) {
+      try {
+        const { data, error } = await client.rpc('validate_coupon', {
+          p_code: cleanCode,
+          p_subtotal: subtotal
+        });
+        if (!error && data) {
+          result = data;
+        }
+      } catch (e) {
+        console.warn('Falha ao validar via RPC Supabase, usando contingência local:', e);
+      }
+    }
+
+    if (!result) {
+      const local = LOCAL_COUPONS[cleanCode];
+      if (local) {
+        if (subtotal < local.min_order_value) {
+          result = {
+            valid: false,
+            message: `Este cupom exige um pedido mínimo de ${formatMoney(local.min_order_value)}.`
+          };
+        } else {
+          let disc = local.discount_type === 'percentage' 
+            ? Math.round((subtotal * (local.discount_value / 100)) * 100) / 100 
+            : local.discount_value;
+          if (disc > subtotal) disc = subtotal;
+          result = {
+            valid: true,
+            code: local.code,
+            discount_type: local.discount_type,
+            discount_value: local.discount_value,
+            discount_amount: disc,
+            final_total: subtotal - disc,
+            message: `Cupom ${local.code} aplicado com sucesso!`
+          };
+        }
+      } else {
+        result = { valid: false, message: 'Cupom inválido ou expirado.' };
+      }
+    }
+
+    if (result && result.valid) {
+      appliedCoupon = {
+        code: result.code,
+        discount_type: result.discount_type,
+        discount_value: result.discount_value,
+        discount_amount: Number(result.discount_amount) || 0
+      };
+      if (typeof showToast === 'function') {
+        showToast(result.message || 'Cupom aplicado com sucesso!', 'success');
+      }
+      renderCart();
+    } else {
+      if (typeof showToast === 'function') {
+        showToast(result?.message || 'Cupom não pôde ser aplicado.', 'warning');
+      }
+    }
+  }
+
+  function removeCouponCode() {
+    appliedCoupon = null;
+    if (typeof showToast === 'function') {
+      showToast('Cupom removido.', 'info');
+    }
+    renderCart();
+  }
+
+
   function parseItemSizes(raw) {
     if (!raw) return {};
     if (typeof raw === 'object') return raw;
@@ -201,7 +360,43 @@
 
     footer.style.display = 'flex';
     const subtotal = getCartSubtotal();
-    const installmentVal = (subtotal / 6).toFixed(2);
+
+    // Recalcula valor do desconto caso itens da sacola tenham mudado
+    let discountAmount = 0;
+    if (appliedCoupon) {
+      if (appliedCoupon.discount_type === 'percentage') {
+        discountAmount = Math.round((subtotal * (appliedCoupon.discount_value / 100)) * 100) / 100;
+      } else {
+        discountAmount = appliedCoupon.discount_value;
+      }
+      if (discountAmount > subtotal) discountAmount = subtotal;
+      appliedCoupon.discount_amount = discountAmount;
+    }
+
+    const finalTotal = Math.max(0, subtotal - discountAmount);
+    const installmentVal = (finalTotal / 6).toFixed(2);
+
+    // Bloco reutilizável de inserção do Cupom
+    const couponHtml = `
+      <div class="cart-coupon-box" style="margin: 0.85rem 0; padding: 0.75rem 0.85rem; background: #FAF8F5; border: 1px dashed #DFC9B4; border-radius: var(--radius-sm);">
+        <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: var(--text-muted); margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.35rem;">
+          <span>✦</span> Cupom de Desconto
+        </div>
+        <div style="display: flex; gap: 0.4rem; align-items: center;">
+          <input type="text" id="cart-coupon-input" class="form-input" placeholder="Ex: BEMVINDA10" value="${appliedCoupon ? appliedCoupon.code : ''}" ${appliedCoupon ? 'disabled' : ''} style="text-transform: uppercase; font-size: 0.78rem; padding: 0.4rem 0.6rem; letter-spacing: 0.05em; background: #fff;">
+          ${appliedCoupon ? `
+            <button type="button" class="btn-secondary-action" id="btn-remove-coupon" style="color: #dc2626; border-color: #fca5a5; font-size: 0.75rem; padding: 0.4rem 0.75rem; white-space: nowrap;">Remover</button>
+          ` : `
+            <button type="button" class="btn-secondary-action" id="btn-apply-coupon" style="font-size: 0.75rem; padding: 0.4rem 0.75rem; white-space: nowrap;">Aplicar</button>
+          `}
+        </div>
+        ${appliedCoupon ? `
+          <div style="font-size: 0.73rem; color: #059669; font-weight: 600; margin-top: 0.4rem; display: flex; align-items: center; gap: 0.3rem;">
+            <span>✓ Desconto de ${formatMoney(discountAmount)} ativado (${appliedCoupon.code})</span>
+          </div>
+        ` : ''}
+      </div>
+    `;
 
     if (isCheckoutStep) {
       // Exibe formulário de Checkout Concierge
@@ -243,8 +438,23 @@
               </button>
             </div>
 
+            <!-- Avisos Transparentes sobre Política de Frete -->
+            <div id="shipping-info-banner" style="margin-top: 0.65rem; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: var(--radius-sm); padding: 0.65rem 0.85rem; font-size: 0.78rem; color: #92400E; display: flex; align-items: center; gap: 0.5rem;">
+              <span>📦</span>
+              <div>
+                <strong>Envio Sob Medida:</strong> Frete Cortesia nas compras a partir de R$ 350,00 ou taxa calculada pelo CEP no WhatsApp.
+              </div>
+            </div>
+
+            <div id="pickup-info-banner" style="display: none; margin-top: 0.65rem; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: var(--radius-sm); padding: 0.65rem 0.85rem; font-size: 0.78rem; color: #166534; align-items: center; gap: 0.5rem;">
+              <span>✨</span>
+              <div>
+                <strong>Retirada Cortesia:</strong> Sem taxa de envio. Agendamos o horário e local exclusivo pelo WhatsApp.
+              </div>
+            </div>
+
             <div id="address-fields-box">
-              <div class="form-group" style="margin-bottom: 0.65rem;">
+              <div class="form-group" style="margin-bottom: 0.65rem; margin-top: 0.85rem;">
                 <label class="form-label">CEP <span class="required">*</span></label>
                 <div class="input-with-button">
                   <input type="text" id="order-cep" class="form-input" placeholder="00000-000">
@@ -284,21 +494,36 @@
             </div>
             <textarea id="order-notes" class="form-textarea" rows="2" placeholder="Deseja embalagem especial para presente ou alguma instrução de entrega?"></textarea>
           </div>
+
+          ${couponHtml}
         </div>
       `;
 
-      // Footer no passo de checkout
+      // Footer no passo de checkout com detalhamento de cupom e frete
+      const isFreeShipping = subtotal >= 350;
       footer.innerHTML = `
         <div class="cart-summary-line">
           <span>Subtotal das Semijoias:</span>
           <span>${formatMoney(subtotal)}</span>
         </div>
+        ${discountAmount > 0 ? `
+          <div class="cart-summary-line" style="color: #059669; font-weight: 600;">
+            <span>Desconto (${appliedCoupon.code}):</span>
+            <span>-${formatMoney(discountAmount)}</span>
+          </div>
+        ` : ''}
+        <div class="cart-summary-line" id="summary-shipping-line">
+          <span>Frete / Envio:</span>
+          <span style="color: ${isFreeShipping ? '#059669' : '#92400E'}; font-weight: 600;" id="summary-shipping-val">
+            ${isFreeShipping ? '✦ Frete Cortesia' : 'A combinar via WhatsApp'}
+          </span>
+        </div>
         <div class="cart-summary-line total">
           <span>Total do Pedido:</span>
-          <span class="price">${formatMoney(subtotal)}</span>
+          <span class="price">${formatMoney(finalTotal)}</span>
         </div>
         <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center;">
-          Até 6x de ${formatMoney(installmentVal)} sem juros
+          Até 6x de ${formatMoney(installmentVal)} sem juros ou via PIX com QR Code
         </div>
         <button type="button" class="btn-proceed-checkout" id="btn-submit-order">
           <span>✦ Finalizar Pedido & Gerar Protocolo</span>
@@ -336,19 +561,25 @@
         `;
       });
 
-      body.innerHTML = itemsHtml;
+      body.innerHTML = itemsHtml + couponHtml;
 
       footer.innerHTML = `
         <div class="cart-summary-line">
           <span>Subtotal:</span>
           <span>${formatMoney(subtotal)}</span>
         </div>
+        ${discountAmount > 0 ? `
+          <div class="cart-summary-line" style="color: #059669; font-weight: 600;">
+            <span>Desconto (${appliedCoupon.code}):</span>
+            <span>-${formatMoney(discountAmount)}</span>
+          </div>
+        ` : ''}
         <div class="cart-summary-line total">
           <span>Total:</span>
-          <span class="price">${formatMoney(subtotal)}</span>
+          <span class="price">${formatMoney(finalTotal)}</span>
         </div>
         <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center;">
-          Até 6x de ${formatMoney(installmentVal)} sem juros no cartão
+          Até 6x de ${formatMoney(installmentVal)} sem juros no cartão ou PIX
         </div>
         <button type="button" class="btn-proceed-checkout" id="btn-go-to-checkout">
           <span>Avançar para Entrega &rarr;</span>
@@ -374,6 +605,28 @@
         });
       }
     }
+
+    // Configuração dos botões de cupom (em ambas as visualizações)
+    const btnApply = document.getElementById('btn-apply-coupon');
+    const inputCoupon = document.getElementById('cart-coupon-input');
+    if (btnApply && inputCoupon) {
+      btnApply.addEventListener('click', () => {
+        applyCouponCode(inputCoupon.value);
+      });
+      inputCoupon.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          applyCouponCode(inputCoupon.value);
+        }
+      });
+    }
+
+    const btnRemoveCoupon = document.getElementById('btn-remove-coupon');
+    if (btnRemoveCoupon) {
+      btnRemoveCoupon.addEventListener('click', () => {
+        removeCouponCode();
+      });
+    }
   }
 
   /**
@@ -391,6 +644,9 @@
     const optShip = document.getElementById('opt-delivery-ship');
     const optPickup = document.getElementById('opt-delivery-pickup');
     const addressBox = document.getElementById('address-fields-box');
+    const shipBanner = document.getElementById('shipping-info-banner');
+    const pickupBanner = document.getElementById('pickup-info-banner');
+    const shipSummaryVal = document.getElementById('summary-shipping-val');
     let selectedDelivery = 'entrega';
 
     if (optShip && optPickup) {
@@ -399,6 +655,14 @@
         optPickup.classList.remove('selected');
         selectedDelivery = 'entrega';
         if (addressBox) addressBox.style.display = 'block';
+        if (shipBanner) shipBanner.style.display = 'flex';
+        if (pickupBanner) pickupBanner.style.display = 'none';
+        if (shipSummaryVal) {
+          const sub = getCartSubtotal();
+          const isFree = sub >= 350;
+          shipSummaryVal.textContent = isFree ? '✦ Frete Cortesia' : 'A combinar via WhatsApp';
+          shipSummaryVal.style.color = isFree ? '#059669' : '#92400E';
+        }
       });
 
       optPickup.addEventListener('click', () => {
@@ -406,6 +670,12 @@
         optShip.classList.remove('selected');
         selectedDelivery = 'retirada';
         if (addressBox) addressBox.style.display = 'none';
+        if (shipBanner) shipBanner.style.display = 'none';
+        if (pickupBanner) pickupBanner.style.display = 'flex';
+        if (shipSummaryVal) {
+          shipSummaryVal.textContent = '✦ Grátis (Retirada)';
+          shipSummaryVal.style.color = '#059669';
+        }
       });
     }
 
@@ -455,14 +725,16 @@
       });
     }
 
-    // Máscara e validação do telefone WhatsApp
+    // Máscara dinâmica de telefone WhatsApp (10 ou 11 dígitos)
     const phoneInput = document.getElementById('order-customer-phone');
     if (phoneInput) {
       phoneInput.addEventListener('input', (e) => {
         let v = e.target.value.replace(/\D/g, '');
         if (v.length > 11) v = v.slice(0, 11);
-        if (v.length > 6) {
+        if (v.length > 10) {
           e.target.value = `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`;
+        } else if (v.length > 6) {
+          e.target.value = `(${v.slice(0, 2)}) ${v.slice(2, 6)}-${v.slice(6)}`;
         } else if (v.length > 2) {
           e.target.value = `(${v.slice(0, 2)}) ${v.slice(2)}`;
         } else if (v.length > 0) {
@@ -564,15 +836,25 @@
         const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db) ||
                        (window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
 
-        // Abate o estoque das peças imediatamente para que ninguém mais compre se zerar
-        let stockDeductedInstantly = false;
+        // 1. Sincroniza ou cadastra automaticamente a cliente em customers
+        let customerSyncResult = null;
         try {
-          if (client && isSupabaseConfigured()) {
-            stockDeductedInstantly = await deductStockFromProducts(itemsCopy, client);
+          if (window.SoleriaCustomer && typeof window.SoleriaCustomer.syncFromCheckout === 'function') {
+            customerSyncResult = await window.SoleriaCustomer.syncFromCheckout({
+              name: nameInput.value.trim(),
+              cpf: rawCpf,
+              phone: phoneField.value.trim(),
+              address: addressData
+            });
           }
-        } catch (stkErr) {
-          console.warn('Tentativa de baixa imediata:', stkErr);
+        } catch (cErr) {
+          console.warn('Aviso ao sincronizar cliente no checkout:', cErr);
         }
+
+        // 2. Monta payload do pedido com suporte a cupons de desconto
+        const discAmount = (appliedCoupon && Number(appliedCoupon.discount_amount)) ? Number(appliedCoupon.discount_amount) : 0;
+        const finalTotalOrder = Math.max(0, subtotal - discAmount);
+        const couponCode = appliedCoupon ? appliedCoupon.code : null;
 
         const orderPayload = {
           order_number: orderNumber,
@@ -583,12 +865,13 @@
           customer_address: addressData,
           items: itemsCopy,
           subtotal: subtotal,
-          discount_amount: 0,
-          total_amount: subtotal,
+          discount_amount: discAmount,
+          discount_code: couponCode,
+          total_amount: finalTotalOrder,
           status: 'recebido',
           customer_notes: notesInput?.value.trim() || '',
-          stock_deducted: false, // A baixa oficial e faturamento continuam sob confirmação do Admin
-          stock_reserved_in_db: stockDeductedInstantly,
+          stock_deducted: true, // Deduzido de forma atômica pela trigger PostgreSQL
+          stock_reserved_in_db: true,
           created_at: new Date().toISOString()
         };
 
@@ -598,6 +881,11 @@
             if (error) {
               console.warn('Aviso ao gravar em orders (verifique se executou supabase_orders.sql):', error);
             }
+
+            // Registra uso do cupom no Supabase se houver
+            if (couponCode) {
+              client.rpc('record_coupon_usage', { p_code: couponCode }).catch(() => {});
+            }
           }
         } catch (err) {
           console.error('Erro ao registrar no Supabase:', err);
@@ -605,9 +893,10 @@
           // Salva cópia de segurança em LocalStorage
           saveOrderLocally(orderPayload);
           cart = [];
+          appliedCoupon = null; // Reseta cupom para próximas compras
           saveCart();
           closeCart();
-          showOrderSuccessModal(orderPayload);
+          showOrderSuccessModal(orderPayload, customerSyncResult);
 
           // Notifica qualquer tela de catálogo aberta para atualizar estoque visual
           try {
@@ -675,7 +964,7 @@
   /**
    * Exibe o modal elegante de confirmação de pedido com protocolo
    */
-  function showOrderSuccessModal(order) {
+  function showOrderSuccessModal(order, customerSync = null) {
     let modal = document.getElementById('order-success-modal-overlay');
     if (!modal) {
       modal = document.createElement('div');
@@ -705,48 +994,116 @@
       return `• ${i.quantity}x ${i.name}${aroStr} — ${formatMoney(i.price * i.quantity)}`;
     }).join('\n');
 
+    const discountSummary = order.discount_amount > 0 
+      ? `\n*Desconto (${order.discount_code}):* -${formatMoney(order.discount_amount)}` 
+      : '';
+
     const whatsappText = `Olá, Soléria! Acabei de fazer o pedido *${order.order_number}* no catálogo:\n\n` +
       `*Cliente:* ${order.customer_name}\n` +
-      `*Peças:*\n${itemsSummary}\n\n` +
+      `*Peças:*\n${itemsSummary}\n` +
+      `${discountSummary}` +
       `*Total:* ${formatMoney(order.total_amount)}\n` +
       `*Tipo:* ${order.delivery_type === 'retirada' ? 'Retirada Exclusiva' : 'Entrega em Domicílio'}\n\n` +
-      `Gostaria de confirmar os detalhes e combinar o pagamento.`;
+      `Gostaria de confirmar o pedido e enviar o comprovante de pagamento.`;
 
     const phone = '5516997990729'; // WhatsApp Soléria (Carla)
     const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(whatsappText)}`;
 
+    // Geração do Código PIX Copia e Cola Oficial Bacen e QR Code
+    const pixPayload = generatePixPayload({
+      key: '16997990729',
+      name: 'SOLERIA JOIAS',
+      city: 'FRANCA',
+      amount: order.total_amount,
+      txid: order.order_number
+    });
+
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=6&data=${encodeURIComponent(pixPayload)}`;
+
+    const newAccountHtml = (customerSync && customerSync.isNew) ? `
+      <div style="background: #FDF9F5; border: 1.5px dashed var(--gold-primary); border-radius: var(--radius-sm); padding: 0.85rem 1rem; margin: 1rem 0; text-align: left;">
+        <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--brand-terracotta); font-weight: 700; display: block; margin-bottom: 0.2rem;">
+          ✨ Conta Criada com Sucesso!
+        </span>
+        <span style="font-size: 0.82rem; color: var(--text-primary); line-height: 1.4; display: block;">
+          Seus pedidos e acervo agora estão vinculados ao seu CPF. Sua senha temporária é <strong>${customerSync.initialPassword}</strong> (4 primeiros dígitos do seu CPF).
+        </span>
+        <span style="font-size: 0.74rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">
+          Você já está conectada e pode alterar sua senha na aba <strong>Minha Conta</strong> a qualquer momento.
+        </span>
+      </div>
+    ` : '';
+
     const content = modal.querySelector('#order-success-content');
     content.innerHTML = `
       <div class="order-success-icon">✓</div>
-      <h2 style="font-family: var(--font-serif); font-size: 1.5rem; margin-bottom: 0.35rem; color: var(--text-primary);">
+      <h2 style="font-family: var(--font-serif); font-size: 1.45rem; margin-bottom: 0.35rem; color: var(--text-primary);">
         Pedido Registrado com Sucesso!
       </h2>
-      <p style="font-size: 0.85rem; color: var(--text-secondary); max-width: 380px; margin: 0 auto;">
-        Olá, <strong>${order.customer_name}</strong>. Guarde o número do seu pedido para consultar o andamento a qualquer momento.
+      <p style="font-size: 0.84rem; color: var(--text-secondary); max-width: 400px; margin: 0 auto;">
+        Olá, <strong>${order.customer_name}</strong>. Guarde o protocolo para rastrear a confecção e envio das suas peças.
       </p>
 
-      <div class="order-number-banner">
+      <div class="order-number-banner" style="margin: 0.85rem 0;">
         <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700;">
           Número do Seu Pedido (Protocolo de Rastreio)
         </span>
         <span class="order-number-val">${order.order_number}</span>
         <button type="button" class="btn-secondary-action" id="btn-copy-protocol" style="font-size: 0.75rem; padding: 0.3rem 0.7rem;">
-          Copiar Número
+          Copiar Protocolo
         </button>
       </div>
 
-      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-        Para agilizar o envio das suas semijoias, envie os detalhes diretamente para o nosso atendimento exclusivo no WhatsApp:
-      </p>
+      ${newAccountHtml}
+
+      <!-- Módulo de Pagamento Instantâneo via PIX (Etapa 5.1) -->
+      <div class="pix-payment-box" style="background: #FCFAF8; border: 1.5px solid #E8DFD8; border-radius: var(--radius-md); padding: 1.15rem; margin: 1.1rem 0; text-align: center;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+          <span style="font-size: 1.1rem;">💠</span>
+          <span style="font-family: var(--font-serif); font-size: 1.05rem; font-weight: 700; color: var(--text-primary); letter-spacing: 0.03em;">
+            Pague com PIX Instantâneo
+          </span>
+        </div>
+
+        <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.85rem;">
+          Valor a pagar: <strong style="font-size: 1.15rem; color: var(--brand-terracotta);">${formatMoney(order.total_amount)}</strong>
+          ${order.discount_amount > 0 ? `<div style="font-size: 0.72rem; color: #059669; font-weight: 600;">(Desconto de ${formatMoney(order.discount_amount)} aplicado pelo cupom ${order.discount_code})</div>` : ''}
+        </div>
+
+        <!-- QR Code -->
+        <div style="display: inline-block; background: #ffffff; padding: 10px; border-radius: 10px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); margin-bottom: 0.85rem;">
+          <img src="${qrCodeUrl}" alt="QR Code PIX Soléria" style="width: 170px; height: 170px; display: block;" onerror="this.style.display='none'">
+        </div>
+
+        <div style="text-align: left; margin-top: 0.4rem;">
+          <label style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.3rem;">
+            Código PIX Copia e Cola
+          </label>
+          <div style="display: flex; gap: 0.4rem;">
+            <input type="text" id="pix-copia-cola-input" readonly value="${pixPayload}" style="flex: 1; font-family: monospace; font-size: 0.72rem; background: #fff; border: 1px solid #dcd3cb; padding: 0.5rem 0.6rem; border-radius: 6px; color: #444;">
+            <button type="button" id="btn-copy-pix" class="btn-proceed-checkout" style="padding: 0.5rem 0.85rem; font-size: 0.75rem; white-space: nowrap; margin-top: 0; width: auto;">
+              Copiar PIX
+            </button>
+          </div>
+          <div id="pix-copy-feedback" style="font-size: 0.72rem; color: #059669; font-weight: 600; display: none; margin-top: 0.35rem;">
+            ✓ Código PIX copiado com sucesso! Abra o app do seu banco e escolha PIX Copia e Cola.
+          </div>
+        </div>
+
+        <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 0.75rem; line-height: 1.4;">
+          ✦ Chave PIX: <strong>(16) 99799-0729</strong> (Telefone / Carla)<br>
+          Após o pagamento, envie o comprovante no WhatsApp abaixo para priorizarmos seu envio.
+        </div>
+      </div>
 
       <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp-order">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.63c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.12-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.78 2.71 4.3 3.8 2.53 1.09 2.53.73 2.99.69.45-.05 1.47-.6 1.68-1.18.21-.59.21-1.09.15-1.19-.06-.1-.23-.17-.48-.29z"/>
         </svg>
-        Enviar Pedido no WhatsApp da Soléria
+        Enviar Pedido / Comprovante no WhatsApp
       </a>
 
-      <a href="rastreio.html?pedido=${order.order_number}" class="btn-secondary" style="width: 100%; display: block; text-align: center; text-decoration: none; font-size: 0.82rem; padding: 0.65rem;">
+      <a href="rastreio.html?pedido=${order.order_number}" class="btn-secondary" style="width: 100%; display: block; text-align: center; text-decoration: none; font-size: 0.82rem; padding: 0.65rem; margin-top: 0.6rem;">
         Acompanhar Status deste Pedido &rarr;
       </a>
     `;
@@ -756,7 +1113,30 @@
       btnCopy.addEventListener('click', () => {
         navigator.clipboard.writeText(order.order_number).then(() => {
           btnCopy.textContent = 'Copiado!';
-          setTimeout(() => { btnCopy.textContent = 'Copiar Número'; }, 2000);
+          setTimeout(() => { btnCopy.textContent = 'Copiar Protocolo'; }, 2000);
+        });
+      });
+    }
+
+    const btnCopyPix = content.querySelector('#btn-copy-pix');
+    const pixFeedback = content.querySelector('#pix-copy-feedback');
+    if (btnCopyPix) {
+      btnCopyPix.addEventListener('click', () => {
+        navigator.clipboard.writeText(pixPayload).then(() => {
+          btnCopyPix.textContent = 'Copiado!';
+          if (pixFeedback) pixFeedback.style.display = 'block';
+          setTimeout(() => {
+            btnCopyPix.textContent = 'Copiar PIX';
+          }, 3000);
+        }).catch(() => {
+          const inputPix = content.querySelector('#pix-copia-cola-input');
+          if (inputPix) {
+            inputPix.select();
+            document.execCommand('copy');
+            btnCopyPix.textContent = 'Copiado!';
+            if (pixFeedback) pixFeedback.style.display = 'block';
+            setTimeout(() => { btnCopyPix.textContent = 'Copiar PIX'; }, 3000);
+          }
         });
       });
     }
