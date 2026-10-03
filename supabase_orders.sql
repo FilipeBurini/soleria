@@ -97,6 +97,7 @@ DECLARE
   curr_stock INT;
   curr_sizes JSONB;
   curr_aro_qty INT;
+  prod_name TEXT;
 BEGIN
   -- Só processa se o pedido tiver itens e não estiver cancelado
   IF NEW.items IS NOT NULL AND NEW.status != 'cancelado' THEN
@@ -108,14 +109,20 @@ BEGIN
         item_size := item_rec->>'size';
 
         IF prod_id IS NOT NULL THEN
-          SELECT stock, sizes INTO curr_stock, curr_sizes 
+          SELECT stock, sizes, name INTO curr_stock, curr_sizes, prod_name 
           FROM products WHERE id = prod_id FOR UPDATE;
 
           IF FOUND THEN
             -- Se for anel com aro específico
             IF item_size IS NOT NULL AND curr_sizes IS NOT NULL AND curr_sizes ? item_size THEN
               curr_aro_qty := COALESCE((curr_sizes->>item_size)::INT, 0);
-              curr_sizes := jsonb_set(curr_sizes, ARRAY[item_size], to_jsonb(GREATEST(0, curr_aro_qty - item_qty)));
+
+              IF curr_aro_qty < item_qty THEN
+                RAISE EXCEPTION 'ESTOQUE_INSUFICIENTE: O produto "%" (Aro %) possui apenas % unidade(s) disponível(is).',
+                  COALESCE(prod_name, item_rec->>'name', 'Item'), item_size, curr_aro_qty;
+              END IF;
+
+              curr_sizes := jsonb_set(curr_sizes, ARRAY[item_size], to_jsonb(curr_aro_qty - item_qty));
               
               -- Recalcula estoque total somando aros
               SELECT COALESCE(SUM((val)::INT), 0) INTO curr_stock 
@@ -126,15 +133,23 @@ BEGIN
               WHERE id = prod_id;
             ELSE
               -- Peça única ou sem aro (colares, brincos, etc)
+              IF COALESCE(curr_stock, 0) < item_qty THEN
+                RAISE EXCEPTION 'ESTOQUE_INSUFICIENTE: O produto "%" possui apenas % unidade(s) disponível(is).',
+                  COALESCE(prod_name, item_rec->>'name', 'Item'), COALESCE(curr_stock, 0);
+              END IF;
+
               UPDATE products 
-              SET stock = GREATEST(0, COALESCE(curr_stock, 0) - item_qty), updated_at = now()
+              SET stock = curr_stock - item_qty, updated_at = now()
               WHERE id = prod_id;
             END IF;
           END IF;
         END IF;
       EXCEPTION WHEN OTHERS THEN
-        -- Silencia falha em item individual para não travar inserção do pedido
-        NULL;
+        IF SQLERRM LIKE '%ESTOQUE_INSUFICIENTE%' THEN
+          RAISE EXCEPTION '%', SQLERRM;
+        ELSE
+          RAISE WARNING 'Aviso ao baixar estoque do item: %', SQLERRM;
+        END IF;
       END;
     END LOOP;
   END IF;

@@ -240,6 +240,107 @@
   }
 
   /**
+   * Consulta o estoque real no Supabase em tempo real para evitar venda dupla
+   */
+  async function validateCartStockRealtime(items, supabaseClient) {
+    if (!supabaseClient || !isSupabaseConfigured() || !Array.isArray(items) || items.length === 0) {
+      return { valid: true, issues: [], stockMap: new Map() };
+    }
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const productIds = [...new Set(items.map(i => i.id).filter(id => id && uuidRegex.test(id)))];
+
+    if (productIds.length === 0) {
+      return { valid: true, issues: [], stockMap: new Map() };
+    }
+
+    try {
+      const { data: dbProducts, error } = await supabaseClient
+        .from('products')
+        .select('id, name, stock, sizes, status')
+        .in('id', productIds);
+
+      if (error || !dbProducts) {
+        console.warn('Aviso ao consultar estoque em tempo real:', error);
+        return { valid: true, issues: [], stockMap: new Map() };
+      }
+
+      const stockMap = new Map();
+      dbProducts.forEach(p => stockMap.set(p.id, p));
+
+      const issues = [];
+
+      for (const item of items) {
+        const prod = stockMap.get(item.id);
+        if (!prod) continue;
+
+        if (prod.status && prod.status !== 'ativo') {
+          issues.push({
+            item,
+            available: 0,
+            message: `A peça "${item.name}" não está mais disponível no catálogo.`
+          });
+          continue;
+        }
+
+        const maxAvailable = getProductAvailableStock(prod, item.size);
+        const reqQty = Number(item.quantity) || 1;
+
+        if (maxAvailable < reqQty) {
+          const sizeText = item.size ? ` (Aro ${item.size})` : '';
+          issues.push({
+            item,
+            available: maxAvailable,
+            message: maxAvailable <= 0
+              ? `Ops! A peça "${item.name}"${sizeText} acabou de se esgotar no estoque enquanto você finalizava a compra.`
+              : `A peça "${item.name}"${sizeText} possui apenas ${maxAvailable} unidade(s) disponível(is) no momento.`
+          });
+        }
+      }
+
+      return {
+        valid: issues.length === 0,
+        issues,
+        stockMap
+      };
+    } catch (e) {
+      console.warn('Erro ao validar estoque em tempo real:', e);
+      return { valid: true, issues: [], stockMap: new Map() };
+    }
+  }
+
+  /**
+   * Sincroniza o array local do carrinho com o estoque atualizado do banco
+   */
+  function syncCartWithRealtimeStock(stockMap) {
+    if (!stockMap || stockMap.size === 0) return false;
+    let changed = false;
+
+    for (let i = cart.length - 1; i >= 0; i--) {
+      const item = cart[i];
+      const prod = stockMap.get(item.id);
+      if (!prod) continue;
+
+      const currentAvailable = getProductAvailableStock(prod, item.size);
+      item.maxStock = currentAvailable;
+
+      if (currentAvailable <= 0 || (prod.status && prod.status !== 'ativo')) {
+        cart.splice(i, 1);
+        changed = true;
+      } else if (item.quantity > currentAvailable) {
+        item.quantity = currentAvailable;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      saveCart();
+      renderCart();
+    }
+    return changed;
+  }
+
+  /**
    * Adiciona um produto à sacola respeitando os limites de estoque
    */
   function addToCart(product, size = null, quantity = 1) {
@@ -706,7 +807,24 @@
 
       const btnGoCheckout = document.getElementById('btn-go-to-checkout');
       if (btnGoCheckout) {
-        btnGoCheckout.addEventListener('click', () => {
+        btnGoCheckout.addEventListener('click', async () => {
+          const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db) ||
+                         (window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
+          if (client && isSupabaseConfigured()) {
+            btnGoCheckout.disabled = true;
+            btnGoCheckout.innerHTML = '<span>Verificando estoque...</span>';
+            const check = await validateCartStockRealtime(cart, client);
+            if (!check.valid) {
+              btnGoCheckout.disabled = false;
+              btnGoCheckout.innerHTML = '<span>Avançar para Entrega &rarr;</span>';
+              if (check.issues[0]) {
+                showToast(check.issues[0].message, 'warning');
+              }
+              syncCartWithRealtimeStock(check.stockMap);
+              renderCart();
+              return;
+            }
+          }
           isCheckoutStep = true;
           renderCart();
         });
@@ -1117,6 +1235,27 @@
         const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db) ||
                        (window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
 
+        // 0. Validação Relâmpago de Estoque em Tempo Real (Blindagem contra concorrência/overselling)
+        if (client && isSupabaseConfigured()) {
+          btnSubmit.innerHTML = `<span>Verificando estoque...</span>`;
+          const stockCheck = await validateCartStockRealtime(itemsCopy, client);
+          if (!stockCheck.valid) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = activePaymentMethod === 'credit_card'
+              ? '<span>✦ Pagar com Cartão via PagBank</span>'
+              : '<span>✦ Finalizar Pedido via WhatsApp</span>';
+
+            const firstIssue = stockCheck.issues[0];
+            showToast(firstIssue.message, 'warning');
+
+            // Atualiza sacola removendo item esgotado ou ajustando quantidade
+            syncCartWithRealtimeStock(stockCheck.stockMap);
+            renderCart();
+            return;
+          }
+          btnSubmit.innerHTML = `<span>${activePaymentMethod === 'credit_card' ? 'Processando com PagBank...' : 'Registrando seu pedido...'}</span>`;
+        }
+
         // 1. Sincroniza ou cadastra automaticamente a cliente em customers
         let customerSyncResult = null;
         try {
@@ -1200,6 +1339,8 @@
         };
 
         let dbInsertSuccess = false;
+        let stockExhaustedMsg = null;
+
         try {
           if (client && isSupabaseConfigured()) {
             // Remove quaisquer campos internos que não são colunas do Supabase
@@ -1208,7 +1349,12 @@
             delete dbPayload.stock_reserved_in_db;
 
             let { data, error } = await client.from('orders').insert([dbPayload]).select();
-            if (error && (error.message?.includes('payment_status') || error.message?.includes('pagbank_card') || error.message?.includes('column'))) {
+            
+            // Se o gatilho SQL recusou por falta de estoque atômico
+            if (error && error.message && error.message.includes('ESTOQUE_INSUFICIENTE')) {
+              stockExhaustedMsg = error.message.split('ESTOQUE_INSUFICIENTE:')[1]?.split('\n')[0]?.trim() || 'Estoque esgotado para um dos itens selecionados.';
+              console.warn('Pedido recusado por falta de estoque no banco:', stockExhaustedMsg);
+            } else if (error && (error.message?.includes('payment_status') || error.message?.includes('pagbank_card') || error.message?.includes('column'))) {
               // Fallback de compatibilidade caso as novas colunas ainda não tenham sido criadas no Supabase
               const fallbackPayload = { ...dbPayload };
               delete fallbackPayload.payment_status;
@@ -1218,7 +1364,11 @@
               }
               const retry = await client.from('orders').insert([fallbackPayload]).select();
               if (retry.error) {
-                console.error('Erro ao gravar pedido em orders (retry):', retry.error);
+                if (retry.error.message && retry.error.message.includes('ESTOQUE_INSUFICIENTE')) {
+                  stockExhaustedMsg = retry.error.message.split('ESTOQUE_INSUFICIENTE:')[1]?.split('\n')[0]?.trim() || 'Estoque esgotado para um dos itens selecionados.';
+                } else {
+                  console.error('Erro ao gravar pedido em orders (retry):', retry.error);
+                }
               } else {
                 dbInsertSuccess = true;
                 if (retry.data && retry.data[0]) {
@@ -1243,22 +1393,39 @@
           }
         } catch (err) {
           console.error('Erro ao registrar no Supabase:', err);
-        } finally {
-          orderPayload.sync_pending = !dbInsertSuccess;
-          // Salva cópia de segurança em LocalStorage
-          saveOrderLocally(orderPayload);
-          cart = [];
-          appliedCoupon = null; // Reseta cupom para próximas compras
-          selectedPaymentMethod = 'pix'; // Reseta para próximas
-          saveCart();
-          closeCart();
-          showOrderSuccessModal(orderPayload, customerSyncResult);
-
-          // Notifica qualquer tela de catálogo aberta para atualizar estoque visual
-          try {
-            window.dispatchEvent(new CustomEvent('soleria-stock-updated', { detail: { order: orderPayload } }));
-          } catch (e) {}
         }
+
+        // Se o banco abortou a transação por falta de estoque atômico:
+        if (stockExhaustedMsg) {
+          btnSubmit.disabled = false;
+          btnSubmit.innerHTML = activePaymentMethod === 'credit_card'
+            ? '<span>✦ Pagar com Cartão via PagBank</span>'
+            : '<span>✦ Finalizar Pedido via WhatsApp</span>';
+
+          showToast(`⚠️ ${stockExhaustedMsg}`, 'warning');
+
+          if (client) {
+            const recheck = await validateCartStockRealtime(cart, client);
+            syncCartWithRealtimeStock(recheck.stockMap);
+            renderCart();
+          }
+          return;
+        }
+
+        orderPayload.sync_pending = !dbInsertSuccess;
+        // Salva cópia de segurança em LocalStorage
+        saveOrderLocally(orderPayload);
+        cart = [];
+        appliedCoupon = null; // Reseta cupom para próximas compras
+        selectedPaymentMethod = 'pix'; // Reseta para próximas
+        saveCart();
+        closeCart();
+        showOrderSuccessModal(orderPayload, customerSyncResult);
+
+        // Notifica qualquer tela de catálogo aberta para atualizar estoque visual
+        try {
+          window.dispatchEvent(new CustomEvent('soleria-stock-updated', { detail: { order: orderPayload } }));
+        } catch (e) {}
       });
     }
   }
