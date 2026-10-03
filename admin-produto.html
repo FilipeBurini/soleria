@@ -6,9 +6,9 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>Soléria — Cadastro de Produto & Insumos</title>
+  <title>Soléria — Cadastrar Novo Produto</title>
   <link rel="icon" type="image/png" href="assets/images/logo-simbolo.png">
-  <link rel="stylesheet" href="assets/css/style.css?v=3.5">
+  <link rel="stylesheet" href="assets/css/style.css?v=4.0">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -76,34 +76,52 @@
       </nav>
 
       <div class="admin-user-menu">
-        <span class="admin-user-email" id="admin-user-email">Carregando...</span>
+        <span class="admin-user-email" id="admin-user-email">Painel Soléria</span>
         <button id="btn-logout" class="btn-logout">Sair</button>
       </div>
     </div>
   </header>
 
   <!-- Conteúdo Principal -->
-  <main class="container-narrow">
+  <main class="container-narrow" style="padding-top: 2rem; padding-bottom: 4rem;">
     <div class="admin-page-header">
       <div>
-        <a href="admin.html" style="font-size: 0.8rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 0.3rem; margin-bottom: 0.5rem;">
-          &larr; Voltar para Dashboard
+        <a href="admin.html" style="font-size: 0.82rem; color: var(--brand-terracotta); display: inline-flex; align-items: center; gap: 0.35rem; margin-bottom: 0.6rem; text-decoration: none; font-weight: 500;">
+          &larr; Voltar para Dashboard de Estoque
         </a>
-        <h1 class="admin-page-title" id="page-title">Cadastrar Novo Produto</h1>
-        <p class="admin-page-subtitle">Preencha os dados da peça, imagens e relacione os insumos utilizados na produção.</p>
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+          <h1 class="admin-page-title" id="page-title" style="margin: 0;">Cadastrar Novo Produto</h1>
+          <span id="badge-sku-preview" style="background: var(--bg-surface-alt); border: 1px solid var(--border-subtle); padding: 0.25rem 0.65rem; border-radius: 4px; font-family: monospace; font-size: 0.85rem; font-weight: 700; color: var(--brand-terracotta); display: none;"></span>
+        </div>
+        <p class="admin-page-subtitle" style="margin-top: 0.35rem;">
+          Cadastre joias no catálogo, adicione fotos em alta resolução, defina preços e estoque com cálculo inteligente de insumos.
+        </p>
       </div>
     </div>
 
+    <!-- Alerta de Sessão não Autenticada (se aplicável) -->
+    <div id="auth-warning-box" style="display: none; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: var(--radius-md); padding: 1rem 1.25rem; margin-bottom: 1.5rem; align-items: center; justify-content: space-between; gap: 1rem;">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <span style="font-size: 1.4rem;">🔑</span>
+        <div>
+          <strong style="color: #92400E; font-size: 0.88rem; display: block;">Modo Operador Desconectado</strong>
+          <span style="color: #B45309; font-size: 0.8rem;">Para garantir a sincronização com o banco e evitar barreiras de permissão, efetue login no painel.</span>
+        </div>
+      </div>
+      <a href="admin.html" class="btn-primary" style="padding: 0.4rem 0.9rem; font-size: 0.78rem; text-decoration: none; white-space: nowrap;">Fazer Login</a>
+    </div>
+
+    <!-- Formulário de Cadastro -->
     <form id="product-form" class="form-card">
       
-      <!-- Seção 1: Identificação & Classificação -->
+      <!-- Seção 1: Informações Básicas -->
       <h3 class="form-section-title">1. Informações Básicas</h3>
-      <p class="form-section-desc">Identificação da peça, categoria e código de catálogo.</p>
+      <p class="form-section-desc">Identificação da joia, classificação no catálogo e código SKU único.</p>
 
       <div class="form-grid">
         <div class="form-group col-8">
           <label class="form-label" for="prod-name">Nome do Produto <span class="required">*</span></label>
-          <input type="text" id="prod-name" class="form-input" placeholder="Ex: Anel Éclat Solitaire Ouro 18k" required>
+          <input type="text" id="prod-name" class="form-input" placeholder="Ex: Anel Éclat Solitaire Ouro 18k" required autofocus>
         </div>
 
         <div class="form-group col-4">
@@ -116,7 +134,7 @@
 
         <div class="form-group col-6">
           <label class="form-label" for="prod-category">Categoria <span class="required">*</span></label>
-          <input type="text" id="prod-category" list="category-suggestions" class="form-input" placeholder="Ex: Anéis, Colares, Brincos..." required>
+          <input type="text" id="prod-category" list="category-suggestions" class="form-input" placeholder="Ex: Anéis, Brincos, Colares..." required>
           <datalist id="category-suggestions">
             <option value="Anéis">
             <option value="Brincos">
@@ -126,205 +144,154 @@
             <option value="Pingentes">
             <option value="Conjuntos">
             <option value="Braceletes">
+            <option value="Tornozeleiras">
           </datalist>
-          <span class="form-help-text">Altera o prefixo padrão do SKU automaticamente.</span>
+          <span class="form-help-text">Gera sugestão automática de prefixo para o código SKU.</span>
         </div>
 
         <div class="form-group col-6">
-          <label class="form-label" for="prod-sku">SKU Gerado <span class="required">*</span></label>
-          <div class="input-with-button">
-            <input type="text" id="prod-sku" class="form-input" placeholder="Ex: ANL-0001" required>
-            <button type="button" id="btn-generate-sku" class="btn-secondary-action" title="Gerar novo código com base na categoria">
-              Gerar SKU
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+            <label class="form-label" for="prod-sku" style="margin: 0;">Código SKU <span class="required">*</span></label>
+            <button type="button" id="btn-generate-sku" class="btn-markup-suggest" title="Gerar próximo SKU sequencial da categoria">
+              ⚡ Gerar Novo SKU
             </button>
           </div>
-          <span class="form-help-text">Formato: PREFIXO-0000 (3 primeiras letras + sequência numérica).</span>
+          <div style="position: relative;">
+            <input type="text" id="prod-sku" class="form-input" placeholder="Ex: AN-5250" required style="font-family: monospace; font-weight: 600; text-transform: uppercase;">
+            <span id="sku-status-feedback" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.75rem; font-weight: 600;"></span>
+          </div>
+          <span class="form-help-text" id="sku-help-text">Código único de identificação e pasta de fotos.</span>
         </div>
 
         <div class="form-group col-12">
           <label class="form-label" for="prod-description">Descrição Completa</label>
-          <textarea id="prod-description" rows="4" class="form-textarea" placeholder="Descreva os materiais nobres, acabamento, banho, dimensões e cuidados com a semijoia..."></textarea>
+          <textarea id="prod-description" rows="4" class="form-textarea" placeholder="Descreva os materiais nobres, acabamento, banho em ouro ou ródio, pedras preciosas, dimensões e recomendações de uso..."></textarea>
         </div>
       </div>
 
       <!-- Seção 2: Imagens do Produto -->
       <h3 class="form-section-title" style="margin-top: 2.5rem;">2. Imagens do Produto</h3>
-      <p class="form-section-desc">Faça upload direto para o Supabase Storage ou insira links diretos de imagens.</p>
+      <p class="form-section-desc">Faça upload de fotos para o Supabase Storage ou insira links diretos de imagens.</p>
 
       <div class="form-grid">
         <div class="form-group col-12">
           <label class="form-label" for="image-file-input">Upload de Fotos (Supabase Storage)</label>
           <label class="image-upload-zone" id="upload-zone" for="image-file-input" style="display: block; cursor: pointer;">
             <input type="file" id="image-file-input" accept="image/png,image/jpeg,image/webp,image/jpg" multiple style="position: absolute; opacity: 0; width: 0.1px; height: 0.1px; overflow: hidden; z-index: -1;">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 0.5rem; color: var(--gold-primary);">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 0.5rem; color: var(--gold-primary);">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
               <circle cx="8.5" cy="8.5" r="1.5"></circle>
               <polyline points="21 15 16 10 5 21"></polyline>
             </svg>
-            <p style="font-size: 0.86rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.2rem;">
-              Clique para escolher fotos ou arraste imagens aqui
-            </p>
-            <span style="font-size: 0.74rem; color: var(--text-muted); display: block; margin-bottom: 0.6rem;">
-              Suporta JPG, PNG e WEBP (Até 6 fotos no total)
-            </span>
-            <span class="btn-secondary-action" style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.76rem; padding: 0.35rem 0.85rem; pointer-events: none; border-color: var(--gold-primary); color: var(--brand-terracotta);">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
-              Selecionar do Dispositivo
-            </span>
+            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.2rem; font-size: 0.95rem;">
+              Clique aqui para selecionar fotos ou arraste imagens
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">
+              Formatos JPG, PNG ou WEBP (até 6 fotos). A primeira foto será a capa no catálogo.
+            </div>
           </label>
         </div>
 
+        <!-- Grade de Miniaturas / Pré-visualizações -->
         <div class="form-group col-12">
-          <label class="form-label">Ou Insira os Links Diretos das Imagens (Até 6 Fotos)</label>
-          <span class="form-help-text" style="display: block; margin-bottom: 0.75rem;">
-            A <strong>Foto 1</strong> é a foto de capa oficial no catálogo. Campos que ficarem em branco serão <strong>ignorados automaticamente</strong>.
-          </span>
-          <div class="photo-inputs-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.75rem;">
-            <div class="photo-input-item">
-              <label class="form-label" for="prod-img-1" style="font-size: 0.7rem; color: var(--gold-primary);">★ Foto 1 (Capa Principal)</label>
-              <input type="text" id="prod-img-1" class="form-input prod-img-slot" placeholder="https://exemplo.com/foto1.jpg ou assets/images/...">
-            </div>
-            <div class="photo-input-item">
-              <label class="form-label" for="prod-img-2" style="font-size: 0.7rem;">Foto 2</label>
-              <input type="text" id="prod-img-2" class="form-input prod-img-slot" placeholder="https://exemplo.com/foto2.jpg ou assets/images/...">
-            </div>
-            <div class="photo-input-item">
-              <label class="form-label" for="prod-img-3" style="font-size: 0.7rem;">Foto 3</label>
-              <input type="text" id="prod-img-3" class="form-input prod-img-slot" placeholder="https://exemplo.com/foto3.jpg ou assets/images/...">
-            </div>
-            <div class="photo-input-item">
-              <label class="form-label" for="prod-img-4" style="font-size: 0.7rem;">Foto 4</label>
-              <input type="text" id="prod-img-4" class="form-input prod-img-slot" placeholder="https://exemplo.com/foto4.jpg ou assets/images/...">
-            </div>
-            <div class="photo-input-item">
-              <label class="form-label" for="prod-img-5" style="font-size: 0.7rem;">Foto 5</label>
-              <input type="text" id="prod-img-5" class="form-input prod-img-slot" placeholder="https://exemplo.com/foto5.jpg ou assets/images/...">
-            </div>
-            <div class="photo-input-item">
-              <label class="form-label" for="prod-img-6" style="font-size: 0.7rem;">Foto 6</label>
-              <input type="text" id="prod-img-6" class="form-input prod-img-slot" placeholder="https://exemplo.com/foto6.jpg ou assets/images/...">
-            </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+            <label class="form-label" style="margin: 0;">Galeria de Fotos da Peça (<span id="img-count-badge">0</span>/6 fotos)</label>
+            <button type="button" id="btn-toggle-slots" style="background: none; border: none; font-size: 0.78rem; color: var(--brand-terracotta); cursor: pointer; text-decoration: underline; font-weight: 600;">
+              Alternar Links Manuais de URL
+            </button>
+          </div>
+          <div class="image-previews-grid" id="image-previews">
+            <!-- Gerado dinamicamente -->
           </div>
         </div>
 
-        <!-- Miniaturas de Preview -->
-        <div class="form-group col-12">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <label class="form-label">Preview das Fotos (<span id="img-count-badge">0</span> de 6)</label>
-            <span style="font-size: 0.72rem; color: var(--text-muted);">Clique no × da miniatura para remover a foto</span>
+        <!-- Slots de URL Manual (ocultos por padrão, abertos ao clicar) -->
+        <div id="manual-url-slots" style="display: none; width: 100%; margin-top: 0.5rem;">
+          <div style="background: #FAF8F5; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 0.5rem;">
+            <span style="font-size: 0.76rem; color: var(--text-secondary); display: block; margin-bottom: 0.75rem;">
+              Cole links diretos de imagens hospedadas (URL https://... ou assets/images/...). O primeiro campo é a capa.
+            </span>
+            <div class="form-grid">
+              <div class="form-group col-4">
+                <label class="form-label" for="prod-img-1" style="font-size: 0.75rem; color: var(--brand-terracotta);">★ Foto 1 (Capa)</label>
+                <input type="text" id="prod-img-1" class="form-input photo-slot-input" placeholder="https://exemplo.com/capa.jpg">
+              </div>
+              <div class="form-group col-4">
+                <label class="form-label" for="prod-img-2" style="font-size: 0.75rem;">Foto 2</label>
+                <input type="text" id="prod-img-2" class="form-input photo-slot-input" placeholder="https://exemplo.com/foto2.jpg">
+              </div>
+              <div class="form-group col-4">
+                <label class="form-label" for="prod-img-3" style="font-size: 0.75rem;">Foto 3</label>
+                <input type="text" id="prod-img-3" class="form-input photo-slot-input" placeholder="https://exemplo.com/foto3.jpg">
+              </div>
+              <div class="form-group col-4">
+                <label class="form-label" for="prod-img-4" style="font-size: 0.75rem;">Foto 4</label>
+                <input type="text" id="prod-img-4" class="form-input photo-slot-input" placeholder="https://exemplo.com/foto4.jpg">
+              </div>
+              <div class="form-group col-4">
+                <label class="form-label" for="prod-img-5" style="font-size: 0.75rem;">Foto 5</label>
+                <input type="text" id="prod-img-5" class="form-input photo-slot-input" placeholder="https://exemplo.com/foto5.jpg">
+              </div>
+              <div class="form-group col-4">
+                <label class="form-label" for="prod-img-6" style="font-size: 0.75rem;">Foto 6</label>
+                <input type="text" id="prod-img-6" class="form-input photo-slot-input" placeholder="https://exemplo.com/foto6.jpg">
+              </div>
+            </div>
           </div>
-          <div class="image-preview-grid" id="image-previews"></div>
         </div>
       </div>
 
-      <!-- Seção 3: Precificação Direta & Estoque -->
-      <h3 class="form-section-title" style="margin-top: 2.5rem;">3. Valores Diretos & Estoque</h3>
-      <p class="form-section-desc">Custo do produto bruto, simulação automática de 300% de markup e controle de estoque por aro.</p>
+      <!-- Seção 3: Precificação & Grade de Estoque -->
+      <h3 class="form-section-title" style="margin-top: 2.5rem;">3. Precificação & Grade de Estoque</h3>
+      <p class="form-section-desc">Custo de produção, simulação automática de markup de 300% e estoque por aro.</p>
 
-      <div class="pricing-dashboard-container" style="background: #FFFFFF; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-sm);">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.25rem; align-items: stretch;">
-          
-          <!-- Card 1: Custo Direto -->
-          <div class="pricing-card-col" style="background: #FAF8F5; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 1rem; display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                <label class="form-label" for="prod-cost" style="margin-bottom: 0; font-size: 0.78rem; font-weight: 700;">
-                  Custo Direto <span class="required">*</span>
-                </label>
-                <span style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">Bruto</span>
-              </div>
-              <div style="display: flex; align-items: center; background: #FFFFFF; border: 1px solid var(--border-medium); border-radius: var(--radius-sm); padding: 0 0.65rem;">
-                <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-right: 0.35rem;">R$</span>
-                <input type="number" step="0.01" min="0" id="prod-cost" class="form-input" placeholder="0.00" value="" required style="border: none; padding-left: 0; font-weight: 600; font-size: 1rem;">
-              </div>
-            </div>
-            <span class="form-help-text" style="margin-top: 0.4rem; font-size: 0.72rem; color: var(--text-muted);">
-              Custo base da peça / fabricação
-            </span>
-          </div>
-
-          <!-- Card 2: Preço Venda "Por" (com 300% Markup Simulado) -->
-          <div class="pricing-card-col" style="background: #FFFDF9; border: 1.5px solid var(--gold-primary); border-radius: var(--radius-sm); padding: 1rem; display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                <label class="form-label" for="prod-price" style="margin-bottom: 0; font-size: 0.78rem; font-weight: 700; color: var(--brand-terracotta);">
-                  Preço Venda "Por" <span class="required">*</span>
-                </label>
-                <span id="badge-markup-300" style="background: rgba(197, 164, 101, 0.15); color: var(--brand-terracotta); font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px;">
-                  300% Simulado
-                </span>
-              </div>
-              <div style="display: flex; align-items: center; background: #FFFFFF; border: 1px solid var(--gold-primary); border-radius: var(--radius-sm); padding: 0 0.65rem;">
-                <span style="font-size: 0.82rem; font-weight: 700; color: var(--brand-terracotta); margin-right: 0.35rem;">R$</span>
-                <input type="number" step="0.01" min="0" id="prod-price" class="form-input" placeholder="0.00" value="" required style="border: none; padding-left: 0; font-weight: 700; font-size: 1.05rem; color: var(--brand-terracotta);">
-              </div>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.4rem;">
-              <span class="form-help-text" style="font-size: 0.72rem; margin-bottom: 0;">Valor cobrado do cliente</span>
-              <button type="button" id="btn-recalc-300" style="background: rgba(197, 164, 101, 0.12); border: 1px solid var(--gold-primary); color: var(--brand-terracotta); font-size: 0.72rem; font-weight: 700; cursor: pointer; padding: 2px 8px; border-radius: 4px; transition: all 0.2s ease;">
-                ⚡ Recalcular 300%
-              </button>
-            </div>
-          </div>
-
-          <!-- Card 3: Preço "De" Riscado -->
-          <div class="pricing-card-col" style="background: #FAF8F5; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 1rem; display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                <label class="form-label" for="prod-original-price" style="margin-bottom: 0; font-size: 0.78rem; font-weight: 700;">
-                  Preço "De" Riscado
-                </label>
-                <span style="font-size: 0.65rem; color: var(--text-muted); background: #EDE9E3; padding: 2px 5px; border-radius: 4px;">
-                  +40% Âncora
-                </span>
-              </div>
-              <div style="display: flex; align-items: center; background: #FFFFFF; border: 1px solid var(--border-medium); border-radius: var(--radius-sm); padding: 0 0.65rem;">
-                <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-right: 0.35rem;">R$</span>
-                <input type="number" step="0.01" min="0" id="prod-original-price" class="form-input" placeholder="Auto (+40%)" style="border: none; padding-left: 0; font-weight: 500; font-size: 0.95rem;">
-              </div>
-            </div>
-            <span class="form-help-text" style="margin-top: 0.4rem; font-size: 0.72rem; color: var(--text-muted);">
-              Vitrine com desconto psicológico
-            </span>
-          </div>
-
-          <!-- Card 4: Estoque Total -->
-          <div class="pricing-card-col" style="background: #FAF8F5; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 1rem; display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                <label class="form-label" for="prod-stock" style="margin-bottom: 0; font-size: 0.78rem; font-weight: 700;">
-                  Estoque Total <span class="required">*</span>
-                </label>
-                <span style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase;">Unidades</span>
-              </div>
-              <div style="display: flex; align-items: center; background: #FFFFFF; border: 1px solid var(--border-medium); border-radius: var(--radius-sm); padding: 0 0.65rem;">
-                <input type="number" step="1" min="0" id="prod-stock" class="form-input" placeholder="0" value="1" required style="border: none; padding-left: 0; font-weight: 700; font-size: 1rem; text-align: center;">
-                <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">un</span>
-              </div>
-            </div>
-            <span class="form-help-text" id="stock-help-text" style="margin-top: 0.4rem; font-size: 0.72rem; color: var(--text-muted);">
-              Soma total ou contagem por aro
-            </span>
-          </div>
-
+      <div class="form-grid">
+        <div class="form-group col-3">
+          <label class="form-label" for="prod-cost">Custo Direto (R$) <span class="required">*</span></label>
+          <input type="number" step="0.01" min="0" id="prod-cost" class="form-input" placeholder="0,00" required>
+          <span class="form-help-text">Custo base da peça / fabricação semijoia.</span>
         </div>
 
-        <!-- Grade Especial de Tamanhos para Anéis (Aro 10 ao 30) -->
-        <div id="ring-sizes-wrapper" style="display: none; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-subtle);">
-          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.4rem;">
-            <span class="modal-sizes-title" style="margin-bottom: 0; font-size: 0.85rem; font-weight: 700; color: var(--text-primary);">
-              💍 Grade de Tamanhos em Estoque (Aro 10 ao 30)
-            </span>
-            <span style="font-size: 0.75rem; color: var(--text-secondary);">
-              Tamanhos com <strong>0 ou vazios</strong> não aparecem para os clientes. O estoque total acima é calculado automaticamente.
-            </span>
+        <div class="form-group col-3">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+            <label class="form-label" for="prod-price" style="margin: 0;">Preço de Venda (R$) <span class="required">*</span></label>
+            <button type="button" id="btn-recalc-300" class="btn-markup-suggest" title="Calcular 300% de markup sobre o custo total">
+              300% Markup
+            </button>
+          </div>
+          <input type="number" step="0.01" min="0" id="prod-price" class="form-input" placeholder="0,00" required style="font-weight: 700; color: var(--brand-terracotta);">
+          <span class="form-help-text">Preço final cobrado do cliente no catálogo.</span>
+        </div>
+
+        <div class="form-group col-3">
+          <label class="form-label" for="prod-original-price">Preço Original / De (R$)</label>
+          <input type="number" step="0.01" min="0" id="prod-original-price" class="form-input" placeholder="Auto (+40%)">
+          <span class="form-help-text">Exibe preço riscado de âncora ("De R$ X por R$ Y").</span>
+        </div>
+
+        <div class="form-group col-3">
+          <label class="form-label" for="prod-stock">Estoque Total <span class="required">*</span></label>
+          <input type="number" min="0" step="1" id="prod-stock" class="form-input" placeholder="0" value="1" required style="font-weight: 700;">
+          <span class="form-help-text" id="stock-help-text">Unidades totais disponíveis</span>
+        </div>
+
+        <!-- Grade Especial de Aros 10 ao 30 (Ativa automaticamente para Anéis) -->
+        <div class="form-group col-12" id="ring-sizes-wrapper" style="display: none; background: #FAF8F5; border: 1.5px dashed var(--gold-primary); border-radius: var(--radius-sm); padding: 1.25rem 1rem; margin-top: 0.5rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+              <span style="font-weight: 600; font-size: 0.88rem; color: var(--brand-terracotta); display: block;">
+                💍 Grade de Tamanhos por Aro (Anéis - Aro 10 ao 30)
+              </span>
+              <span style="font-size: 0.76rem; color: var(--text-secondary);">
+                Informe a quantidade de cada aro. O estoque total acima será recalculado e somado automaticamente.
+              </span>
+            </div>
+            <button type="button" id="btn-clear-sizes" style="background: none; border: none; font-size: 0.72rem; color: var(--text-muted); cursor: pointer; text-decoration: underline;">
+              Limpar grade
+            </button>
           </div>
 
-          <div class="ring-sizes-grid" id="ring-sizes-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 0.5rem; margin-top: 0.75rem;">
+          <div class="ring-sizes-grid">
             <div class="ring-size-item"><span class="ring-size-label">Aro 10</span><input type="number" min="0" step="1" class="ring-size-input" data-size="10" placeholder="0"></div>
             <div class="ring-size-item"><span class="ring-size-label">Aro 11</span><input type="number" min="0" step="1" class="ring-size-input" data-size="11" placeholder="0"></div>
             <div class="ring-size-item"><span class="ring-size-label">Aro 12</span><input type="number" min="0" step="1" class="ring-size-input" data-size="12" placeholder="0"></div>
@@ -348,12 +315,11 @@
             <div class="ring-size-item"><span class="ring-size-label">Aro 30</span><input type="number" min="0" step="1" class="ring-size-input" data-size="30" placeholder="0"></div>
           </div>
         </div>
-
       </div>
 
-      <!-- Seção 4: Vínculo com Insumos -->
+      <!-- Seção 4: Insumos Vinculados -->
       <h3 class="form-section-title" style="margin-top: 2.5rem;">4. Insumos Vinculados (Matéria-Prima / Embalagens)</h3>
-      <p class="form-section-desc">Adicione os insumos consumidos por esta peça (banho, zircônias, caixas de veludo, sacolas de seda).</p>
+      <p class="form-section-desc">Relacione os insumos consumidos por esta peça (banho, zircônias, caixas e sacolas).</p>
 
       <div class="supplies-linker-box">
         <div class="supplies-add-bar">
@@ -422,40 +388,18 @@
       </div>
 
       <!-- Barra de Ações -->
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-subtle);">
-        <a href="admin.html" class="btn-secondary">Cancelar</a>
-        <button type="submit" id="btn-save-product" class="btn-primary">
-          Salvar Produto & Insumos
-        </button>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-subtle); flex-wrap: wrap; gap: 1rem;">
+        <a href="admin.html" class="btn-secondary">&larr; Cancelar</a>
+        
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+          <button type="submit" id="btn-save-product" class="btn-primary" style="padding: 0.8rem 2rem; font-size: 0.98rem; font-weight: 600;">
+            Salvar e Cadastrar Produto &rarr;
+          </button>
+        </div>
       </div>
 
     </form>
   </main>
-
-  <!-- Modal de Confirmação do SKU antes de Salvar -->
-  <div class="modal-overlay" id="sku-confirm-modal" role="dialog" aria-hidden="true">
-    <div class="modal-window" style="max-width: 480px; text-align: center; padding: 2rem 1.75rem;">
-      <div style="font-size: 2.2rem; margin-bottom: 0.5rem; color: var(--gold-primary);">✦</div>
-      <h3 style="font-family: var(--font-serif); font-size: 1.5rem; color: var(--text-primary); margin-bottom: 0.5rem;">
-        Confirmar Código SKU
-      </h3>
-      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.25rem; line-height: 1.5;">
-        O produto será salvo e as fotos serão organizadas na pasta do banco com o seguinte código:
-      </p>
-      <div style="background: #FAF8F5; border: 1.5px dashed var(--gold-primary); border-radius: var(--radius-sm); padding: 0.85rem; margin-bottom: 1.5rem;">
-        <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.2rem;">Código SKU do Produto</span>
-        <span id="confirm-sku-display" style="font-family: monospace; font-size: 1.4rem; font-weight: 700; color: var(--brand-terracotta);"></span>
-      </div>
-      <div style="display: flex; gap: 0.75rem; justify-content: center;">
-        <button type="button" id="btn-cancel-sku-confirm" class="btn-secondary" style="padding: 0.55rem 1.1rem;">
-          Revisar SKU
-        </button>
-        <button type="button" id="btn-proceed-sku-confirm" class="btn-primary" style="padding: 0.55rem 1.25rem;">
-          Confirmar e Salvar &rarr;
-        </button>
-      </div>
-    </div>
-  </div>
 
   <!-- Modal com Barra de Progresso do Upload de Fotos -->
   <div class="modal-overlay" id="upload-progress-modal" role="dialog" aria-hidden="true">
@@ -474,8 +418,31 @@
     </div>
   </div>
 
+  <!-- Modal de Sucesso após Cadastro -->
+  <div class="modal-overlay" id="success-modal" role="dialog" aria-hidden="true">
+    <div class="modal-window" style="max-width: 480px; text-align: center; padding: 2.5rem 2rem;">
+      <div style="width: 58px; height: 58px; border-radius: 50%; background: rgba(16, 185, 129, 0.12); color: #10B981; display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 1rem;">
+        ✓
+      </div>
+      <h3 style="font-family: var(--font-serif); font-size: 1.5rem; color: var(--text-primary); margin-bottom: 0.5rem;">
+        Produto Cadastrado com Sucesso!
+      </h3>
+      <p id="success-modal-desc" style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.5;">
+        A joia já está devidamente registrada no acervo e sincronizada com o banco de dados.
+      </p>
+      <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+        <button type="button" id="btn-modal-add-another" class="btn-secondary" style="padding: 0.6rem 1.2rem;">
+          + Cadastrar Outro
+        </button>
+        <a href="admin.html" class="btn-primary" style="padding: 0.6rem 1.4rem; text-decoration: none;">
+          Ir para Estoque &rarr;
+        </a>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
-  <script src="assets/js/supabase.js?v=4.0"></script>
-  <script src="assets/js/admin-produto.js?v=4.0"></script>
+  <script src="assets/js/supabase.js?v=4.2"></script>
+  <script src="assets/js/admin-produto.js?v=5.0"></script>
 </body>
 </html>

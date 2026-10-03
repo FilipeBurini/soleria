@@ -4244,6 +4244,211 @@ a {
   color: #059669;
 }
 
+/* ==========================================================================
+   Soléria Backoffice: Cadastros de Produtos & Grade de Aros & Imagens
+   ========================================================================== */
+.btn-markup-suggest {
+  background: rgba(197, 160, 89, 0.12);
+  border: 1px solid var(--gold-primary);
+  color: var(--brand-terracotta);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-markup-suggest:hover {
+  background: var(--gold-primary);
+  color: #181614;
+}
+
+.image-upload-zone {
+  border: 2px dashed var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 2.2rem 1.5rem;
+  text-align: center;
+  background: #FAF8F5;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.image-upload-zone:hover {
+  border-color: var(--gold-primary);
+  background: rgba(197, 160, 89, 0.05);
+}
+
+.image-previews-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+  gap: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.image-preview-card {
+  position: relative;
+  background: #FFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.image-preview-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #F3EFEA;
+}
+
+.image-preview-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-preview-badge {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.image-preview-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #FFF;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.image-preview-remove:hover {
+  background: #DC2626;
+}
+
+.ring-sizes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+}
+
+.ring-size-item {
+  background: #FFFFFF;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.ring-size-item.has-stock {
+  border-color: var(--gold-primary);
+  background: #FFFDF9;
+  box-shadow: 0 0 0 1px var(--gold-primary);
+}
+
+.ring-size-label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 0.2rem;
+  text-transform: uppercase;
+}
+
+.ring-size-input {
+  width: 100%;
+  text-align: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--brand-terracotta);
+  padding: 0.2rem 0;
+}
+.ring-size-input:focus {
+  outline: none;
+  border-color: var(--gold-primary);
+}
+
+.supplies-linker-box {
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.supplies-add-bar {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: 0.85rem;
+  align-items: flex-end;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .supplies-add-bar {
+    grid-template-columns: 1fr;
+  }
+}
+
+.calc-summary-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  background: #FAF8F5;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.calc-summary-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.calc-summary-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.calc-summary-val {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.calc-summary-val.highlight-gold {
+  color: var(--brand-terracotta);
+}
+
+.calc-summary-val.highlight-green {
+  color: #059669;
+}
+
+
 
 
 
