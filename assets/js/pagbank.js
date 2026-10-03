@@ -17,11 +17,8 @@
     // Alternar entre 'sandbox' e 'production'
     environment: 'sandbox',
 
-    // Chave Pública para criptografia do cartão no cliente (obtida via API PagBank)
+    // Chave Pública para criptografia do cartão no cliente (100% segura para ficar pública)
     publicKey: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr+ZqgD892U9/HXsa7XqBZUayPquAfh9xx4iwUbTSUAvTlmiXFQNTp0Bvt/5vK2FhMj39qSv1zi2OuBjvW38q1E374nzx6NNBL5JosV0+SDINTlCG0cmigHuBOyWzYmjgca+mtQu4WczCaApNaSuVqgb8u7Bd9GCOL4YJotvV5+81frlSwQXralhwRzGhj/A57CGPgGKiuPT+AOGmykIGEZsSD9RKkyoKIoc0OS8CPIzdBOtTQCIwrLn2FxI83Clcg55W8gkFSOS6rWNbG5qFZWMll6yl02HtunalHmUlRUL66YeGXdMDC2PuRcmZbGO5a/2tbVppW6mfSWG3NPRpgwIDAQAB',
-
-    // Token de Autenticação (usado na Edge Function / Servidor seguro)
-    token: 'f9c937b3-7fc9-4f96-99d9-86746a4898288193ffbb4c12b3640bdc1b30178dda4d8a2d-5308-4b6b-be92-7d470297fe03',
 
     // URLs dos Ambientes
     apiUrls: {
