@@ -1196,17 +1196,21 @@
           pagbank_card: pagbankDetails,
           customer_notes: notesInput?.value.trim() || '',
           stock_deducted: false, // Atualizado para true automaticamente pela trigger do PostgreSQL ou confirmação admin
-          stock_reserved_in_db: false,
           created_at: new Date().toISOString()
         };
 
         let dbInsertSuccess = false;
         try {
           if (client && isSupabaseConfigured()) {
-            let { data, error } = await client.from('orders').insert([orderPayload]).select();
+            // Remove quaisquer campos internos que não são colunas do Supabase
+            const dbPayload = { ...orderPayload };
+            delete dbPayload.sync_pending;
+            delete dbPayload.stock_reserved_in_db;
+
+            let { data, error } = await client.from('orders').insert([dbPayload]).select();
             if (error && (error.message?.includes('payment_status') || error.message?.includes('pagbank_card') || error.message?.includes('column'))) {
               // Fallback de compatibilidade caso as novas colunas ainda não tenham sido criadas no Supabase
-              const fallbackPayload = { ...orderPayload };
+              const fallbackPayload = { ...dbPayload };
               delete fallbackPayload.payment_status;
               delete fallbackPayload.pagbank_card;
               if (orderPayload.pagbank_card) {

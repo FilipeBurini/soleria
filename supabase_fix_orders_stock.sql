@@ -11,6 +11,7 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS pagbank_card JSONB DEFAULT '{}'::jso
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS stock_deducted BOOLEAN DEFAULT false;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS stock_restored BOOLEAN DEFAULT false;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_cpf TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS stock_reserved_in_db BOOLEAN DEFAULT false;
 
 -- 2. Habilita RLS na tabela orders
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;

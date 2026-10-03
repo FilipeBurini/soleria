@@ -72,6 +72,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     return item.sku && item.sku !== 'N/A' ? item.sku : 'SEM-SKU';
   }
 
+  /**
+   * Remove campos transitórios e mantém estritamente as colunas existentes no Supabase
+   */
+  function cleanDbOrderPayload(order) {
+    if (!order || typeof order !== 'object') return {};
+    const validColumns = [
+      'order_number',
+      'customer_name',
+      'customer_phone',
+      'customer_email',
+      'customer_cpf',
+      'delivery_type',
+      'customer_address',
+      'items',
+      'subtotal',
+      'discount_amount',
+      'discount_code',
+      'total_amount',
+      'status',
+      'payment_method',
+      'payment_status',
+      'pagbank_card',
+      'tracking_code',
+      'customer_notes',
+      'admin_notes',
+      'stock_deducted',
+      'stock_restored',
+      'created_at',
+      'updated_at'
+    ];
+    const cleaned = {};
+    validColumns.forEach(col => {
+      if (order[col] !== undefined) {
+        cleaned[col] = order[col];
+      }
+    });
+    return cleaned;
+  }
+
   // ==========================================================================
   // Carregamento de Pedidos (Supabase + Fallback Local)
   // ==========================================================================
@@ -657,8 +696,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
           if (!client || !isSupabaseConfigured()) throw new Error('Supabase não configurado');
 
-          const payloadToInsert = { ...order };
-          delete payloadToInsert.sync_pending;
+          const payloadToInsert = cleanDbOrderPayload(order);
 
           const { data, error } = await client.from('orders').insert([payloadToInsert]).select();
           if (error) throw error;
@@ -719,8 +757,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (updErr) {
               console.warn('Tentando criar registro do pedido no banco de dados...', updErr);
-              const payload = { ...order };
-              delete payload.sync_pending;
+              const payload = cleanDbOrderPayload(order);
               const { error: insErr } = await client.from('orders').insert([payload]);
               if (!insErr) order.sync_pending = false;
             } else {
