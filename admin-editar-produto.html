@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Soléria — Editar Produto & Insumos</title>
+  <link rel="icon" type="image/png" href="assets/images/logo-simbolo.png">
+  <link rel="stylesheet" href="assets/css/style.css?v=3.5">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- Top Header Admin -->
+  <header class="admin-header">
+    <div class="container admin-header-content">
+      <div class="admin-header-brand">
+        <a href="admin.html" class="admin-brand-link" title="Painel Soléria">
+          <img src="assets/images/logo-simbolo.png" alt="Soléria" class="admin-logo-icon">
+          <span class="brand-title" style="color: #FAF8F5; font-size: 1.45rem;">Soléria</span>
+        </a>
+        <span class="admin-badge-label">Backoffice</span>
+      </div>
+
+      <nav class="admin-nav">
+        <a href="admin.html" class="admin-nav-item active">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          Estoque
+        </a>
+        <a href="admin-pedidos.html" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          Pedidos
+        </a>
+        <a href="admin-clientes.html" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          Clientes
+        </a>
+        <a href="admin-produto.html" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="16"></line>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+          </svg>
+          Novo Produto
+        </a>
+        <a href="admin-insumos.html" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          </svg>
+          Insumos
+        </a>
+        <a href="index.html" target="_blank" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          Ver Catálogo
+        </a>
+      </nav>
+
+      <div class="admin-user-menu">
+        <span class="admin-user-email" id="admin-user-email">Painel Soléria</span>
+        <button id="btn-logout" class="btn-logout">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main class="container-narrow" style="padding-top: 2rem; padding-bottom: 4rem;">
+    <div class="admin-page-header">
+      <div>
+        <a href="admin.html" style="font-size: 0.82rem; color: var(--brand-terracotta); display: inline-flex; align-items: center; gap: 0.35rem; margin-bottom: 0.6rem; text-decoration: none; font-weight: 500;">
+          &larr; Voltar para Dashboard de Estoque
+        </a>
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+          <h1 class="admin-page-title" id="page-title" style="margin: 0;">Editar Produto</h1>
+          <span id="badge-prod-sku" style="background: var(--bg-surface-alt); border: 1px solid var(--border-subtle); padding: 0.25rem 0.65rem; border-radius: 4px; font-family: monospace; font-size: 0.85rem; font-weight: 700; color: var(--brand-terracotta); display: none;"></span>
+        </div>
+        <p class="admin-page-subtitle" id="page-subtitle" style="margin-top: 0.35rem;">
+          Atualize dados cadastrais, fotos, grade de tamanhos e composição de custos da peça.
+        </p>
+      </div>
+    </div>
+
+    <!-- Estado de Carregamento Inicial -->
+    <div id="loading-state" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 3.5rem 2rem; text-align: center; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
+      <div style="display: inline-block; width: 36px; height: 36px; border: 3px solid rgba(197, 160, 89, 0.2); border-top-color: var(--gold-primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 1rem;"></div>
+      <h3 style="font-family: var(--font-serif); font-size: 1.25rem; color: var(--text-primary); margin-bottom: 0.35rem;">Carregando dados da peça...</h3>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">Buscando cadastro no acervo do Supabase</p>
+    </div>
+
+    <!-- Estado de Erro caso ID não exista -->
+    <div id="error-state" style="display: none; background: #FFF5F5; border: 1px solid #FED7D7; border-radius: var(--radius-md); padding: 2.5rem 2rem; text-align: center; margin-bottom: 2rem;">
+      <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚠️</div>
+      <h3 style="font-family: var(--font-serif); font-size: 1.3rem; color: #C53030; margin-bottom: 0.5rem;" id="error-title">Produto não encontrado</h3>
+      <p style="font-size: 0.88rem; color: #4A5568; max-width: 480px; margin: 0 auto 1.25rem;" id="error-desc">O identificador informado não corresponde a nenhum item cadastrado ou a conexão com o banco falhou.</p>
+      <a href="admin.html" class="btn-primary" style="display: inline-block;">&larr; Retornar ao Estoque</a>
+    </div>
+
+    <!-- Formulário de Edição -->
+    <form id="product-form" class="form-card" style="display: none;">
+      <input type="hidden" id="prod-id" value="">
+
+      <!-- Seção 1: Identificação & Classificação -->
+      <h3 class="form-section-title">1. Informações Básicas</h3>
+      <p class="form-section-desc">Identificação da peça, categoria e código de catálogo.</p>
+
+      <div class="form-grid">
+        <div class="form-group col-8">
+          <label class="form-label" for="prod-name">Nome do Produto <span class="required">*</span></label>
+          <input type="text" id="prod-name" class="form-input" placeholder="Ex: Anel Éclat Solitaire Ouro 18k" required>
+        </div>
+
+        <div class="form-group col-4">
+          <label class="form-label" for="prod-status">Status no Catálogo <span class="required">*</span></label>
+          <select id="prod-status" class="form-select" required>
+            <option value="ativo">Ativo (Visível ao público)</option>
+            <option value="inativo">Inativo (Oculto no catálogo)</option>
+          </select>
+        </div>
+
+        <div class="form-group col-6">
+          <label class="form-label" for="prod-category">Categoria <span class="required">*</span></label>
+          <input type="text" id="prod-category" list="category-suggestions" class="form-input" placeholder="Ex: Anéis, Colares, Brincos..." required>
+          <datalist id="category-suggestions">
+            <option value="Anéis">
+            <option value="Brincos">
+            <option value="Colares">
+            <option value="Pulseiras">
+            <option value="Gargantilhas">
+            <option value="Pingentes">
+            <option value="Conjuntos">
+            <option value="Braceletes">
+          </datalist>
+        </div>
+
+        <div class="form-group col-6">
+          <label class="form-label" for="prod-sku">Código SKU <span class="required">*</span></label>
+          <input type="text" id="prod-sku" class="form-input" placeholder="Ex: ANL-0001" required style="font-family: monospace; font-weight: 600; text-transform: uppercase;">
+          <span class="form-help-text">Código único de identificação e pasta de fotos.</span>
+        </div>
+
+        <div class="form-group col-12">
+          <label class="form-label" for="prod-description">Descrição Completa</label>
+          <textarea id="prod-description" rows="4" class="form-textarea" placeholder="Descreva os materiais nobres, acabamento, banho, dimensões e cuidados com a semijoia..."></textarea>
+        </div>
+      </div>
+
+      <!-- Seção 2: Imagens do Produto -->
+      <h3 class="form-section-title" style="margin-top: 2.5rem;">2. Imagens do Produto</h3>
+      <p class="form-section-desc">Faça upload direto para o Supabase Storage ou gerencie os links das fotos da peça.</p>
+
+      <div class="form-grid">
+        <div class="form-group col-12">
+          <label class="form-label" for="image-file-input">Upload de Fotos (Supabase Storage)</label>
+          <label class="image-upload-zone" id="upload-zone" for="image-file-input" style="display: block; cursor: pointer;">
+            <input type="file" id="image-file-input" accept="image/png,image/jpeg,image/webp,image/jpg" multiple style="position: absolute; opacity: 0; width: 0.1px; height: 0.1px; overflow: hidden; z-index: -1;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 0.5rem; color: var(--gold-primary);">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.2rem;">
+              Clique aqui para selecionar novas fotos ou arraste arquivos
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">
+              PNG, JPG ou WEBP (até 6 fotos por produto). O envio é processado ao salvar.
+            </div>
+          </label>
+        </div>
+
+        <!-- Grade de Miniaturas / Pré-visualizações -->
+        <div class="form-group col-12">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+            <label class="form-label" style="margin: 0;">Galeria de Fotos da Peça (<span id="img-count-badge">0</span>/6)</label>
+            <button type="button" id="btn-toggle-slots" style="background: none; border: none; font-size: 0.76rem; color: var(--brand-terracotta); cursor: pointer; text-decoration: underline;">
+              Editar Links Manuais
+            </button>
+          </div>
+          <div class="image-previews-grid" id="image-previews">
+            <!-- Gerado dinamicamente -->
+          </div>
+        </div>
+
+        <!-- Slots de URL Manual (ocultos por padrão, abertos ao clicar) -->
+        <div id="manual-url-slots" style="display: none; width: 100%; margin-top: 0.5rem;">
+          <div class="form-grid">
+            <div class="form-group col-4">
+              <label class="form-label" for="prod-img-1">Foto Principal (Capa)</label>
+              <input type="text" id="prod-img-1" class="form-input photo-slot-input" placeholder="https://...">
+            </div>
+            <div class="form-group col-4">
+              <label class="form-label" for="prod-img-2">Foto 2</label>
+              <input type="text" id="prod-img-2" class="form-input photo-slot-input" placeholder="https://...">
+            </div>
+            <div class="form-group col-4">
+              <label class="form-label" for="prod-img-3">Foto 3</label>
+              <input type="text" id="prod-img-3" class="form-input photo-slot-input" placeholder="https://...">
+            </div>
+            <div class="form-group col-4">
+              <label class="form-label" for="prod-img-4">Foto 4</label>
+              <input type="text" id="prod-img-4" class="form-input photo-slot-input" placeholder="https://...">
+            </div>
+            <div class="form-group col-4">
+              <label class="form-label" for="prod-img-5">Foto 5</label>
+              <input type="text" id="prod-img-5" class="form-input photo-slot-input" placeholder="https://...">
+            </div>
+            <div class="form-group col-4">
+              <label class="form-label" for="prod-img-6">Foto 6</label>
+              <input type="text" id="prod-img-6" class="form-input photo-slot-input" placeholder="https://...">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção 3: Precificação & Grade de Estoque -->
+      <h3 class="form-section-title" style="margin-top: 2.5rem;">3. Precificação & Grade de Estoque</h3>
+      <p class="form-section-desc">Defina o custo base, preço final e disponibilidade no catálogo.</p>
+
+      <div class="form-grid">
+        <div class="form-group col-3">
+          <label class="form-label" for="prod-cost">Custo do Produto (R$)</label>
+          <input type="number" step="0.01" min="0" id="prod-cost" class="form-input" placeholder="0,00">
+          <span class="form-help-text">Custo de produção / aquisição da semijoia bruta.</span>
+        </div>
+
+        <div class="form-group col-3">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+            <label class="form-label" for="prod-price" style="margin: 0;">Preço de Venda (R$) <span class="required">*</span></label>
+            <button type="button" id="btn-recalc-300" class="btn-markup-suggest" title="Calcular 300% de markup sobre o custo total">
+              300% Markup
+            </button>
+          </div>
+          <input type="number" step="0.01" min="0" id="prod-price" class="form-input" placeholder="0,00" required>
+          <span class="form-help-text">Preço final cobrado do cliente no catálogo.</span>
+        </div>
+
+        <div class="form-group col-3">
+          <label class="form-label" for="prod-original-price">Preço Original / De (R$)</label>
+          <input type="number" step="0.01" min="0" id="prod-original-price" class="form-input" placeholder="Opcional">
+          <span class="form-help-text">Exibe preço riscado de promoção ("De R$ X por R$ Y").</span>
+        </div>
+
+        <div class="form-group col-3">
+          <label class="form-label" for="prod-stock">Estoque Total <span class="required">*</span></label>
+          <input type="number" min="0" step="1" id="prod-stock" class="form-input" placeholder="0" required>
+          <span class="form-help-text" id="stock-help-text">Unidades totais disponíveis</span>
+        </div>
+
+        <!-- Grade de Aros 10 ao 30 (Exibida dinamicamente se a categoria for Anel) -->
+        <div class="form-group col-12" id="ring-sizes-wrapper" style="display: none; background: #FAF8F5; border: 1px dashed var(--gold-primary); border-radius: var(--radius-sm); padding: 1.25rem 1rem; margin-top: 0.5rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+            <div>
+              <span style="font-weight: 600; font-size: 0.88rem; color: var(--brand-terracotta); display: block;">
+                💍 Grade de Tamanhos por Aro (Anéis)
+              </span>
+              <span style="font-size: 0.76rem; color: var(--text-secondary);">
+                Informe quantas unidades há de cada aro (10 ao 30). O estoque total será somado automaticamente.
+              </span>
+            </div>
+          </div>
+
+          <div class="ring-sizes-grid">
+            <div class="ring-size-item"><span class="ring-size-label">Aro 10</span><input type="number" min="0" step="1" class="ring-size-input" data-size="10" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 11</span><input type="number" min="0" step="1" class="ring-size-input" data-size="11" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 12</span><input type="number" min="0" step="1" class="ring-size-input" data-size="12" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 13</span><input type="number" min="0" step="1" class="ring-size-input" data-size="13" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 14</span><input type="number" min="0" step="1" class="ring-size-input" data-size="14" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 15</span><input type="number" min="0" step="1" class="ring-size-input" data-size="15" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 16</span><input type="number" min="0" step="1" class="ring-size-input" data-size="16" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 17</span><input type="number" min="0" step="1" class="ring-size-input" data-size="17" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 18</span><input type="number" min="0" step="1" class="ring-size-input" data-size="18" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 19</span><input type="number" min="0" step="1" class="ring-size-input" data-size="19" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 20</span><input type="number" min="0" step="1" class="ring-size-input" data-size="20" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 21</span><input type="number" min="0" step="1" class="ring-size-input" data-size="21" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 22</span><input type="number" min="0" step="1" class="ring-size-input" data-size="22" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 23</span><input type="number" min="0" step="1" class="ring-size-input" data-size="23" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 24</span><input type="number" min="0" step="1" class="ring-size-input" data-size="24" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 25</span><input type="number" min="0" step="1" class="ring-size-input" data-size="25" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 26</span><input type="number" min="0" step="1" class="ring-size-input" data-size="26" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 27</span><input type="number" min="0" step="1" class="ring-size-input" data-size="27" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 28</span><input type="number" min="0" step="1" class="ring-size-input" data-size="28" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 29</span><input type="number" min="0" step="1" class="ring-size-input" data-size="29" placeholder="0"></div>
+            <div class="ring-size-item"><span class="ring-size-label">Aro 30</span><input type="number" min="0" step="1" class="ring-size-input" data-size="30" placeholder="0"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção 4: Insumos Vinculados -->
+      <h3 class="form-section-title" style="margin-top: 2.5rem;">4. Insumos Vinculados (Matéria-Prima / Embalagens)</h3>
+      <p class="form-section-desc">Relacione os insumos consumidos por esta peça (banho, pedras, estojos, sacolas).</p>
+
+      <div class="supplies-linker-box">
+        <div class="supplies-add-bar">
+          <div class="form-group">
+            <label class="form-label" for="supply-select">Selecionar Insumo Cadastrado</label>
+            <select id="supply-select" class="form-select">
+              <option value="">Carregando insumos...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="supply-qty">Quantidade Usada</label>
+            <input type="number" step="0.01" min="0.01" id="supply-qty" class="form-input" placeholder="Ex: 1" value="1">
+          </div>
+
+          <button type="button" id="btn-add-supply" class="btn-primary" style="height: 40px;">
+            + Vincular Insumo
+          </button>
+        </div>
+
+        <!-- Tabela de Insumos Vinculados -->
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Insumo</th>
+                <th style="text-align: right;">Custo Unitário</th>
+                <th style="text-align: center;">Qtd. Utilizada</th>
+                <th style="text-align: right;">Subtotal</th>
+                <th style="text-align: center; width: 60px;">Remover</th>
+              </tr>
+            </thead>
+            <tbody id="linked-supplies-tbody">
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                  Nenhum insumo vinculado a esta peça ainda.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Card de Resumo de Lucro em Tempo Real -->
+      <div class="calc-summary-card">
+        <div class="calc-summary-item">
+          <span class="calc-summary-label">Custo do Produto</span>
+          <span class="calc-summary-val" id="calc-prod-cost">R$ 0,00</span>
+        </div>
+        <div class="calc-summary-item">
+          <span class="calc-summary-label">(+) Custo dos Insumos</span>
+          <span class="calc-summary-val" id="calc-supplies-cost">R$ 0,00</span>
+        </div>
+        <div class="calc-summary-item">
+          <span class="calc-summary-label">(=) Custo Total</span>
+          <span class="calc-summary-val highlight-gold" id="calc-total-cost">R$ 0,00</span>
+        </div>
+        <div class="calc-summary-item">
+          <span class="calc-summary-label">Preço de Venda</span>
+          <span class="calc-summary-val" id="calc-sale-price">R$ 0,00</span>
+        </div>
+        <div class="calc-summary-item">
+          <span class="calc-summary-label">(=) Lucro Unitário</span>
+          <span class="calc-summary-val highlight-green" id="calc-unit-profit">R$ 0,00</span>
+        </div>
+      </div>
+
+      <!-- Barra de Ações -->
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-subtle); flex-wrap: wrap; gap: 1rem;">
+        <a href="admin.html" class="btn-secondary">&larr; Voltar sem Salvar</a>
+        
+        <div style="display: flex; gap: 0.75rem;">
+          <button type="submit" id="btn-save-product" class="btn-primary" style="padding: 0.75rem 1.75rem; font-size: 0.95rem;">
+            Salvar Alterações &rarr;
+          </button>
+        </div>
+      </div>
+
+    </form>
+  </main>
+
+  <!-- Modal com Barra de Progresso do Upload de Fotos -->
+  <div class="modal-overlay" id="upload-progress-modal" role="dialog" aria-hidden="true">
+    <div class="modal-window" style="max-width: 440px; text-align: center; padding: 2.25rem 2rem;">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem; color: var(--gold-primary);">📸</div>
+      <h3 style="font-family: var(--font-serif); font-size: 1.4rem; color: var(--text-primary); margin-bottom: 0.35rem;">
+        Enviando Novas Fotos
+      </h3>
+      <p id="upload-progress-status" style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+        Preparando upload para Fotos Produtos/...
+      </p>
+      <div style="background: var(--border-subtle); border-radius: 20px; height: 12px; overflow: hidden; width: 100%; margin-bottom: 0.75rem;">
+        <div id="upload-progress-bar" style="background: linear-gradient(90deg, var(--gold-primary), var(--brand-terracotta)); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+      </div>
+      <span id="upload-progress-pct" style="font-size: 0.82rem; font-weight: 700; color: var(--brand-terracotta);">0%</span>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="assets/js/supabase.js?v=4.1"></script>
+  <script src="assets/js/admin-editar-produto.js?v=1.0"></script>
+</body>
+</html>

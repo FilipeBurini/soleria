@@ -8,10 +8,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnLogout = document.getElementById('btn-logout');
   if (btnLogout) btnLogout.addEventListener('click', () => logoutAdmin());
 
-  // Parâmetros de URL (Modo Edição vs Modo Novo)
+  // Parâmetros de URL (Modo Edição redireciona para a nova página dedicada)
   const urlParams = new URLSearchParams(window.location.search);
   const productId = urlParams.get('id');
-  const isEditMode = Boolean(productId);
+  if (productId) {
+    window.location.replace(`admin-editar-produto.html?id=${encodeURIComponent(productId)}`);
+    return;
+  }
+  const isEditMode = false;
 
   // Elementos do Formulário
   const pageTitle = document.getElementById('page-title');

@@ -313,7 +313,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div>
               <div class="admin-visual-actions-title">💍 Aros do Anel:</div>
               <span style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">
-                Grade não configurada. <a href="admin-produto.html?id=${item.id}" style="color: var(--brand-terracotta);">Configurar &rarr;</a>
+                Grade não configurada. <a href="admin-editar-produto.html?id=${item.id}" style="color: var(--brand-terracotta);">Configurar &rarr;</a>
               </span>
             </div>
           `;
@@ -361,7 +361,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <span style="font-size: 0.75rem; color: var(--text-muted);">
             Lucro unit: <strong style="color: #216E39;">${formatBRL(item.unitProfit)}</strong>
           </span>
-          <a href="admin-produto.html?id=${item.id}" class="btn-secondary-action" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Editar produto">
+          <a href="admin-editar-produto.html?id=${item.id}" class="btn-secondary-action" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Editar produto">
             Editar Cadastro
           </a>
         </div>
@@ -494,7 +494,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <td style="text-align: center;">${statusBadge}</td>
         <td style="text-align: center;">
           ${item.id ? `
-            <a href="admin-produto.html?id=${item.id}" class="btn-secondary-action" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Editar produto e insumos">
+            <a href="admin-editar-produto.html?id=${item.id}" class="btn-secondary-action" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Editar produto e insumos">
               Editar
             </a>
           ` : `
