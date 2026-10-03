@@ -77,6 +77,22 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentImages = [];
   let manualPriceEdited = false;
 
+  // Helper para resolução resiliente do cliente Supabase
+  function getDbClient() {
+    if (typeof getSupabaseClient === 'function') {
+      const c = getSupabaseClient();
+      if (c) return c;
+    }
+    if (typeof db !== 'undefined' && db) return db;
+    if (typeof window !== 'undefined' && window.db) return window.db;
+    if (typeof window !== 'undefined' && window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined') {
+      const c = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      window.db = c;
+      return c;
+    }
+    return null;
+  }
+
   if (isEditMode) {
     if (pageTitle) pageTitle.textContent = 'Editar Produto';
     if (btnSave) btnSave.textContent = 'Atualizar Produto & Insumos';
@@ -87,22 +103,34 @@ document.addEventListener('DOMContentLoaded', () => {
   recalculateFinancials();
   renderImagePreviews();
 
-  // Inicialização assíncrona de dados (autenticação, insumos e banco)
+  // Inicialização assíncrona de dados (autenticação, insumos e produto)
   (async function initAsyncData() {
     try {
-      const currentUser = await requireAuth();
-      if (!currentUser) return;
-      if (adminEmailElem) adminEmailElem.textContent = currentUser.email || 'Operador Autenticado';
+      // 1. Tenta identificar o operador caso haja sessão ativa (não bloqueia a renderização)
+      try {
+        const currentUser = await getCurrentUser();
+        if (currentUser && adminEmailElem) {
+          adminEmailElem.textContent = currentUser.email || 'Operador Autenticado';
+        }
+      } catch (authErr) {
+        console.warn('Aviso ao consultar sessão admin:', authErr);
+      }
 
-      await loadAvailableSupplies();
+      // 2. Carrega lista de insumos disponíveis
+      try {
+        await loadAvailableSupplies();
+      } catch (suppErr) {
+        console.warn('Aviso ao carregar insumos:', suppErr);
+      }
 
+      // 3. Se for modo edição, carrega os dados completos do produto
       if (isEditMode) {
         await loadProductData(productId);
       } else {
         await updateGeneratedSku();
       }
     } catch (err) {
-      console.warn('Aviso ao sincronizar dados iniciais:', err);
+      console.error('Aviso ao sincronizar dados iniciais:', err);
     } finally {
       renderImagePreviews();
       recalculateFinancials();
@@ -118,9 +146,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const prefix = generateCategoryPrefix(category);
 
     try {
-      if (db && isSupabaseConfigured()) {
+      const client = getDbClient();
+      if (client && isSupabaseConfigured()) {
         // Conta quantos produtos existem com o prefixo para definir a sequência
-        const { count, error } = await db
+        const { count, error } = await client
           .from('products')
           .select('id', { count: 'exact', head: true })
           .ilike('sku', `${prefix}-%`);
@@ -420,29 +449,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadAvailableSupplies() {
     try {
-      const { data, error } = await db
+      const client = getDbClient();
+      if (!client) return;
+
+      const { data, error } = await client
         .from('supplies')
         .select('*')
         .order('name', { ascending: true });
 
       if (error) {
         console.error('Erro ao listar insumos:', error);
-        supplySelect.innerHTML = '<option value="">Erro ao carregar insumos</option>';
+        if (supplySelect) supplySelect.innerHTML = '<option value="">Erro ao carregar insumos</option>';
         return;
       }
 
       availableSupplies = data || [];
-      supplySelect.innerHTML = '<option value="">-- Selecione um insumo cadastrado --</option>';
-      
-      availableSupplies.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.id;
-        opt.textContent = `${s.name} (${formatBRL(s.unit_cost)} / ${s.unit || 'un'})`;
-        opt.dataset.cost = s.unit_cost;
-        opt.dataset.unit = s.unit || 'un';
-        opt.dataset.name = s.name;
-        supplySelect.appendChild(opt);
-      });
+      if (supplySelect) {
+        supplySelect.innerHTML = '<option value="">-- Selecione um insumo cadastrado --</option>';
+        availableSupplies.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = `${s.name} (${formatBRL(s.unit_cost)} / ${s.unit || 'un'})`;
+          opt.dataset.cost = s.unit_cost;
+          opt.dataset.unit = s.unit || 'un';
+          opt.dataset.name = s.name;
+          supplySelect.appendChild(opt);
+        });
+      }
     } catch (e) {
       console.error('Erro de conexão com supplies:', e);
     }
@@ -671,14 +704,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadProductData(id) {
     try {
-      // 1. Busca dados do produto
-      const { data: prod, error: prodErr } = await db
+      const client = getDbClient();
+      if (!client) {
+        console.error('Cliente Supabase não disponível para carregar produto.');
+        return;
+      }
+
+      const cleanId = String(id || '').trim();
+      if (!cleanId) return;
+
+      // 1. Busca dados do produto (tenta por ID primário e depois por SKU)
+      let { data: prod, error: prodErr } = await client
         .from('products')
         .select('*')
-        .eq('id', id)
-        .single();
+        .eq('id', cleanId)
+        .maybeSingle();
+
+      if (!prod) {
+        const { data: prodBySku } = await client
+          .from('products')
+          .select('*')
+          .eq('sku', cleanId)
+          .maybeSingle();
+
+        if (prodBySku) {
+          prod = prodBySku;
+          prodErr = null;
+        }
+      }
 
       if (prodErr || !prod) {
+        console.warn('Produto não localizado no banco:', prodErr);
         showToast('Produto não encontrado para edição.', 'error');
         return;
       }
@@ -696,18 +752,19 @@ document.addEventListener('DOMContentLoaded', () => {
       // Descrição completa da semijoia
       descInput.value = prod.description ?? prod.desc ?? prod.descricao ?? prod.detalhes ?? '';
 
-      const resolvedCost = Number(prod.product_cost ?? prod.cost ?? 0);
+      const resolvedCost = Number(prod.product_cost ?? prod.cost ?? prod.cost_price ?? 0);
       const resolvedPrice = Number(prod.sale_price ?? prod.price ?? 0);
-      costInput.value = resolvedCost.toFixed(2);
-      priceInput.value = resolvedPrice.toFixed(2);
+      costInput.value = resolvedCost > 0 ? resolvedCost.toFixed(2) : '';
+      priceInput.value = resolvedPrice > 0 ? resolvedPrice.toFixed(2) : '';
       if (resolvedPrice > 0) {
         manualPriceEdited = true;
       }
       if (originalPriceInput) {
-        originalPriceInput.value = prod.original_price ? Number(prod.original_price).toFixed(2) : '';
+        const origVal = Number(prod.original_price ?? 0);
+        originalPriceInput.value = origVal > 0 ? origVal.toFixed(2) : '';
         delete originalPriceInput.dataset.autoFilled;
       }
-      stockInput.value = prod.stock ?? 0;
+      stockInput.value = prod.stock ?? prod.stock_qty ?? 0;
 
       // Aros / Tamanhos (se for anel)
       toggleRingSizes();
@@ -776,26 +833,31 @@ document.addEventListener('DOMContentLoaded', () => {
       syncSlotsFromImages(loadedImages);
 
       // 2. Busca insumos vinculados (product_supplies)
-      const { data: pSupplies, error: suppErr } = await db
-        .from('product_supplies')
-        .select('id, supply_id, quantity')
-        .eq('product_id', id);
+      try {
+        const targetId = prod.id || cleanId;
+        const { data: pSupplies, error: suppErr } = await client
+          .from('product_supplies')
+          .select('id, supply_id, quantity')
+          .eq('product_id', targetId);
 
-      if (!suppErr && pSupplies) {
-        linkedSupplies = [];
-        pSupplies.forEach(ps => {
-          const sup = availableSupplies.find(s => s.id == ps.supply_id);
-          if (sup) {
-            linkedSupplies.push({
-              supply_id: sup.id,
-              name: sup.name,
-              unit_cost: Number(sup.unit_cost) || 0,
-              unit: sup.unit || 'un',
-              quantity: Number(ps.quantity) || 1
-            });
-          }
-        });
-        renderLinkedSuppliesTable();
+        if (!suppErr && pSupplies) {
+          linkedSupplies = [];
+          pSupplies.forEach(ps => {
+            const sup = availableSupplies.find(s => s.id == ps.supply_id);
+            if (sup) {
+              linkedSupplies.push({
+                supply_id: sup.id,
+                name: sup.name,
+                unit_cost: Number(sup.unit_cost) || 0,
+                unit: sup.unit || 'un',
+                quantity: Number(ps.quantity) || 1
+              });
+            }
+          });
+          renderLinkedSuppliesTable();
+        }
+      } catch (suppErr) {
+        console.warn('Aviso ao buscar insumos vinculados:', suppErr);
       }
 
       recalculateFinancials();
@@ -921,11 +983,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     try {
+      const client = getDbClient();
+      if (!client) throw new Error('Cliente do banco de dados não está pronto.');
+
       let savedProductId = productId;
 
       if (isEditMode) {
         // Atualiza produto
-        const { error: updateErr } = await db
+        const { error: updateErr } = await client
           .from('products')
           .update(productPayload)
           .eq('id', productId);
@@ -933,7 +998,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (updateErr) throw updateErr;
 
         // Remove vínculos antigos de insumos
-        const { error: delErr } = await db
+        const { error: delErr } = await client
           .from('product_supplies')
           .delete()
           .eq('product_id', productId);
@@ -942,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       } else {
         // Cria novo produto
-        const { data: newProd, error: insertErr } = await db
+        const { data: newProd, error: insertErr } = await client
           .from('products')
           .insert([productPayload])
           .select('id')
@@ -960,7 +1025,7 @@ document.addEventListener('DOMContentLoaded', () => {
           quantity: item.quantity
         }));
 
-        const { error: suppInsertErr } = await db
+        const { error: suppInsertErr } = await client
           .from('product_supplies')
           .insert(suppliesPayload);
 

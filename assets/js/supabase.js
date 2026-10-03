@@ -14,10 +14,14 @@ const SUPABASE_ANON_KEY = 'sb_publishable_P-XdBQaYxckZYoussxYHFA_ZW_ZSgmq';
 let db = null;
 
 function getSupabaseClient() {
-  if (db) return db;
+  if (db) {
+    if (typeof window !== 'undefined') window.db = db;
+    return db;
+  }
   try {
     if (window.supabase && typeof window.supabase.createClient === 'function' && isSupabaseConfigured()) {
       db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      if (typeof window !== 'undefined') window.db = db;
       return db;
     }
   } catch (e) {
@@ -27,7 +31,8 @@ function getSupabaseClient() {
 }
 
 try {
-  getSupabaseClient();
+  const _client = getSupabaseClient();
+  if (_client && typeof window !== 'undefined') window.db = _client;
 } catch (err) {
   console.error('Erro ao inicializar Supabase:', err);
 }
@@ -180,7 +185,8 @@ function generateCategoryPrefix(categoryName) {
  * Organiza os arquivos em subpastas pelo SKU do produto (ex: Fotos Produtos/AN5032/foto.jpg)
  */
 async function uploadImageToStorage(file, folderName = '', bucket = 'Fotos Produtos') {
-  if (!db || !isSupabaseConfigured()) {
+  const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db) || (typeof window !== 'undefined' ? window.db : null);
+  if (!client || !isSupabaseConfigured()) {
     throw new Error('Supabase não configurado para upload de arquivos.');
   }
 
@@ -198,7 +204,7 @@ async function uploadImageToStorage(file, folderName = '', bucket = 'Fotos Produ
   // Caminho final dentro do bucket: SKU/arquivo.ext
   const filePath = `${cleanFolder}/${fileName}`;
 
-  const { data, error } = await db.storage
+  const { data, error } = await client.storage
     .from(bucket)
     .upload(filePath, file, {
       cacheControl: '3600',
@@ -210,7 +216,7 @@ async function uploadImageToStorage(file, folderName = '', bucket = 'Fotos Produ
   }
 
   // Obtém a URL pública do arquivo
-  const { data: publicData } = db.storage
+  const { data: publicData } = client.storage
     .from(bucket)
     .getPublicUrl(filePath);
 
