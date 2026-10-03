@@ -106,28 +106,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // Inicialização assíncrona de dados (autenticação, insumos e produto)
   (async function initAsyncData() {
     try {
-      // 1. Tenta identificar o operador caso haja sessão ativa (não bloqueia a renderização)
-      try {
-        const currentUser = await getCurrentUser();
-        if (currentUser && adminEmailElem) {
-          adminEmailElem.textContent = currentUser.email || 'Operador Autenticado';
-        }
-      } catch (authErr) {
-        console.warn('Aviso ao consultar sessão admin:', authErr);
-      }
-
-      // 2. Carrega lista de insumos disponíveis
-      try {
-        await loadAvailableSupplies();
-      } catch (suppErr) {
-        console.warn('Aviso ao carregar insumos:', suppErr);
-      }
-
-      // 3. Se for modo edição, carrega os dados completos do produto
+      // 1. PRIORIDADE MÁXIMA: Carrega imediatamente os dados do produto no modo edição
       if (isEditMode) {
         await loadProductData(productId);
       } else {
         await updateGeneratedSku();
+      }
+
+      // 2. Carrega insumos disponíveis
+      loadAvailableSupplies();
+
+      // 3. Atualiza status do operador sem travar o restante
+      if (adminEmailElem) {
+        if (typeof getCurrentUser === 'function') {
+          getCurrentUser().then(user => {
+            adminEmailElem.textContent = (user && user.email) ? user.email : 'Painel Soléria';
+          }).catch(() => {
+            adminEmailElem.textContent = 'Painel Soléria';
+          });
+        } else {
+          adminEmailElem.textContent = 'Painel Soléria';
+        }
       }
     } catch (err) {
       console.error('Aviso ao sincronizar dados iniciais:', err);
@@ -447,22 +446,37 @@ document.addEventListener('DOMContentLoaded', () => {
   // Carregamento de Insumos Disponíveis (Tabela supplies)
   // ==========================================================================
 
-  async function loadAvailableSupplies() {
+  async function fetchSuppliesDirect() {
     try {
       const client = getDbClient();
-      if (!client) return;
-
-      const { data, error } = await client
-        .from('supplies')
-        .select('*')
-        .order('name', { ascending: true });
-
-      if (error) {
-        console.error('Erro ao listar insumos:', error);
-        if (supplySelect) supplySelect.innerHTML = '<option value="">Erro ao carregar insumos</option>';
-        return;
+      if (client) {
+        const { data, error } = await client
+          .from('supplies')
+          .select('*')
+          .order('name', { ascending: true });
+        if (!error && Array.isArray(data) && data.length > 0) return data;
       }
+    } catch (e) {}
 
+    try {
+      if (typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined') {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/supplies?select=*&order=name.asc`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+        if (res.ok) {
+          return await res.json();
+        }
+      }
+    } catch (e) {}
+    return [];
+  }
+
+  async function loadAvailableSupplies() {
+    try {
+      const data = await fetchSuppliesDirect();
       availableSupplies = data || [];
       if (supplySelect) {
         supplySelect.innerHTML = '<option value="">-- Selecione um insumo cadastrado --</option>';
@@ -477,7 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     } catch (e) {
-      console.error('Erro de conexão com supplies:', e);
+      console.error('Erro ao listar insumos:', e);
     }
   }
 
@@ -702,39 +716,79 @@ document.addEventListener('DOMContentLoaded', () => {
   // Modo Edição: Carregamento dos dados existentes
   // ==========================================================================
 
-  async function loadProductData(id) {
+  async function fetchProductDirect(cleanId) {
+    if (!cleanId) return null;
+
+    // 1. Tenta via Supabase JS client
     try {
       const client = getDbClient();
-      if (!client) {
-        console.error('Cliente Supabase não disponível para carregar produto.');
-        return;
-      }
+      if (client) {
+        let { data } = await client
+          .from('products')
+          .select('*')
+          .eq('id', cleanId)
+          .maybeSingle();
 
-      const cleanId = String(id || '').trim();
-      if (!cleanId) return;
+        if (data) return data;
 
-      // 1. Busca dados do produto (tenta por ID primário e depois por SKU)
-      let { data: prod, error: prodErr } = await client
-        .from('products')
-        .select('*')
-        .eq('id', cleanId)
-        .maybeSingle();
-
-      if (!prod) {
-        const { data: prodBySku } = await client
+        let { data: bySku } = await client
           .from('products')
           .select('*')
           .eq('sku', cleanId)
           .maybeSingle();
 
-        if (prodBySku) {
-          prod = prodBySku;
-          prodErr = null;
+        if (bySku) return bySku;
+      }
+    } catch (e) {
+      console.warn('Tentativa via client JS falhou, tentando REST direto:', e);
+    }
+
+    // 2. Fallback REST direto com Anon Key (independente de sessão, lock ou SDK)
+    try {
+      if (typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined') {
+        const endpoint = `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(cleanId)}`;
+        const res = await fetch(endpoint, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Accept': 'application/vnd.pgrst.object+json'
+          }
+        });
+        if (res.ok) {
+          const prod = await res.json();
+          if (prod && prod.id) return prod;
+        }
+
+        // Tenta por SKU via REST
+        const skuEndpoint = `${SUPABASE_URL}/rest/v1/products?sku=eq.${encodeURIComponent(cleanId)}`;
+        const resSku = await fetch(skuEndpoint, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Accept': 'application/vnd.pgrst.object+json'
+          }
+        });
+        if (resSku.ok) {
+          const prodSku = await resSku.json();
+          if (prodSku && prodSku.id) return prodSku;
         }
       }
+    } catch (err) {
+      console.error('Erro no fetch direto REST:', err);
+    }
 
-      if (prodErr || !prod) {
-        console.warn('Produto não localizado no banco:', prodErr);
+    return null;
+  }
+
+  async function loadProductData(id) {
+    try {
+      const cleanId = String(id || '').trim();
+      if (!cleanId) return;
+
+      const prod = await fetchProductDirect(cleanId);
+
+      if (!prod) {
+        console.warn('Produto não localizado no banco.');
         showToast('Produto não encontrado para edição.', 'error');
         return;
       }
@@ -834,13 +888,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 2. Busca insumos vinculados (product_supplies)
       try {
+        const client = getDbClient();
         const targetId = prod.id || cleanId;
-        const { data: pSupplies, error: suppErr } = await client
-          .from('product_supplies')
-          .select('id, supply_id, quantity')
-          .eq('product_id', targetId);
+        let pSupplies = null;
 
-        if (!suppErr && pSupplies) {
+        if (client) {
+          const { data, error } = await client
+            .from('product_supplies')
+            .select('id, supply_id, quantity')
+            .eq('product_id', targetId);
+          if (!error) pSupplies = data;
+        }
+
+        if (!pSupplies && typeof SUPABASE_URL !== 'undefined') {
+          const res = await fetch(`${SUPABASE_URL}/rest/v1/product_supplies?product_id=eq.${encodeURIComponent(targetId)}&select=id,supply_id,quantity`, {
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+          });
+          if (res.ok) pSupplies = await res.json();
+        }
+
+        if (Array.isArray(pSupplies) && pSupplies.length > 0) {
           linkedSupplies = [];
           pSupplies.forEach(ps => {
             const sup = availableSupplies.find(s => s.id == ps.supply_id);
