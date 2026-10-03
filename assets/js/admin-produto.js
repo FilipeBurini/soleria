@@ -106,27 +106,24 @@ document.addEventListener('DOMContentLoaded', () => {
   // Inicialização assíncrona de dados (autenticação, insumos e produto)
   (async function initAsyncData() {
     try {
-      // 1. PRIORIDADE MÁXIMA: Carrega imediatamente os dados do produto no modo edição
+      // 1. Atualiza status do operador imediatamente sem travar
+      if (adminEmailElem) {
+        try {
+          const user = await getCurrentUser();
+          adminEmailElem.textContent = (user && user.email) ? user.email : 'Painel Soléria';
+        } catch (e) {
+          adminEmailElem.textContent = 'Painel Soléria';
+        }
+      }
+
+      // 2. Carrega insumos disponíveis PRIMEIRO (para poder vincular custos se for edição)
+      await loadAvailableSupplies();
+
+      // 3. PRIORIDADE MÁXIMA: Carrega imediatamente os dados do produto no modo edição
       if (isEditMode) {
         await loadProductData(productId);
       } else {
         await updateGeneratedSku();
-      }
-
-      // 2. Carrega insumos disponíveis
-      loadAvailableSupplies();
-
-      // 3. Atualiza status do operador sem travar o restante
-      if (adminEmailElem) {
-        if (typeof getCurrentUser === 'function') {
-          getCurrentUser().then(user => {
-            adminEmailElem.textContent = (user && user.email) ? user.email : 'Painel Soléria';
-          }).catch(() => {
-            adminEmailElem.textContent = 'Painel Soléria';
-          });
-        } else {
-          adminEmailElem.textContent = 'Painel Soléria';
-        }
       }
     } catch (err) {
       console.error('Aviso ao sincronizar dados iniciais:', err);
@@ -145,14 +142,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const prefix = generateCategoryPrefix(category);
 
     try {
+      const authToken = (typeof getAuthToken === 'function' ? getAuthToken() : null) || SUPABASE_ANON_KEY;
+      if (typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined') {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/products?sku=ilike.${encodeURIComponent(prefix + '-%')}&select=id`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${authToken}`,
+            'Range-Unit': 'items',
+            'Range': '0-0',
+            'Prefer': 'count=exact'
+          }
+        });
+        if (res.ok) {
+          const crange = res.headers.get('content-range');
+          if (crange && crange.includes('/')) {
+            const total = parseInt(crange.split('/')[1], 10);
+            if (!isNaN(total)) {
+              const seq = (total + 1).toString().padStart(4, '0');
+              skuInput.value = `${prefix}-${seq}`;
+              return;
+            }
+          }
+        }
+      }
+
       const client = getDbClient();
       if (client && isSupabaseConfigured()) {
-        // Conta quantos produtos existem com o prefixo para definir a sequência
-        const { count, error } = await client
+        const queryPromise = client
           .from('products')
           .select('id', { count: 'exact', head: true })
           .ilike('sku', `${prefix}-%`);
-
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout sku')), 2000));
+        const { count } = await Promise.race([queryPromise, timeoutPromise]);
         const seq = ((count || 0) + 1).toString().padStart(4, '0');
         skuInput.value = `${prefix}-${seq}`;
       } else {
@@ -447,30 +468,41 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
 
   async function fetchSuppliesDirect() {
+    const authToken = (typeof getAuthToken === 'function' ? getAuthToken() : null) || SUPABASE_ANON_KEY;
+    const authHeaders = {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${authToken}`
+    };
+
+    // 1. Tenta REST direto primeiro (imune a locks de sessão e ultra-rápido)
+    try {
+      if (typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined') {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/supplies?select=*&order=name.asc`, {
+          headers: authHeaders
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) return data;
+        }
+      }
+    } catch (e) {
+      console.warn('REST supplies falhou, tentando client JS:', e);
+    }
+
+    // 2. Fallback Supabase Client com timeout
     try {
       const client = getDbClient();
       if (client) {
-        const { data, error } = await client
+        const queryPromise = client
           .from('supplies')
           .select('*')
           .order('name', { ascending: true });
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout supplies')), 2500));
+        const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
         if (!error && Array.isArray(data) && data.length > 0) return data;
       }
     } catch (e) {}
 
-    try {
-      if (typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined') {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/supplies?select=*&order=name.asc`, {
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-          }
-        });
-        if (res.ok) {
-          return await res.json();
-        }
-      }
-    } catch (e) {}
     return [];
   }
 
@@ -719,62 +751,68 @@ document.addEventListener('DOMContentLoaded', () => {
   async function fetchProductDirect(cleanId) {
     if (!cleanId) return null;
 
-    // 1. Tenta via Supabase JS client
-    try {
-      const client = getDbClient();
-      if (client) {
-        let { data } = await client
-          .from('products')
-          .select('*')
-          .eq('id', cleanId)
-          .maybeSingle();
+    const authToken = (typeof getAuthToken === 'function' ? getAuthToken() : null) || SUPABASE_ANON_KEY;
+    const authHeaders = {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${authToken}`
+    };
 
-        if (data) return data;
-
-        let { data: bySku } = await client
-          .from('products')
-          .select('*')
-          .eq('sku', cleanId)
-          .maybeSingle();
-
-        if (bySku) return bySku;
-      }
-    } catch (e) {
-      console.warn('Tentativa via client JS falhou, tentando REST direto:', e);
-    }
-
-    // 2. Fallback REST direto com Anon Key (independente de sessão, lock ou SDK)
+    // 1. Tenta REST direto primeiro (Ultra-rápido ~15ms, imune a locks do SDK e sem travar em múltiplas abas)
     try {
       if (typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined') {
-        const endpoint = `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(cleanId)}`;
-        const res = await fetch(endpoint, {
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Accept': 'application/vnd.pgrst.object+json'
-          }
-        });
+        // Busca por id (UUID)
+        const endpoint = `${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(cleanId)}&select=*`;
+        const res = await fetch(endpoint, { headers: authHeaders });
         if (res.ok) {
-          const prod = await res.json();
-          if (prod && prod.id) return prod;
+          const list = await res.json();
+          if (Array.isArray(list) && list.length > 0) return list[0];
+          if (list && list.id) return list;
         }
 
-        // Tenta por SKU via REST
-        const skuEndpoint = `${SUPABASE_URL}/rest/v1/products?sku=eq.${encodeURIComponent(cleanId)}`;
-        const resSku = await fetch(skuEndpoint, {
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Accept': 'application/vnd.pgrst.object+json'
-          }
-        });
+        // Se não achou por ID, tenta buscar por SKU
+        const skuEndpoint = `${SUPABASE_URL}/rest/v1/products?sku=eq.${encodeURIComponent(cleanId)}&select=*`;
+        const resSku = await fetch(skuEndpoint, { headers: authHeaders });
         if (resSku.ok) {
-          const prodSku = await resSku.json();
-          if (prodSku && prodSku.id) return prodSku;
+          const listSku = await resSku.json();
+          if (Array.isArray(listSku) && listSku.length > 0) return listSku[0];
+          if (listSku && listSku.id) return listSku;
         }
       }
     } catch (err) {
-      console.error('Erro no fetch direto REST:', err);
+      console.warn('Erro no fetch direto REST, tentando client JS:', err);
+    }
+
+    // 2. Fallback via cliente Supabase JS (com timeout protetor para garantir que nunca trave)
+    try {
+      const client = getDbClient();
+      if (client) {
+        const queryPromise = (async () => {
+          let { data } = await client
+            .from('products')
+            .select('*')
+            .eq('id', cleanId)
+            .maybeSingle();
+
+          if (data) return data;
+
+          let { data: bySku } = await client
+            .from('products')
+            .select('*')
+            .eq('sku', cleanId)
+            .maybeSingle();
+
+          return bySku;
+        })();
+
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout Supabase Client')), 2500)
+        );
+
+        const result = await Promise.race([queryPromise, timeoutPromise]);
+        if (result) return result;
+      }
+    } catch (e) {
+      console.warn('Tentativa via client JS falhou:', e);
     }
 
     return null;
@@ -846,6 +884,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (parent) parent.classList.remove('has-stock');
           }
         });
+        updateRingStockTotal();
       } else {
         ringSizeInputs.forEach(input => {
           input.value = '';
@@ -888,32 +927,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 2. Busca insumos vinculados (product_supplies)
       try {
-        const client = getDbClient();
         const targetId = prod.id || cleanId;
+        const authToken = (typeof getAuthToken === 'function' ? getAuthToken() : null) || SUPABASE_ANON_KEY;
+        const authHeaders = {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${authToken}`
+        };
         let pSupplies = null;
 
-        if (client) {
-          const { data, error } = await client
-            .from('product_supplies')
-            .select('id, supply_id, quantity')
-            .eq('product_id', targetId);
-          if (!error) pSupplies = data;
+        // Tenta REST direto primeiro
+        if (typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined') {
+          const res = await fetch(`${SUPABASE_URL}/rest/v1/product_supplies?product_id=eq.${encodeURIComponent(targetId)}&select=id,supply_id,quantity`, {
+            headers: authHeaders
+          });
+          if (res.ok) {
+            pSupplies = await res.json();
+          }
         }
 
-        if (!pSupplies && typeof SUPABASE_URL !== 'undefined') {
-          const res = await fetch(`${SUPABASE_URL}/rest/v1/product_supplies?product_id=eq.${encodeURIComponent(targetId)}&select=id,supply_id,quantity`, {
-            headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-            }
-          });
-          if (res.ok) pSupplies = await res.json();
+        // Fallback Supabase Client com timeout
+        if (!pSupplies) {
+          const client = getDbClient();
+          if (client) {
+            const queryPromise = client
+              .from('product_supplies')
+              .select('id, supply_id, quantity')
+              .eq('product_id', targetId);
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout product_supplies')), 2500));
+            const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
+            if (!error) pSupplies = data;
+          }
         }
 
         if (Array.isArray(pSupplies) && pSupplies.length > 0) {
           linkedSupplies = [];
           pSupplies.forEach(ps => {
-            const sup = availableSupplies.find(s => s.id == ps.supply_id);
+            const sup = availableSupplies.find(s => String(s.id) === String(ps.supply_id));
             if (sup) {
               linkedSupplies.push({
                 supply_id: sup.id,
@@ -1054,37 +1103,105 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const client = getDbClient();
-      if (!client) throw new Error('Cliente do banco de dados não está pronto.');
+      const authToken = (typeof getAuthToken === 'function' ? getAuthToken() : null) || SUPABASE_ANON_KEY;
+      const authHeaders = {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${authToken}`
+      };
 
       let savedProductId = productId;
 
       if (isEditMode) {
-        // Atualiza produto
-        const { error: updateErr } = await client
-          .from('products')
-          .update(productPayload)
-          .eq('id', productId);
+        // Atualiza produto (tenta client com timeout, fallback para REST PATCH)
+        let updateDone = false;
+        if (client) {
+          try {
+            const queryPromise = client
+              .from('products')
+              .update(productPayload)
+              .eq('id', productId);
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout update')), 3500));
+            const { error: updateErr } = await Promise.race([queryPromise, timeoutPromise]);
+            if (!updateErr) updateDone = true;
+          } catch (e) {
+            console.warn('Update via client falhou, usando REST PATCH:', e);
+          }
+        }
 
-        if (updateErr) throw updateErr;
+        if (!updateDone && typeof SUPABASE_URL !== 'undefined') {
+          const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(productId)}`, {
+            method: 'PATCH',
+            headers: {
+              ...authHeaders,
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify(productPayload)
+          });
+          if (!patchRes.ok) {
+            const txt = await patchRes.text();
+            throw new Error(`Erro ao atualizar produto: ${txt}`);
+          }
+          updateDone = true;
+        }
 
         // Remove vínculos antigos de insumos
-        const { error: delErr } = await client
-          .from('product_supplies')
-          .delete()
-          .eq('product_id', productId);
-
-        if (delErr) console.warn('Aviso ao limpar insumos anteriores:', delErr);
+        try {
+          if (client) {
+            await client.from('product_supplies').delete().eq('product_id', productId);
+          } else {
+            await fetch(`${SUPABASE_URL}/rest/v1/product_supplies?product_id=eq.${encodeURIComponent(productId)}`, {
+              method: 'DELETE',
+              headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${authToken}`
+              }
+            });
+          }
+        } catch (delErr) {
+          console.warn('Aviso ao limpar insumos anteriores:', delErr);
+        }
 
       } else {
-        // Cria novo produto
-        const { data: newProd, error: insertErr } = await client
-          .from('products')
-          .insert([productPayload])
-          .select('id')
-          .single();
+        // Cria novo produto (tenta client, fallback para REST POST)
+        let insertDone = false;
+        if (client) {
+          try {
+            const queryPromise = client
+              .from('products')
+              .insert([productPayload])
+              .select('id')
+              .single();
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout insert')), 3500));
+            const { data: newProd, error: insertErr } = await Promise.race([queryPromise, timeoutPromise]);
+            if (!insertErr && newProd && newProd.id) {
+              savedProductId = newProd.id;
+              insertDone = true;
+            }
+          } catch (e) {
+            console.warn('Insert via client falhou, usando REST POST:', e);
+          }
+        }
 
-        if (insertErr) throw insertErr;
-        savedProductId = newProd.id;
+        if (!insertDone && typeof SUPABASE_URL !== 'undefined') {
+          const postRes = await fetch(`${SUPABASE_URL}/rest/v1/products?select=id`, {
+            method: 'POST',
+            headers: {
+              ...authHeaders,
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify([productPayload])
+          });
+          if (!postRes.ok) {
+            const txt = await postRes.text();
+            throw new Error(`Erro ao cadastrar produto: ${txt}`);
+          }
+          const created = await postRes.json();
+          if (Array.isArray(created) && created[0] && created[0].id) {
+            savedProductId = created[0].id;
+            insertDone = true;
+          }
+        }
       }
 
       // Grava os novos vínculos em product_supplies
@@ -1095,11 +1212,20 @@ document.addEventListener('DOMContentLoaded', () => {
           quantity: item.quantity
         }));
 
-        const { error: suppInsertErr } = await client
-          .from('product_supplies')
-          .insert(suppliesPayload);
-
-        if (suppInsertErr) {
+        try {
+          if (client) {
+            const { error: suppInsertErr } = await client
+              .from('product_supplies')
+              .insert(suppliesPayload);
+            if (suppInsertErr) throw suppInsertErr;
+          } else {
+            await fetch(`${SUPABASE_URL}/rest/v1/product_supplies`, {
+              method: 'POST',
+              headers: authHeaders,
+              body: JSON.stringify(suppliesPayload)
+            });
+          }
+        } catch (suppInsertErr) {
           console.error('Erro ao gravar insumos vinculados:', suppInsertErr);
           showToast('Produto salvo, mas houve erro ao registrar insumos: ' + suppInsertErr.message, 'error');
         }

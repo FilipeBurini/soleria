@@ -20,7 +20,16 @@ function getSupabaseClient() {
   }
   try {
     if (window.supabase && typeof window.supabase.createClient === 'function' && isSupabaseConfigured()) {
-      db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          lock: async (_name, _acquireTimeout, fn) => {
+            return await fn();
+          }
+        }
+      });
       if (typeof window !== 'undefined') window.db = db;
       return db;
     }
@@ -86,17 +95,53 @@ function formatBRL(value) {
 }
 
 /**
+ * Retorna o token JWT de autenticação atual do localStorage (se houver sessão ativa)
+ */
+function getAuthToken() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('sb-') && key.endsWith('-auth-token'))) {
+        const item = localStorage.getItem(key);
+        if (item) {
+          const parsed = JSON.parse(item);
+          const token = parsed.access_token || parsed?.session?.access_token;
+          if (token) return token;
+        }
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+/**
  * Retorna o usuário autenticado atualmente, ou null se não houver sessão ativa
  */
 async function getCurrentUser() {
+  // 1. Tenta recuperar instantaneamente do LocalStorage
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('sb-') && key.endsWith('-auth-token'))) {
+        const item = localStorage.getItem(key);
+        if (item) {
+          const parsed = JSON.parse(item);
+          const user = parsed.user || parsed?.session?.user;
+          if (user) return user;
+        }
+      }
+    }
+  } catch (e) {}
+
   const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
   if (!client || !isSupabaseConfigured()) return null;
   try {
-    const { data: { session }, error } = await client.auth.getSession();
+    const sessionPromise = client.auth.getSession();
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout session')), 1500));
+    const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]);
     if (error || !session) return null;
     return session.user;
   } catch (e) {
-    console.error('Erro ao verificar sessão:', e);
     return null;
   }
 }
