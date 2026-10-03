@@ -1397,13 +1397,39 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    let opts = '<option value="">-- Selecione uma peça do estoque --</option>';
-    products.forEach(p => {
-      const stockNum = Number(p.stock) || 0;
-      const priceStr = formatMoney(p.price);
+    renderManualProductOptions('');
+  }
+
+  function renderManualProductOptions(filterText = '', selectedId = '') {
+    const productSelect = document.getElementById('manual-product-select');
+    if (!productSelect) return;
+
+    const query = (filterText || '').trim().toUpperCase();
+    let filtered = manualProductsList;
+
+    if (query) {
+      filtered = manualProductsList.filter(p => {
+        const s = (p.sku || '').toUpperCase();
+        const n = (p.name || '').toUpperCase();
+        return s.includes(query) || n.includes(query);
+      });
+    }
+
+    if (filtered.length === 0) {
+      productSelect.innerHTML = `<option value="">Nenhuma peça encontrada com "${filterText}"</option>`;
+      return;
+    }
+
+    const defaultLabel = query ? `-- ${filtered.length} peça(s) encontrada(s) no estoque --` : '-- Selecione uma peça do estoque --';
+    let opts = `<option value="">${defaultLabel}</option>`;
+    filtered.forEach(p => {
+      const stockNum = Number(p.stock ?? p.stock_qty) || 0;
+      const priceNum = Number(p.price ?? p.sale_price) || 0;
+      const priceStr = formatMoney(priceNum);
       const skuStr = p.sku ? `[${p.sku}] ` : '';
       const stockBadge = stockNum > 0 ? `(Estoque: ${stockNum})` : '(Sem estoque)';
-      opts += `<option value="${p.id}" ${stockNum <= 0 ? 'data-out="1"' : ''}>${skuStr}${p.name} — ${priceStr} ${stockBadge}</option>`;
+      const isSelected = selectedId && String(p.id) === String(selectedId) ? 'selected' : '';
+      opts += `<option value="${p.id}" ${isSelected} ${stockNum <= 0 ? 'data-out="1"' : ''}>${skuStr}${p.name} — ${priceStr} ${stockBadge}</option>`;
     });
 
     productSelect.innerHTML = opts;
@@ -1423,6 +1449,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const emailInput = document.getElementById('manual-order-email');
     const custBadge = document.getElementById('manual-cust-status-badge');
     const cpfHint = document.getElementById('manual-cpf-hint');
+
+    // Elementos de Busca por SKU
+    const skuSearchInput = document.getElementById('manual-sku-search');
+    const btnClearSkuSearch = document.getElementById('btn-clear-sku-search');
+    const btnSearchSkuAction = document.getElementById('btn-search-sku-action');
+    const skuMatchStatus = document.getElementById('manual-sku-match-status');
 
     const productSelect = document.getElementById('manual-product-select');
     const sizeSelect = document.getElementById('manual-size-select');
@@ -1461,11 +1493,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       manualSelectedItems = [];
       renderManualItemsTable();
       if (custBadge) custBadge.style.display = 'none';
+      if (skuSearchInput) skuSearchInput.value = '';
+      if (btnClearSkuSearch) btnClearSkuSearch.style.display = 'none';
+      if (skuMatchStatus) {
+        skuMatchStatus.textContent = '';
+        skuMatchStatus.innerHTML = '';
+      }
       if (sizeSelect) {
         sizeSelect.innerHTML = '<option value="">Padrão / Único</option>';
         sizeSelect.disabled = true;
       }
       if (addrGroup) addrGroup.style.display = 'none';
+      renderManualProductOptions('');
       recalculateTotals();
     }
 
@@ -1586,7 +1625,146 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // Seleção de Produto
+    // ==========================================================================
+    // BUSCA RÁPIDA POR SKU / LEITOR DE CÓDIGO DE BARRAS
+    // ==========================================================================
+    function selectProductByFound(prod) {
+      if (!prod) return;
+
+      // Garante que o select exibe a opção e seleciona ela
+      renderManualProductOptions(skuSearchInput ? skuSearchInput.value : '', prod.id);
+      productSelect.value = prod.id;
+      productSelect.dispatchEvent(new Event('change'));
+
+      if (skuMatchStatus) {
+        skuMatchStatus.innerHTML = `✓ Peça identificada: <strong style="color: var(--brand-terracotta);">${prod.sku ? '[' + prod.sku + '] ' : ''}${prod.name}</strong>`;
+        skuMatchStatus.style.color = '#15803D';
+      }
+
+      // Foco inteligente: se for anel com aros, foca no aro; caso contrário, foca na quantidade
+      setTimeout(() => {
+        if (!sizeSelect.disabled) {
+          sizeSelect.focus();
+        } else if (qtyInput) {
+          qtyInput.focus();
+          qtyInput.select();
+        }
+      }, 60);
+    }
+
+    function executeSkuSearch() {
+      if (!skuSearchInput) return;
+      const val = skuSearchInput.value.trim().toUpperCase();
+      if (!val) {
+        showToast('Digite um código SKU para buscar.', 'info');
+        skuSearchInput.focus();
+        return;
+      }
+
+      // 1. Tenta match exato no SKU
+      let found = manualProductsList.find(p => (p.sku || '').trim().toUpperCase() === val);
+
+      // 2. Tenta match que inicia com o termo digitado
+      if (!found) {
+        found = manualProductsList.find(p => (p.sku || '').trim().toUpperCase().startsWith(val));
+      }
+
+      // 3. Tenta match parcial no SKU ou Nome
+      if (!found) {
+        found = manualProductsList.find(p => {
+          const s = (p.sku || '').toUpperCase();
+          const n = (p.name || '').toUpperCase();
+          return s.includes(val) || n.includes(val);
+        });
+      }
+
+      if (found) {
+        selectProductByFound(found);
+        showToast(`Peça localizada: ${found.name}`, 'success', 2500);
+      } else {
+        if (skuMatchStatus) {
+          skuMatchStatus.textContent = `⚠️ Nenhuma peça encontrada com o código "${val}"`;
+          skuMatchStatus.style.color = '#DC2626';
+        }
+        showToast(`Nenhum produto localizado para o SKU "${val}".`, 'warning', 3500);
+      }
+    }
+
+    if (skuSearchInput) {
+      skuSearchInput.addEventListener('input', (e) => {
+        const raw = e.target.value;
+        const val = raw.trim().toUpperCase();
+
+        if (btnClearSkuSearch) {
+          btnClearSkuSearch.style.display = val.length > 0 ? 'block' : 'none';
+        }
+
+        if (!val) {
+          if (skuMatchStatus) skuMatchStatus.textContent = '';
+          renderManualProductOptions('');
+          return;
+        }
+
+        // Se for match exato de SKU, seleciona imediatamente (suporta leitores de código de barras)
+        const exactProd = manualProductsList.find(p => (p.sku || '').trim().toUpperCase() === val);
+        if (exactProd) {
+          selectProductByFound(exactProd);
+          return;
+        }
+
+        // Filtra opções no dropdown
+        const matches = manualProductsList.filter(p => {
+          const s = (p.sku || '').toUpperCase();
+          const n = (p.name || '').toUpperCase();
+          return s.includes(val) || n.includes(val);
+        });
+
+        renderManualProductOptions(val);
+
+        if (matches.length === 1) {
+          if (skuMatchStatus) {
+            skuMatchStatus.innerHTML = `1 peça encontrada: <strong>${matches[0].name}</strong>`;
+            skuMatchStatus.style.color = '#0284C7';
+          }
+        } else if (matches.length > 1) {
+          if (skuMatchStatus) {
+            skuMatchStatus.textContent = `${matches.length} peças encontradas no catálogo`;
+            skuMatchStatus.style.color = '#64748B';
+          }
+        } else {
+          if (skuMatchStatus) {
+            skuMatchStatus.textContent = '⚠️ Nenhuma peça com este código';
+            skuMatchStatus.style.color = '#DC2626';
+          }
+        }
+      });
+
+      skuSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          executeSkuSearch();
+        }
+      });
+    }
+
+    if (btnSearchSkuAction) {
+      btnSearchSkuAction.addEventListener('click', (e) => {
+        e.preventDefault();
+        executeSkuSearch();
+      });
+    }
+
+    if (btnClearSkuSearch) {
+      btnClearSkuSearch.addEventListener('click', () => {
+        skuSearchInput.value = '';
+        btnClearSkuSearch.style.display = 'none';
+        if (skuMatchStatus) skuMatchStatus.textContent = '';
+        renderManualProductOptions('');
+        skuSearchInput.focus();
+      });
+    }
+
+    // Seleção de Produto via Dropdown
     if (productSelect) {
       productSelect.addEventListener('change', () => {
         const prodId = productSelect.value;
@@ -1599,7 +1777,18 @@ document.addEventListener('DOMContentLoaded', async () => {
           return;
         }
 
-        priceInput.value = (Number(prod.price) || 0).toFixed(2);
+        // Sincroniza o SKU no campo de busca para feedback visual
+        if (skuSearchInput && prod.sku && skuSearchInput.value.trim().toUpperCase() !== prod.sku.toUpperCase()) {
+          skuSearchInput.value = prod.sku;
+          if (btnClearSkuSearch) btnClearSkuSearch.style.display = 'block';
+          if (skuMatchStatus) {
+            skuMatchStatus.innerHTML = `✓ Peça selecionada: <strong style="color: var(--brand-terracotta);">${prod.sku ? '[' + prod.sku + '] ' : ''}${prod.name}</strong>`;
+            skuMatchStatus.style.color = '#15803D';
+          }
+        }
+
+        const unitPrice = Number(prod.price ?? prod.sale_price) || 0;
+        priceInput.value = unitPrice.toFixed(2);
 
         // Grade de tamanhos / aros
         let sizesObj = prod.sizes || {};

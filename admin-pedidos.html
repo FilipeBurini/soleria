@@ -316,14 +316,35 @@
 
           <!-- 2. SELEÇÃO DE PEÇAS / ITENS DO ESTOQUE -->
           <div style="background: #FAF8F5; border: 1px solid #EFEAE3; border-radius: var(--radius-sm); padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
-            <span style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--gold-dark); letter-spacing: 0.06em; display: block; margin-bottom: 0.75rem;">
-              2. Adicionar Peças do Catálogo & Estoque
-            </span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+              <span style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--gold-dark); letter-spacing: 0.06em;">
+                2. Adicionar Peças do Catálogo & Estoque
+              </span>
+              <span id="manual-sku-match-status" style="font-size: 0.74rem; font-weight: 600;"></span>
+            </div>
+
+            <!-- Campo de Busca Direta por SKU / Bipador de Código -->
+            <div style="background: #FFFFFF; border: 1.5px solid var(--border-medium); border-radius: var(--radius-sm); padding: 0.75rem 0.85rem; margin-bottom: 0.85rem; box-shadow: var(--shadow-sm);">
+              <label class="form-label" for="manual-sku-search" style="font-size: 0.74rem; font-weight: 700; color: var(--brand-terracotta); margin-bottom: 0.35rem; display: flex; align-items: center; justify-content: space-between;">
+                <span>🔍 Localizar Peça por SKU / Código (Digitação ou Leitor de Código de Barras)</span>
+                <span style="font-weight: 400; font-size: 0.7rem; color: var(--text-muted);">Pressione Enter para selecionar</span>
+              </label>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <div style="position: relative; flex: 1;">
+                  <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; color: var(--text-muted); pointer-events: none;">🏷️</span>
+                  <input type="text" id="manual-sku-search" class="form-input" placeholder="Digite ou bipe o SKU (Ex: BRI24131-2, AN5219-3, COL16895...)" style="font-family: monospace; font-size: 0.85rem; height: 38px; text-transform: uppercase; padding-left: 32px; padding-right: 32px; font-weight: 600;" autocomplete="off">
+                  <button type="button" id="btn-clear-sku-search" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 1.15rem; color: var(--text-muted); cursor: pointer; display: none; padding: 0; line-height: 1;" title="Limpar busca">&times;</button>
+                </div>
+                <button type="button" id="btn-search-sku-action" class="btn-secondary" style="height: 38px; padding: 0 1rem; font-size: 0.8rem; font-weight: 600; white-space: nowrap;">
+                  Localizar Peça
+                </button>
+              </div>
+            </div>
 
             <!-- Barra de seleção de produto -->
             <div style="display: grid; grid-template-columns: 2fr 1fr 90px 110px auto; gap: 0.6rem; align-items: flex-end; margin-bottom: 1rem;">
               <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label" style="font-size: 0.74rem;">Selecione o Produto</label>
+                <label class="form-label" style="font-size: 0.74rem;">Peça Selecionada no Catálogo</label>
                 <select id="manual-product-select" class="form-select" style="font-size: 0.82rem; height: 38px;">
                   <option value="">Carregando peças...</option>
                 </select>
