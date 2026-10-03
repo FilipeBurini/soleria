@@ -18,7 +18,9 @@ CREATE TABLE IF NOT EXISTS orders (
   discount_amount NUMERIC(12,2) NOT NULL DEFAULT 0.00,
   total_amount NUMERIC(12,2) NOT NULL DEFAULT 0.00,
   status TEXT NOT NULL DEFAULT 'recebido', -- 'recebido', 'confirmado', 'preparacao', 'enviado', 'entregue', 'cancelado'
-  payment_method TEXT DEFAULT 'a_combinar',
+  payment_method TEXT DEFAULT 'pix',
+  payment_status TEXT DEFAULT 'aguardando_pagamento',
+  pagbank_card JSONB DEFAULT '{}'::jsonb,
   tracking_code TEXT,
   customer_notes TEXT,
   admin_notes TEXT,
@@ -26,6 +28,11 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Migração para tabelas orders existentes que ainda não possuem as colunas do PagBank:
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'pix';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'aguardando_pagamento';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS pagbank_card JSONB DEFAULT '{}'::jsonb;
 
 -- 2. Índices de busca rápida
 CREATE INDEX IF NOT EXISTS idx_orders_order_number ON orders(order_number);

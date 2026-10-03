@@ -1185,8 +1185,20 @@
 
         try {
           if (client && isSupabaseConfigured()) {
-            const { data, error } = await client.from('orders').insert([orderPayload]);
-            if (error) {
+            let { data, error } = await client.from('orders').insert([orderPayload]);
+            if (error && (error.message?.includes('payment_status') || error.message?.includes('pagbank_card') || error.message?.includes('column'))) {
+              // Fallback de compatibilidade caso as novas colunas ainda não tenham sido criadas no Supabase
+              const fallbackPayload = { ...orderPayload };
+              delete fallbackPayload.payment_status;
+              delete fallbackPayload.pagbank_card;
+              if (orderPayload.pagbank_card) {
+                fallbackPayload.customer_notes = `${fallbackPayload.customer_notes || ''} [PagBank: ${orderPayload.pagbank_card.brand} final ${orderPayload.pagbank_card.last4} (${orderPayload.pagbank_card.installments}x)]`.trim();
+              }
+              const retry = await client.from('orders').insert([fallbackPayload]);
+              if (retry.error) {
+                console.warn('Aviso ao gravar pedido em orders (retry):', retry.error);
+              }
+            } else if (error) {
               console.warn('Aviso ao gravar em orders (verifique se executou supabase_orders.sql):', error);
             }
 
