@@ -289,20 +289,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const count = Number(qty) || 0;
             const isOutOfStock = count <= 0;
             return `
-              <button type="button" 
-                class="admin-aro-chip ${isOutOfStock ? 'out-of-stock' : ''}" 
-                data-id="${item.id}" 
-                data-aro="${aro}"
-                ${isOutOfStock ? 'disabled' : ''}
-                title="${isOutOfStock ? 'Aro Esgotado' : `Clique para dar baixa de 1 unidade no Aro ${aro}`}">
+              <span class="admin-aro-chip ${isOutOfStock ? 'out-of-stock' : ''}" style="cursor: default;" title="${isOutOfStock ? 'Aro Esgotado' : `${count} unidade(s) disponível(is)`}">
                 Aro ${aro} <strong>(${count})</strong>
-              </button>
+              </span>
             `;
           }).join('');
 
           actionsHtml = `
             <div>
-              <div class="admin-visual-actions-title">💍 Baixa Rápida por Aro (clique para -1 un):</div>
+              <div class="admin-visual-actions-title">💍 Grade de Aros no Estoque:</div>
               <div class="admin-visual-aros-list">
                 ${arosChipsHtml}
               </div>
@@ -319,17 +314,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           `;
         }
       } else {
-        const canDeduct = item.stock > 0;
         actionsHtml = `
-          <div>
-            <div class="admin-visual-actions-title">⚡ Baixa Rápida de Estoque:</div>
-            <button type="button" 
-              class="btn-admin-deduct btn-deduct-simple" 
-              data-id="${item.id}"
-              ${!canDeduct ? 'disabled' : ''}
-              style="padding: 0.5rem 1rem; font-size: 0.78rem;">
-              <span>⚡ Registrar Venda (-1 un)</span>
-            </button>
+          <div style="font-size: 0.76rem; color: var(--text-secondary); margin-top: 0.25rem;">
+            Estoque central: <strong>${item.stock} un disponíveis</strong>
           </div>
         `;
       }
@@ -361,105 +348,19 @@ document.addEventListener('DOMContentLoaded', async () => {
           <span style="font-size: 0.75rem; color: var(--text-muted);">
             Lucro unit: <strong style="color: #216E39;">${formatBRL(item.unitProfit)}</strong>
           </span>
-          <a href="admin-editar-produto.html?id=${item.id}" class="btn-secondary-action" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Editar produto">
-            Editar Cadastro
-          </a>
+          <div style="display: flex; gap: 0.4rem; align-items: center;">
+            <a href="admin-pedidos.html?novo=true" class="btn-primary" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Registrar venda formal vinculada a pedido">
+              + Vender
+            </a>
+            <a href="admin-editar-produto.html?id=${item.id}" class="btn-secondary-action" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Editar produto">
+              Editar
+            </a>
+          </div>
         </div>
       `;
 
       adminVisualGrid.appendChild(card);
     });
-
-    // Event listeners para cliques nos aros (chips)
-    adminVisualGrid.querySelectorAll('.admin-aro-chip:not(.out-of-stock)').forEach(chip => {
-      chip.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const prodId = chip.dataset.id;
-        const aro = chip.dataset.aro;
-        await handleQuickDeduct(prodId, aro, chip);
-      });
-    });
-
-    // Event listeners para botão de baixa simples (não-anel)
-    adminVisualGrid.querySelectorAll('.btn-deduct-simple').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const prodId = btn.dataset.id;
-        await handleQuickDeduct(prodId, null, btn);
-      });
-    });
-  }
-
-  // ==========================================================================
-  // Processamento de Baixa Rápida de Estoque no Supabase
-  // ==========================================================================
-
-  async function handleQuickDeduct(productId, aro, triggerElem) {
-    const item = rawFinancialsData.find(p => p.id === productId);
-    if (!item) return;
-
-    if (triggerElem) {
-      triggerElem.disabled = true;
-      triggerElem.style.opacity = '0.6';
-    }
-
-    try {
-      if (aro) {
-        // Baixa em anel por aro específico
-        const currentSizes = { ...item.sizes };
-        const currentQty = Number(currentSizes[aro]) || 0;
-        if (currentQty <= 0) {
-          showToast(`Aro ${aro} já está esgotado!`, 'warning');
-          return;
-        }
-
-        currentSizes[aro] = currentQty - 1;
-        const newTotalStock = Object.values(currentSizes).reduce((a, b) => a + Number(b), 0);
-
-        const { error } = await db
-          .from('products')
-          .update({ sizes: currentSizes, stock: newTotalStock })
-          .eq('id', productId);
-
-        if (error) throw error;
-
-        item.sizes = currentSizes;
-        item.stock = newTotalStock;
-        item.totalProfit = item.unitProfit * newTotalStock;
-
-        showToast(`Baixa registrada com sucesso! Aro ${aro} agora possui ${item.sizes[aro]} un.`, 'success');
-        renderAllViews();
-      } else {
-        // Baixa em peça comum
-        const currentStock = Number(item.stock) || 0;
-        if (currentStock <= 0) {
-          showToast('Esta peça já está esgotada!', 'warning');
-          return;
-        }
-
-        const newTotalStock = currentStock - 1;
-        const { error } = await db
-          .from('products')
-          .update({ stock: newTotalStock })
-          .eq('id', productId);
-
-        if (error) throw error;
-
-        item.stock = newTotalStock;
-        item.totalProfit = item.unitProfit * newTotalStock;
-
-        showToast(`Venda registrada com sucesso! Restam ${newTotalStock} unidades.`, 'success');
-        renderAllViews();
-      }
-    } catch (err) {
-      console.error('Erro ao dar baixa:', err);
-      showToast('Erro ao atualizar estoque: ' + (err.message || err), 'error');
-    } finally {
-      if (triggerElem) {
-        triggerElem.disabled = false;
-        triggerElem.style.opacity = '';
-      }
-    }
   }
 
   // ==========================================================================

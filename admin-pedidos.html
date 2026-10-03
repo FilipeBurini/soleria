@@ -447,10 +447,12 @@
               <textarea id="manual-order-notes" class="form-input" rows="2" placeholder="Ex: Atendimento realizado no showroom; anel aro 16 polido; cliente levará certificado..." style="font-size: 0.8rem; resize: vertical;"></textarea>
             </div>
 
-            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; cursor: pointer; color: var(--text-primary); margin-top: 0.75rem;">
-              <input type="checkbox" id="manual-order-deduct-stock" checked style="accent-color: var(--gold-primary); width: 16px; height: 16px;">
-              <span><strong>Dar baixa imediata no estoque</strong> das peças e aros selecionados</span>
-            </label>
+            <div style="background: rgba(197, 164, 101, 0.08); border: 1px solid rgba(197, 164, 101, 0.25); border-radius: var(--radius-sm); padding: 0.65rem 0.85rem; margin-top: 0.75rem; font-size: 0.8rem; color: var(--brand-terracotta);">
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: default; margin: 0;">
+                <input type="checkbox" id="manual-order-deduct-stock" checked disabled style="accent-color: var(--brand-terracotta); width: 16px; height: 16px;">
+                <span><strong>Baixa Automática no Estoque:</strong> As peças deste pedido serão abatidas do catálogo vinculadas a este registro histórico.</span>
+              </label>
+            </div>
           </div>
 
           <!-- Botões do Rodapé -->

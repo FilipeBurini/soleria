@@ -443,54 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
       modalWhatsappBtn.href = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
     }
 
-    // Elementos de Gestão / Baixa Rápida de Estoque
-    const modalAdminActions = document.getElementById('modal-admin-actions');
-    const modalAdminStockInfo = document.getElementById('modal-admin-stock-info');
-    const modalAdminHelp = document.getElementById('modal-admin-help');
-    let btnAdminModalDeduct = document.getElementById('btn-admin-modal-deduct');
 
-    function updateAdminActionUI() {
-      if (!modalAdminActions || !isAdmin) return;
-
-      const currentSizes = parseSizes(product.sizes);
-      const currentAvailable = Object.entries(currentSizes).filter(([_, q]) => Number(q) > 0);
-      const currentTotalStock = currentAvailable.length > 0 
-        ? Object.values(currentSizes).reduce((acc, q) => acc + Number(q), 0)
-        : (Number(product.stock) || 0);
-
-      if (modalAdminStockInfo) {
-        modalAdminStockInfo.textContent = `Estoque: ${currentTotalStock} un`;
-      }
-
-      const isRing = (product.category && product.category.toLowerCase().includes('an')) || allSizesEntries.length > 0;
-
-      if (!btnAdminModalDeduct) return;
-
-      if (isRing && currentAvailable.length > 0) {
-        if (selectedSize) {
-          const qtyAro = Number(currentSizes[selectedSize]) || 0;
-          btnAdminModalDeduct.disabled = qtyAro <= 0;
-          btnAdminModalDeduct.innerHTML = `<span>⚡ Registrar Venda: Aro ${selectedSize} (-1 peça)</span>`;
-          if (modalAdminHelp) {
-            modalAdminHelp.textContent = `Baixa imediata no Aro ${selectedSize} (${qtyAro} un disponíveis). O saldo será subtraído do banco.`;
-          }
-        } else {
-          btnAdminModalDeduct.disabled = true;
-          btnAdminModalDeduct.innerHTML = `<span>👉 Selecione um Aro acima para dar baixa</span>`;
-          if (modalAdminHelp) {
-            modalAdminHelp.textContent = `Clique em um dos aros disponíveis acima para indicar qual tamanho foi vendido e dar baixa.`;
-          }
-        }
-      } else {
-        btnAdminModalDeduct.disabled = currentTotalStock <= 0;
-        btnAdminModalDeduct.innerHTML = `<span>⚡ Registrar Venda (-1 peça)</span>`;
-        if (modalAdminHelp) {
-          modalAdminHelp.textContent = currentTotalStock > 0 
-            ? `Vendeu esta peça? Clique para abater 1 unidade do estoque no sistema.`
-            : `Peça sem estoque no momento.`;
-        }
-      }
-    }
 
     if (modalSizesWrapper && modalSizesList) {
       if (allSizesEntries.length > 0) {
@@ -522,7 +475,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 selectedSize = size;
               }
               updateWhatsappLink();
-              updateAdminActionUI();
             });
           }
 
@@ -536,98 +488,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Configura botão de atendimento WhatsApp Concierge
     updateWhatsappLink();
-
-    // Configura Ações de Administrador (se logado)
-    if (modalAdminActions) {
-      if (isAdmin) {
-        modalAdminActions.style.display = 'block';
-        updateAdminActionUI();
-
-        // Substitui listener do botão para evitar cliques duplicados
-        const freshBtn = btnAdminModalDeduct.cloneNode(true);
-        btnAdminModalDeduct.parentNode.replaceChild(freshBtn, btnAdminModalDeduct);
-        btnAdminModalDeduct = freshBtn;
-
-        freshBtn.addEventListener('click', async () => {
-          freshBtn.disabled = true;
-          freshBtn.innerHTML = `<span>Gravando baixa no estoque...</span>`;
-
-          try {
-            if (!db || !isSupabaseConfigured()) {
-              showToast('Supabase não conectado.', 'error');
-              updateAdminActionUI();
-              return;
-            }
-
-            const currentSizes = parseSizes(product.sizes);
-            const currentAvailable = Object.entries(currentSizes).filter(([_, q]) => Number(q) > 0);
-            const isRing = (product.category && product.category.toLowerCase().includes('an')) || currentAvailable.length > 0;
-
-            if (isRing && currentAvailable.length > 0) {
-              if (!selectedSize) {
-                showToast('Selecione um aro antes de registrar a venda.', 'warning');
-                updateAdminActionUI();
-                return;
-              }
-
-              const updatedSizes = { ...currentSizes };
-              const currentAroQty = Number(updatedSizes[selectedSize]) || 0;
-              if (currentAroQty <= 0) {
-                showToast(`Aro ${selectedSize} já está esgotado!`, 'warning');
-                updateAdminActionUI();
-                return;
-              }
-
-              updatedSizes[selectedSize] = currentAroQty - 1;
-              const newTotalStock = Object.values(updatedSizes).reduce((acc, q) => acc + Number(q), 0);
-
-              const { error: updErr } = await db
-                .from('products')
-                .update({ sizes: updatedSizes, stock: newTotalStock })
-                .eq('id', product.id);
-
-              if (updErr) throw updErr;
-
-              product.sizes = updatedSizes;
-              product.stock = newTotalStock;
-              showToast(`Baixa registrada! Restam ${updatedSizes[selectedSize]} un no Aro ${selectedSize}.`, 'success');
-
-              // Atualiza o objeto na lista em memória
-              const idx = allProducts.findIndex(p => p.id === product.id);
-              if (idx !== -1) allProducts[idx] = product;
-
-              openProductModal(product);
-              renderCatalog();
-            } else {
-              const currentStock = Number(product.stock) || 1;
-              const newTotalStock = Math.max(0, currentStock - 1);
-
-              const { error: updErr } = await db
-                .from('products')
-                .update({ stock: newTotalStock })
-                .eq('id', product.id);
-
-              if (updErr) throw updErr;
-
-              product.stock = newTotalStock;
-              showToast(`Baixa registrada! Restam ${newTotalStock} unidades.`, 'success');
-
-              const idx = allProducts.findIndex(p => p.id === product.id);
-              if (idx !== -1) allProducts[idx] = product;
-
-              openProductModal(product);
-              renderCatalog();
-            }
-          } catch (err) {
-            console.error('Erro ao dar baixa:', err);
-            showToast('Erro ao atualizar estoque: ' + (err.message || err), 'error');
-            updateAdminActionUI();
-          }
-        });
-      } else {
-        modalAdminActions.style.display = 'none';
-      }
-    }
 
     // Configura Botão "Adicionar à Sacola"
     const btnAddToCart = document.getElementById('btn-modal-add-cart');

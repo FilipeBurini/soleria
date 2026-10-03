@@ -112,10 +112,11 @@
     <div class="container admin-bar-content">
       <div class="admin-bar-left">
         <span class="admin-bar-dot"></span>
-        <span><strong>Modo Gestor Ativo:</strong> Você pode dar baixa de vendas direto no catálogo abrindo qualquer peça.</span>
+        <span><strong>Modo Gestor Ativo:</strong> Você está conectado como administrador. Todas as vendas devem ser registradas via Pedidos.</span>
       </div>
       <div>
-        <a href="admin.html" class="admin-bar-link">Ir para Painel de Controle &rarr;</a>
+        <a href="admin-pedidos.html?novo=true" class="admin-bar-link" style="margin-right: 1rem;">+ Novo Pedido</a>
+        <a href="admin.html" class="admin-bar-link">Painel &rarr;</a>
       </div>
     </div>
   </div>
@@ -238,22 +239,6 @@
             <button type="button" class="btn-modal-close-secondary" id="btn-modal-close-secondary">
               ✕ Fechar Janela
             </button>
-          </div>
-
-          <!-- Painel Exclusivo de Baixa Rápida de Estoque (Modo Gestor / Admin) -->
-          <div class="modal-admin-actions" id="modal-admin-actions" style="display: none;">
-            <div class="modal-admin-box">
-              <div class="modal-admin-header">
-                <span class="modal-admin-title">⚡ Baixa Rápida de Estoque</span>
-                <span class="modal-admin-stock-info" id="modal-admin-stock-info">Estoque: 0 un</span>
-              </div>
-              <p class="modal-admin-help" id="modal-admin-help">
-                Vendeu esta peça para uma cliente? Dê baixa instantânea no estoque com um clique.
-              </p>
-              <button type="button" class="btn-admin-deduct" id="btn-admin-modal-deduct">
-                <span>⚡ Registrar Venda (-1 peça)</span>
-              </button>
-            </div>
           </div>
         </div>
       </div>
