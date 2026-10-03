@@ -121,6 +121,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (local && local.length > 0) {
           local.forEach(loc => {
             if (!orders.some(o => o.order_number === loc.order_number)) {
+              loc.sync_pending = true;
               orders.push(loc);
             }
           });
@@ -233,8 +234,12 @@ document.addEventListener('DOMContentLoaded', async () => {
               : `<span style="background: #FAF5FF; color: #6B21A8; border: 1px solid #E9D5FF; border-radius: 4px; padding: 2px 7px; font-size: 0.72rem; font-weight: 700;">💠 PIX</span>`
             }
             ${order.stock_deducted 
-              ? `<span class="badge-stock-ok">✓ Baixa Confirmada pelo Admin</span>`
-              : `<span class="badge-stock-pending">⚠️ Aguardando Baixa do Admin</span>`
+              ? `<span class="badge-stock-ok">✓ Estoque Baixado</span>`
+              : `<span class="badge-stock-pending">⚠️ Aguardando Baixa</span>`
+            }
+            ${order.sync_pending 
+              ? `<span style="background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; border-radius: 4px; padding: 2px 7px; font-size: 0.72rem; font-weight: 700;">⚠️ Local (Não gravado no BD)</span>`
+              : ''
             }
           </div>
           <span style="font-size: 0.75rem; color: var(--text-muted);">${formatDate(order.created_at)}</span>
@@ -427,6 +432,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
       </div>
 
+      <!-- Alerta de Pedido Local Não Sincronizado com Supabase -->
+      ${order.sync_pending ? `
+        <div style="background: #FEF3C7; border: 1px solid #FDE68A; border-radius: var(--radius-sm); padding: 0.9rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
+          <div>
+            <strong style="font-size: 0.82rem; color: #92400E; display: flex; align-items: center; gap: 0.35rem;">
+              ⚠️ Pedido Não Registrado no Supabase
+            </strong>
+            <span style="font-size: 0.76rem; color: #78350F; display: block; margin-top: 0.15rem;">
+              Este pedido foi salvo apenas na memória do seu navegador. Clique ao lado para gravá-lo no banco de dados.
+            </span>
+          </div>
+          <button type="button" class="btn-primary" id="btn-sync-order-to-db" style="padding: 0.45rem 0.9rem; font-size: 0.78rem; background: #D97706; border-color: #D97706;">
+            ☁️ Gravar no Banco de Dados
+          </button>
+        </div>
+      ` : ''}
+
       <!-- Status do Estoque e Confirmação de Pedido -->
       <div style="margin-bottom: 1.25rem;">
         ${order.stock_deducted ? `
@@ -434,10 +456,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem;">
               <div>
                 <strong style="font-size: 0.82rem; color: #166534; text-transform: uppercase; display: flex; align-items: center; gap: 0.35rem;">
-                  ✓ Estoque Deduzido pelo Sistema
+                  ✓ Estoque Baixado no Sistema
                 </strong>
                 <span style="font-size: 0.76rem; color: #14532D; display: block; margin-top: 0.15rem;">
-                  As peças deste pedido foram deduzidas de forma atômica no banco de dados.
+                  As peças deste pedido já foram deduzidas do estoque no catálogo.
                 </span>
               </div>
               ${order.status !== 'cancelado' ? `
@@ -463,14 +485,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem;">
               <div>
                 <strong style="font-size: 0.82rem; color: #92400E; text-transform: uppercase; display: flex; align-items: center; gap: 0.35rem;">
-                  ⚡ Confirmação de Pagamento & Pedido
+                  ⚠️ Baixa de Estoque Pendente
                 </strong>
                 <span style="font-size: 0.76rem; color: #78350F; display: block; margin-top: 0.15rem;">
-                  Confirme o pagamento para avançar o pedido para o status Confirmado.
+                  O estoque das peças ainda não foi deduzido. Confirme abaixo para dar baixa no catálogo.
                 </span>
               </div>
               <button type="button" class="btn-primary" id="btn-confirm-order-stock" style="padding: 0.55rem 1.1rem; font-size: 0.8rem; background: #059669; border-color: #059669;">
-                ✓ Confirmar Pagamento & Pedido
+                ✓ Dar Baixa no Estoque & Confirmar
               </button>
             </div>
           </div>
@@ -625,19 +647,52 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
-    // Botão de Confirmar Pagamento & Pedido
+    // Botão de Sincronizar Pedido Local com Supabase
+    const btnSyncDb = modalContent.querySelector('#btn-sync-order-to-db');
+    if (btnSyncDb) {
+      btnSyncDb.addEventListener('click', async () => {
+        btnSyncDb.disabled = true;
+        btnSyncDb.textContent = 'Gravando no BD...';
+        try {
+          const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
+          if (!client || !isSupabaseConfigured()) throw new Error('Supabase não configurado');
+
+          const payloadToInsert = { ...order };
+          delete payloadToInsert.sync_pending;
+
+          const { data, error } = await client.from('orders').insert([payloadToInsert]).select();
+          if (error) throw error;
+
+          order.sync_pending = false;
+          if (data && data[0]) {
+            order.stock_deducted = data[0].stock_deducted ?? order.stock_deducted;
+          }
+          updateLocalOrder(order);
+          showToast('Pedido registrado com sucesso no banco de dados Supabase!', 'success');
+          openOrderManageModal(order);
+          renderOrders();
+        } catch (syncErr) {
+          console.error('Erro ao sincronizar pedido com BD:', syncErr);
+          showToast('Erro ao gravar no BD: ' + (syncErr.message || syncErr), 'error');
+          btnSyncDb.disabled = false;
+          btnSyncDb.textContent = '☁️ Gravar no Banco de Dados';
+        }
+      });
+    }
+
+    // Botão de Confirmar Pagamento & Pedido (com baixa de estoque)
     const btnConfirmStock = modalContent.querySelector('#btn-confirm-order-stock');
     if (btnConfirmStock) {
       btnConfirmStock.addEventListener('click', async () => {
         btnConfirmStock.disabled = true;
-        btnConfirmStock.textContent = 'Confirmando...';
+        btnConfirmStock.textContent = 'Processando Baixa...';
 
         try {
           const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
           const hasDb = client && isSupabaseConfigured();
 
-          // Se Supabase offline/mock e o estoque ainda não foi baixado, deduz via fallback local
-          if (!hasDb && !order.stock_deducted) {
+          // Baixa os itens no catálogo se o estoque ainda não tiver sido deduzido
+          if (!order.stock_deducted) {
             await deductOrderItemsFromStock(editableItems);
           }
 
@@ -651,26 +706,37 @@ document.addEventListener('DOMContentLoaded', async () => {
           order.updated_at = new Date().toISOString();
 
           if (hasDb) {
-            await client.from('orders').update({
+            const { error: updErr } = await client.from('orders').update({
               items: order.items,
               subtotal: order.subtotal,
               discount_amount: order.discount_amount,
               total_amount: order.total_amount,
               status: order.status,
               stock_deducted: true,
+              stock_restored: false,
               updated_at: order.updated_at
             }).eq('order_number', order.order_number);
+
+            if (updErr) {
+              console.warn('Tentando criar registro do pedido no banco de dados...', updErr);
+              const payload = { ...order };
+              delete payload.sync_pending;
+              const { error: insErr } = await client.from('orders').insert([payload]);
+              if (!insErr) order.sync_pending = false;
+            } else {
+              order.sync_pending = false;
+            }
           }
 
           updateLocalOrder(order);
-          showToast(`Pagamento confirmado! Total de ${formatMoney(order.total_amount)} registrado.`, 'success');
+          showToast(`Baixa de estoque e confirmação realizadas com sucesso!`, 'success');
           openOrderManageModal(order);
           renderOrders();
         } catch (err) {
           console.error('Erro ao confirmar pagamento:', err);
-          showToast('Erro ao confirmar pagamento: ' + (err.message || err), 'error');
+          showToast('Erro ao confirmar: ' + (err.message || err), 'error');
           btnConfirmStock.disabled = false;
-          btnConfirmStock.textContent = '✓ Confirmar Pagamento & Pedido';
+          btnConfirmStock.textContent = '✓ Dar Baixa no Estoque & Confirmar';
         }
       });
     }
@@ -687,9 +753,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
           const hasDb = client && isSupabaseConfigured();
 
-          if (!hasDb) {
-            await restoreOrderItemsToStock(editableItems);
-          }
+          // Restaura peças no catálogo
+          await restoreOrderItemsToStock(editableItems);
 
           order.status = 'cancelado';
           order.stock_deducted = false;

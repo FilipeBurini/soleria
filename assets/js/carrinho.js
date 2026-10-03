@@ -1195,14 +1195,15 @@
           payment_status: paymentStatus,
           pagbank_card: pagbankDetails,
           customer_notes: notesInput?.value.trim() || '',
-          stock_deducted: true, // Deduzido de forma atômica pela trigger PostgreSQL
-          stock_reserved_in_db: true,
+          stock_deducted: false, // Atualizado para true automaticamente pela trigger do PostgreSQL ou confirmação admin
+          stock_reserved_in_db: false,
           created_at: new Date().toISOString()
         };
 
+        let dbInsertSuccess = false;
         try {
           if (client && isSupabaseConfigured()) {
-            let { data, error } = await client.from('orders').insert([orderPayload]);
+            let { data, error } = await client.from('orders').insert([orderPayload]).select();
             if (error && (error.message?.includes('payment_status') || error.message?.includes('pagbank_card') || error.message?.includes('column'))) {
               // Fallback de compatibilidade caso as novas colunas ainda não tenham sido criadas no Supabase
               const fallbackPayload = { ...orderPayload };
@@ -1211,22 +1212,35 @@
               if (orderPayload.pagbank_card) {
                 fallbackPayload.customer_notes = `${fallbackPayload.customer_notes || ''} [PagBank: ${orderPayload.pagbank_card.brand} final ${orderPayload.pagbank_card.last4} (${orderPayload.pagbank_card.installments}x)]`.trim();
               }
-              const retry = await client.from('orders').insert([fallbackPayload]);
+              const retry = await client.from('orders').insert([fallbackPayload]).select();
               if (retry.error) {
-                console.warn('Aviso ao gravar pedido em orders (retry):', retry.error);
+                console.error('Erro ao gravar pedido em orders (retry):', retry.error);
+              } else {
+                dbInsertSuccess = true;
+                if (retry.data && retry.data[0]) {
+                  orderPayload.stock_deducted = retry.data[0].stock_deducted ?? false;
+                  orderPayload.stock_reserved_in_db = retry.data[0].stock_deducted ?? false;
+                }
               }
-            } else if (error) {
-              console.warn('Aviso ao gravar em orders (verifique se executou supabase_orders.sql):', error);
+            } else if (!error) {
+              dbInsertSuccess = true;
+              if (data && data[0]) {
+                orderPayload.stock_deducted = data[0].stock_deducted ?? false;
+                orderPayload.stock_reserved_in_db = data[0].stock_deducted ?? false;
+              }
+            } else {
+              console.error('Aviso ao gravar em orders (verifique as políticas RLS no Supabase):', error);
             }
 
             // Registra uso do cupom no Supabase se houver
-            if (couponCode) {
+            if (couponCode && dbInsertSuccess) {
               client.rpc('record_coupon_usage', { p_code: couponCode }).catch(() => {});
             }
           }
         } catch (err) {
           console.error('Erro ao registrar no Supabase:', err);
         } finally {
+          orderPayload.sync_pending = !dbInsertSuccess;
           // Salva cópia de segurança em LocalStorage
           saveOrderLocally(orderPayload);
           cart = [];
