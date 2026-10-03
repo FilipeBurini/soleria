@@ -1,0 +1,86 @@
+{
+  "descricao": "Homologação API de Pedidos e Pagamentos PagBank v4 - Soléria Joias",
+  "endpoint": "POST https://sandbox.api.pagseguro.com/orders",
+  "transacao_exemplo": {
+    "id": "c10c5d82-dca4-4e92-900e-b51bb194cabb",
+    "request": {
+      "method": "POST",
+      "url": "https://sandbox.api.pagseguro.com/orders",
+      "headers": {
+        "authorization": "Bearer f9c937b3-7fc9-4f96-99d9-86746a4898288193ffbb4c12b3640bdc1b30178dda4d8a2d-5308-4b6b-be92-7d470297fe03",
+        "content-type": "application/json"
+      },
+      "body": {
+        "reference_id": "SOL-TEST-001",
+        "customer": {
+          "name": "Maria Teste PagBank",
+          "email": "cliente.teste@exemplo.com",
+          "tax_id": "12345678909",
+          "phones": [
+            {
+              "country": "55",
+              "area": "16",
+              "number": "997990729",
+              "type": "MOBILE"
+            }
+          ]
+        },
+        "items": [
+          {
+            "name": "Anel Soléria Ouro 18k",
+            "quantity": 1,
+            "unit_amount": 15000
+          }
+        ]
+      }
+    },
+    "response": {
+      "status_code": 201,
+      "headers": {
+        "server": "envoy",
+        "Date": "Fri, 02 Oct 2026 22:43:10 GMT",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "id": "ORDE_D7DB752A-3BE9-473C-9589-7F6237474325",
+        "reference_id": "SOL-TEST-001",
+        "created_at": "2026-10-02T19:43:10.666-03:00",
+        "customer": {
+          "name": "Maria Teste PagBank",
+          "email": "cliente.teste@exemplo.com",
+          "tax_id": "12345678909",
+          "phones": [
+            {
+              "type": "MOBILE",
+              "country": "55",
+              "area": "16",
+              "number": "997990729"
+            }
+          ]
+        },
+        "items": [
+          {
+            "name": "Anel Soléria Ouro 18k",
+            "quantity": 1,
+            "unit_amount": 15000
+          }
+        ],
+        "links": [
+          {
+            "rel": "SELF",
+            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_D7DB752A-3BE9-473C-9589-7F6237474325",
+            "media": "application/json",
+            "type": "GET"
+          },
+          {
+            "rel": "PAY",
+            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_D7DB752A-3BE9-473C-9589-7F6237474325/pay",
+            "media": "application/json",
+            "type": "POST"
+          }
+        ]
+      }
+    },
+    "created": "2026-10-02T19:43:10.808-03:00"
+  }
+}

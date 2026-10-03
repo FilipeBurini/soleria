@@ -14,6 +14,9 @@
 
   // Configuração Oficial PagBank Soléria
   const PAGBANK_CONFIG = {
+    // Define se o gateway PagBank está ativo no checkout (false = pagamentos via WhatsApp durante homologação)
+    enabled: false,
+
     // Alternar entre 'sandbox' e 'production'
     environment: 'sandbox',
 
