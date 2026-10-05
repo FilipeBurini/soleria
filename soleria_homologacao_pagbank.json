@@ -1,20 +1,32 @@
 {
-  "descricao": "Homologação API de Pedidos e Pagamentos PagBank v4 - Soléria Joias",
-  "endpoint": "POST https://sandbox.api.pagseguro.com/orders",
-  "transacao_exemplo": {
-    "id": "c10c5d82-dca4-4e92-900e-b51bb194cabb",
+  "informacoes_homologacao": {
+    "empresa": "Soléria Joias",
+    "responsavel": "Carla Viviane Mota Pereira",
+    "api_versao": "PagBank Orders API v4",
+    "ambiente": "SANDBOX",
+    "data_geracao": "2026-10-05T22:47:21.444Z",
+    "nota_seguranca": "Token de autenticação e dados de cartão mascarados conforme normas PCI-DSS / PagBank."
+  },
+  "transacao_cartao_credito": {
+    "identificadores": {
+      "order_id": "ORDE_11AEA817-C7CB-43D3-8DD0-D26ED82C8DD0",
+      "charge_id": "CHAR_F38D0F40-D3EB-4DBD-A47B-88A565E5C582",
+      "reference_id": "SOL-HOMOLOG-CARD-1791240437939",
+      "status": "PAID",
+      "metodo": "CREDIT_CARD"
+    },
     "request": {
       "method": "POST",
       "url": "https://sandbox.api.pagseguro.com/orders",
       "headers": {
-        "authorization": "Bearer f9c937b3-7fc9-4f96-99d9-86746a4898288193ffbb4c12b3640bdc1b30178dda4d8a2d-5308-4b6b-be92-7d470297fe03",
+        "authorization": "Bearer ****************************************",
         "content-type": "application/json"
       },
       "body": {
-        "reference_id": "SOL-TEST-001",
+        "reference_id": "SOL-HOMOLOG-CARD-1791240437939",
         "customer": {
           "name": "Maria Teste PagBank",
-          "email": "cliente.teste@exemplo.com",
+          "email": "cliente.teste@soleria.com.br",
           "tax_id": "12345678909",
           "phones": [
             {
@@ -27,9 +39,34 @@
         },
         "items": [
           {
-            "name": "Anel Soléria Ouro 18k",
+            "name": "Anel Soléria Ouro 18k Elegance",
             "quantity": 1,
             "unit_amount": 15000
+          }
+        ],
+        "charges": [
+          {
+            "reference_id": "CHG-SOL-CARD-1791240437939",
+            "description": "Soléria Joias - Pedido Teste Cartão Homologação",
+            "amount": {
+              "value": 15000,
+              "currency": "BRL"
+            },
+            "payment_method": {
+              "type": "CREDIT_CARD",
+              "installments": 1,
+              "capture": true,
+              "soft_descriptor": "SOLERIA JOIAS",
+              "card": {
+                "number": "411111******1111",
+                "exp_month": "12",
+                "exp_year": "2028",
+                "security_code": "***",
+                "holder": {
+                  "name": "MARIA TESTE PAGBANK"
+                }
+              }
+            }
           }
         ]
       }
@@ -37,17 +74,16 @@
     "response": {
       "status_code": 201,
       "headers": {
-        "server": "envoy",
-        "Date": "Fri, 02 Oct 2026 22:43:10 GMT",
-        "Content-Type": "application/json"
+        "content-type": "application/json",
+        "date": "Mon, 05 Oct 2026 22:47:21 GMT"
       },
       "body": {
-        "id": "ORDE_D7DB752A-3BE9-473C-9589-7F6237474325",
-        "reference_id": "SOL-TEST-001",
-        "created_at": "2026-10-02T19:43:10.666-03:00",
+        "id": "ORDE_11AEA817-C7CB-43D3-8DD0-D26ED82C8DD0",
+        "reference_id": "SOL-HOMOLOG-CARD-1791240437939",
+        "created_at": "2026-10-05T19:47:18.288-03:00",
         "customer": {
           "name": "Maria Teste PagBank",
-          "email": "cliente.teste@exemplo.com",
+          "email": "cliente.teste@soleria.com.br",
           "tax_id": "12345678909",
           "phones": [
             {
@@ -60,27 +96,212 @@
         },
         "items": [
           {
-            "name": "Anel Soléria Ouro 18k",
+            "name": "Anel Soléria Ouro 18k Elegance",
             "quantity": 1,
             "unit_amount": 15000
           }
         ],
+        "charges": [
+          {
+            "id": "CHAR_F38D0F40-D3EB-4DBD-A47B-88A565E5C582",
+            "reference_id": "CHG-SOL-CARD-1791240437939",
+            "status": "PAID",
+            "created_at": "2026-10-05T19:47:18.854-03:00",
+            "paid_at": "2026-10-05T19:47:19.000-03:00",
+            "description": "Soléria Joias - Pedido Teste Cartão Homologação",
+            "amount": {
+              "value": 15000,
+              "currency": "BRL",
+              "summary": {
+                "total": 15000,
+                "paid": 15000,
+                "refunded": 0
+              }
+            },
+            "payment_response": {
+              "code": "20000",
+              "message": "SUCESSO",
+              "reference": "032416400102",
+              "raw_data": {
+                "authorization_code": "145803",
+                "nsu": "032416400102",
+                "reason_code": "00"
+              }
+            },
+            "payment_method": {
+              "type": "CREDIT_CARD",
+              "installments": 1,
+              "capture": true,
+              "card": {
+                "brand": "visa",
+                "first_digits": "411111",
+                "last_digits": "1111",
+                "exp_month": "12",
+                "exp_year": "2028",
+                "holder": {
+                  "name": "MARIA TESTE PAGBANK"
+                },
+                "issuer": {},
+                "country": "BRA"
+              },
+              "soft_descriptor": "SOLERIAJOIAS"
+            },
+            "metadata": {
+              "ps_order_id": "ORDE_11AEA817-C7CB-43D3-8DD0-D26ED82C8DD0"
+            },
+            "links": [
+              {
+                "rel": "SELF",
+                "href": "https://sandbox.api.pagseguro.com/charges/CHAR_F38D0F40-D3EB-4DBD-A47B-88A565E5C582",
+                "media": "application/json",
+                "type": "GET"
+              },
+              {
+                "rel": "CHARGE.CANCEL",
+                "href": "https://sandbox.api.pagseguro.com/charges/CHAR_F38D0F40-D3EB-4DBD-A47B-88A565E5C582/cancel",
+                "media": "application/json",
+                "type": "POST"
+              }
+            ]
+          }
+        ],
+        "notification_urls": [],
         "links": [
           {
             "rel": "SELF",
-            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_D7DB752A-3BE9-473C-9589-7F6237474325",
+            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_11AEA817-C7CB-43D3-8DD0-D26ED82C8DD0",
             "media": "application/json",
             "type": "GET"
           },
           {
             "rel": "PAY",
-            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_D7DB752A-3BE9-473C-9589-7F6237474325/pay",
+            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_11AEA817-C7CB-43D3-8DD0-D26ED82C8DD0/pay",
             "media": "application/json",
             "type": "POST"
           }
         ]
       }
+    }
+  },
+  "transacao_pix": {
+    "identificadores": {
+      "order_id": "ORDE_4CEABDFF-F83D-489E-9942-6D0E8873450F",
+      "qrcode_id": "QRCO_FD97E669-82A7-4E91-8476-7A210DD7F4F7",
+      "reference_id": "SOL-HOMOLOG-PIX-1791240437939",
+      "metodo": "PIX"
     },
-    "created": "2026-10-02T19:43:10.808-03:00"
+    "request": {
+      "method": "POST",
+      "url": "https://sandbox.api.pagseguro.com/orders",
+      "headers": {
+        "authorization": "Bearer ****************************************",
+        "content-type": "application/json"
+      },
+      "body": {
+        "reference_id": "SOL-HOMOLOG-PIX-1791240437939",
+        "customer": {
+          "name": "Maria Teste PagBank",
+          "email": "cliente.teste@soleria.com.br",
+          "tax_id": "12345678909",
+          "phones": [
+            {
+              "country": "55",
+              "area": "16",
+              "number": "997990729",
+              "type": "MOBILE"
+            }
+          ]
+        },
+        "items": [
+          {
+            "name": "Colar Soléria Diamond Solitário",
+            "quantity": 1,
+            "unit_amount": 25000
+          }
+        ],
+        "qr_codes": [
+          {
+            "amount": {
+              "value": 25000
+            },
+            "expiration_date": "2026-10-15T23:59:59-03:00"
+          }
+        ]
+      }
+    },
+    "response": {
+      "status_code": 201,
+      "headers": {
+        "content-type": "application/json",
+        "date": "Mon, 05 Oct 2026 22:47:21 GMT"
+      },
+      "body": {
+        "id": "ORDE_4CEABDFF-F83D-489E-9942-6D0E8873450F",
+        "reference_id": "SOL-HOMOLOG-PIX-1791240437939",
+        "created_at": "2026-10-05T19:47:21.284-03:00",
+        "customer": {
+          "name": "Maria Teste PagBank",
+          "email": "cliente.teste@soleria.com.br",
+          "tax_id": "12345678909",
+          "phones": [
+            {
+              "type": "MOBILE",
+              "country": "55",
+              "area": "16",
+              "number": "997990729"
+            }
+          ]
+        },
+        "items": [
+          {
+            "name": "Colar Soléria Diamond Solitário",
+            "quantity": 1,
+            "unit_amount": 25000
+          }
+        ],
+        "qr_codes": [
+          {
+            "id": "QRCO_FD97E669-82A7-4E91-8476-7A210DD7F4F7",
+            "expiration_date": "2026-10-15T23:59:59.000-03:00",
+            "amount": {
+              "value": 25000
+            },
+            "text": "00020101021226850014br.gov.bcb.pix2563api-h.pagseguro.com/pix/v2/FD97E669-82A7-4E91-8476-7A210DD7F4F75204531153039865802BR5922CARLA VIVIANE MOTA PER6006FRANCA62070503***63040C6E",
+            "arrangements": [
+              "PIX"
+            ],
+            "links": [
+              {
+                "rel": "QRCODE.PNG",
+                "href": "https://sandbox.api.pagseguro.com/qrcode/QRCO_FD97E669-82A7-4E91-8476-7A210DD7F4F7/png",
+                "media": "image/png",
+                "type": "GET"
+              },
+              {
+                "rel": "QRCODE.BASE64",
+                "href": "https://sandbox.api.pagseguro.com/qrcode/QRCO_FD97E669-82A7-4E91-8476-7A210DD7F4F7/base64",
+                "media": "text/plain",
+                "type": "GET"
+              }
+            ]
+          }
+        ],
+        "notification_urls": [],
+        "links": [
+          {
+            "rel": "SELF",
+            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_4CEABDFF-F83D-489E-9942-6D0E8873450F",
+            "media": "application/json",
+            "type": "GET"
+          },
+          {
+            "rel": "PAY",
+            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_4CEABDFF-F83D-489E-9942-6D0E8873450F/pay",
+            "media": "application/json",
+            "type": "POST"
+          }
+        ]
+      }
+    }
   }
 }
