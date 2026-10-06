@@ -169,10 +169,14 @@
     const cleanCvv = String(securityCode || '').trim();
 
     if (!window.PagSeguro || typeof window.PagSeguro.encryptCard !== 'function') {
-      console.warn('PagSeguro SDK não disponível localmente. Gerando hash de segurança seguro.');
+      await loadPagBankSdk();
+    }
+
+    if (!window.PagSeguro || typeof window.PagSeguro.encryptCard !== 'function') {
+      console.error('PagSeguro SDK indisponível para criptografia segura.');
       return {
-        hasErrors: false,
-        encrypted: `SIMULATED_CARD_ENC_${Date.now()}_${cleanNumber.slice(-4)}`
+        hasErrors: true,
+        error: 'Módulo de segurança do PagBank indisponível no momento. Por favor, recarregue a página.'
       };
     }
 
@@ -276,11 +280,11 @@
               soft_descriptor: 'SOLERIA JOIAS',
               card: {
                 encrypted: encResult.encrypted,
-                security_code: String(cardData.cvv),
-                holder: {
-                  name: cardData.holderName.toUpperCase().trim(),
-                  tax_id: String(cardData.holderCpf || order.customer_cpf).replace(/\D/g, '')
-                }
+                store: false
+              },
+              holder: {
+                name: cardData.holderName.toUpperCase().trim(),
+                tax_id: String(cardData.holderCpf || order.customer_cpf).replace(/\D/g, '')
               }
             }
           }

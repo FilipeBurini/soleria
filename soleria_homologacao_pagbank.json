@@ -4,14 +4,14 @@
     "responsavel": "Carla Viviane Mota Pereira",
     "api_versao": "PagBank Orders API v4",
     "ambiente": "SANDBOX",
-    "data_geracao": "2026-10-05T22:47:21.444Z",
-    "nota_seguranca": "Token de autenticação e dados de cartão mascarados conforme normas PCI-DSS / PagBank."
+    "data_geracao": "2026-10-06T20:27:10.000Z",
+    "nota_seguranca": "Token de autenticação mascarado. Dados de cartão 100% criptografados no frontend via SDK Oficial PagBank com Chave Pública conforme normas PCI-DSS e documentação oficial PagBank."
   },
   "transacao_cartao_credito": {
     "identificadores": {
-      "order_id": "ORDE_11AEA817-C7CB-43D3-8DD0-D26ED82C8DD0",
-      "charge_id": "CHAR_F38D0F40-D3EB-4DBD-A47B-88A565E5C582",
-      "reference_id": "SOL-HOMOLOG-CARD-1791240437939",
+      "order_id": "ORDE_70D79663-6887-4D27-8E37-CDD0260B22C9",
+      "charge_id": "CHAR_D27B2524-8FC7-45A4-B855-1ADE06BE2FAD",
+      "reference_id": "SOL-HOMOLOG-CARD-1791329224404",
       "status": "PAID",
       "metodo": "CREDIT_CARD"
     },
@@ -23,7 +23,7 @@
         "content-type": "application/json"
       },
       "body": {
-        "reference_id": "SOL-HOMOLOG-CARD-1791240437939",
+        "reference_id": "SOL-HOMOLOG-CARD-1791329224404",
         "customer": {
           "name": "Maria Teste PagBank",
           "email": "cliente.teste@soleria.com.br",
@@ -46,7 +46,7 @@
         ],
         "charges": [
           {
-            "reference_id": "CHG-SOL-CARD-1791240437939",
+            "reference_id": "CHG-SOL-HOMOLOG-CARD-1791329224404",
             "description": "Soléria Joias - Pedido Teste Cartão Homologação",
             "amount": {
               "value": 15000,
@@ -58,13 +58,12 @@
               "capture": true,
               "soft_descriptor": "SOLERIA JOIAS",
               "card": {
-                "number": "411111******1111",
-                "exp_month": "12",
-                "exp_year": "2028",
-                "security_code": "***",
-                "holder": {
-                  "name": "MARIA TESTE PAGBANK"
-                }
+                "encrypted": "hGVQwwlId51xFW/HeP1bcaLnDemQO86XGP4V07HBkLziBBhP/m9Nbxy3buDOlFT94DOUEMLZzCySsRPEd8BUaqr79CkQrtcUsG680w5oDIuWUHCCTP69vh5U2ge060aqhwgYDNygCCj63Ue8H0PwyW6al+0rRLAbhPnuWMK1AI2ObPR9y0Z1Kj562TAlnLYIZ3O2uzcU4vKn9Qyqduz5HIzHDc5lhTfU+p7YILUauJsV9expJE8UF604wn5nn5VUI6fsMNtZLcWz9uv6omgSdojs6NnU2PZAnbBcAEpZYbRE1onwseMxxSfTZFgv6+Gsw2senMOmt/JmCfINgPO4cQ==",
+                "store": false
+              },
+              "holder": {
+                "name": "MARIA TESTE PAGBANK",
+                "tax_id": "12345678909"
               }
             }
           }
@@ -75,12 +74,12 @@
       "status_code": 201,
       "headers": {
         "content-type": "application/json",
-        "date": "Mon, 05 Oct 2026 22:47:21 GMT"
+        "date": "Tue, 06 Oct 2026 23:27:12 GMT"
       },
       "body": {
-        "id": "ORDE_11AEA817-C7CB-43D3-8DD0-D26ED82C8DD0",
-        "reference_id": "SOL-HOMOLOG-CARD-1791240437939",
-        "created_at": "2026-10-05T19:47:18.288-03:00",
+        "id": "ORDE_70D79663-6887-4D27-8E37-CDD0260B22C9",
+        "reference_id": "SOL-HOMOLOG-CARD-1791329224404",
+        "created_at": "2026-10-06T20:27:07.100-03:00",
         "customer": {
           "name": "Maria Teste PagBank",
           "email": "cliente.teste@soleria.com.br",
@@ -103,11 +102,11 @@
         ],
         "charges": [
           {
-            "id": "CHAR_F38D0F40-D3EB-4DBD-A47B-88A565E5C582",
-            "reference_id": "CHG-SOL-CARD-1791240437939",
+            "id": "CHAR_D27B2524-8FC7-45A4-B855-1ADE06BE2FAD",
+            "reference_id": "CHG-SOL-HOMOLOG-CARD-1791329224404",
             "status": "PAID",
-            "created_at": "2026-10-05T19:47:18.854-03:00",
-            "paid_at": "2026-10-05T19:47:19.000-03:00",
+            "created_at": "2026-10-06T20:27:08.121-03:00",
+            "paid_at": "2026-10-06T20:27:10.000-03:00",
             "description": "Soléria Joias - Pedido Teste Cartão Homologação",
             "amount": {
               "value": 15000,
@@ -141,24 +140,25 @@
                 "holder": {
                   "name": "MARIA TESTE PAGBANK"
                 },
+                "store": false,
                 "issuer": {},
                 "country": "BRA"
               },
               "soft_descriptor": "SOLERIAJOIAS"
             },
             "metadata": {
-              "ps_order_id": "ORDE_11AEA817-C7CB-43D3-8DD0-D26ED82C8DD0"
+              "ps_order_id": "ORDE_70D79663-6887-4D27-8E37-CDD0260B22C9"
             },
             "links": [
               {
                 "rel": "SELF",
-                "href": "https://sandbox.api.pagseguro.com/charges/CHAR_F38D0F40-D3EB-4DBD-A47B-88A565E5C582",
+                "href": "https://sandbox.api.pagseguro.com/charges/CHAR_D27B2524-8FC7-45A4-B855-1ADE06BE2FAD",
                 "media": "application/json",
                 "type": "GET"
               },
               {
                 "rel": "CHARGE.CANCEL",
-                "href": "https://sandbox.api.pagseguro.com/charges/CHAR_F38D0F40-D3EB-4DBD-A47B-88A565E5C582/cancel",
+                "href": "https://sandbox.api.pagseguro.com/charges/CHAR_D27B2524-8FC7-45A4-B855-1ADE06BE2FAD/cancel",
                 "media": "application/json",
                 "type": "POST"
               }
@@ -169,13 +169,13 @@
         "links": [
           {
             "rel": "SELF",
-            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_11AEA817-C7CB-43D3-8DD0-D26ED82C8DD0",
+            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_70D79663-6887-4D27-8E37-CDD0260B22C9",
             "media": "application/json",
             "type": "GET"
           },
           {
             "rel": "PAY",
-            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_11AEA817-C7CB-43D3-8DD0-D26ED82C8DD0/pay",
+            "href": "https://sandbox.api.pagseguro.com/orders/ORDE_70D79663-6887-4D27-8E37-CDD0260B22C9/pay",
             "media": "application/json",
             "type": "POST"
           }
