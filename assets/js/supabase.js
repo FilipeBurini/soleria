@@ -7,8 +7,13 @@
  * 2. As permissões de acesso são protegidas pelas Políticas RLS no banco de dados.
  */
 
-const SUPABASE_URL = 'https://kgmkvskdhoficppjskgy.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_P-XdBQaYxckZYoussxYHFA_ZW_ZSgmq';
+const SUPABASE_URL = (typeof window !== 'undefined' && window.TENANT_SUPABASE_URL)
+  ? window.TENANT_SUPABASE_URL
+  : 'https://kgmkvskdhoficppjskgy.supabase.co';
+
+const SUPABASE_ANON_KEY = (typeof window !== 'undefined' && window.TENANT_SUPABASE_ANON_KEY)
+  ? window.TENANT_SUPABASE_ANON_KEY
+  : 'sb_publishable_P-XdBQaYxckZYoussxYHFA_ZW_ZSgmq';
 
 // Inicialização do cliente Supabase via CDN global (@supabase/supabase-js@2)
 let db = null;

@@ -73,34 +73,52 @@ O próprio script schema_completo_loja_nova.sql executado no Passo 1.2 já cuida
 
 ---
 
-## 🎨 ETAPA 2: Personalizar a Loja da Cliente (Logo, Cores e Dados)
+## 🎨 ETAPA 2: Configurar Tudo Diretamente pelo seu Sistema Master (Sem Mexer em Código!)
 
-Para que a loja fique com a cara da nova cliente:
+Com o sistema de **Multi-Tenant e Licenças Master**, você **NÃO precisa editar arquivos de código, HTML ou CSS** para cada novo cliente.
+Tudo é configurado centralmente no seu próprio painel administrativo: [`admin-licencas.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin-licencas.html).
 
-### Passo 2.1: Estrutura de Arquivos da Loja
-Você pode manter uma pasta modelo chamada `modelo-loja-whitelabel/` ou clonar o repositório principal no GitHub com o nome da loja (ex: `loja-joias-da-ana`).
+### Passo 2.1: Rodar a Tabela Master de Licenças (Uma única vez)
+No seu próprio Supabase Master (o da Soléria ou central), execute o script [`schema_master_licencas.sql`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/schema_master_licencas.sql) no **SQL Editor**. Esse script cria a tabela `public.licenses` com todos os campos de controle, cores, credenciais e RLS de leitura segura.
 
-### Passo 2.2: Configurar o Arquivo Central da Loja
-No arquivo [`assets/js/supabase.js`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/js/supabase.js), insira as credenciais do banco da cliente coletadas no Passo 1.5:
+### Passo 2.2: Acessar a tela "Licenças White-Label" no seu Painel Master
+1. Abra o painel da sua loja Master em [`admin.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin.html) e clique no menu **"Licenças White-Label"** (ou acesse diretamente [`admin-licencas.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin-licencas.html)).
+2. Clique no botão dourado **"+ Nova Loja Parceira"**.
 
-```javascript
-// Credenciais Supabase da Loja da Ana
-const SUPABASE_URL = "https://xyzabcdefg.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
-```
+### Passo 2.3: Preencher os Parâmetros da Nova Loja no Formulário
+Na tela que se abre, preencha os dados da contratante:
 
-### Passo 2.3: Personalizar Nome, Logo e WhatsApp
-1. **Imagens:** Na pasta `assets/images/`, substitua:
-   - `logo-horizontal.png` (Logo da marca da cliente);
-   - `logo-simbolo.png` (Ícone/favicon da cliente).
-2. **Cores da Marca:** No arquivo `assets/css/style.css`, no bloco `:root`, altere as variáveis principais se a cliente quiser tons diferentes:
-   ```css
-   :root {
-     --brand-terracotta: #B87333; /* Cor principal da cliente */
-     --gold-primary: #D4AF37;     /* Cor dourada / secundária */
-   }
-   ```
-3. **WhatsApp de Atendimento:** No arquivo `index.html` e `carrinho.js`, defina o número oficial da cliente (com DDD, ex: `5511999999999`) e o nome da atendente responsável (ex: "Ana" ou "Mariana").
+1. **Identificação da Loja:**
+   - **Nome da Cliente / Marca:** Ex: `Joias da Ana`
+   - **Domínio Autorizado:** Ex: `joiasdaana.com.br` ou `joias-da-ana.pages.dev`
+   - **Chave de Licença:** Clique em **"Gerar Chave"** para gerar um código único (ex: `SLR-ANA-2026-X8Y9`).
+2. **Banco de Dados Dedicado da Cliente (Supabase Isolado):**
+   - **Supabase URL do Cliente:** Cole a URL coletada no Passo 1.5 (ex: `https://xyzabcdefg.supabase.co`).
+   - **Supabase Anon Key:** Cole a chave pública `anon` da cliente coletada no Passo 1.5.
+3. **Identidade Visual e Cores:**
+   - **URL da Logo:** Link da imagem da logo horizontal da cliente (ex: link hospedado, Supabase Storage público ou Imgur).
+   - **URL do Ícone / Favicon:** Link do símbolo da marca da cliente.
+   - **Cor Primária:** Escolha visualmente no seletor de cores ou digite o hexadecimal (ex: `#C48259`).
+   - **Cor Secundária / Acento:** Escolha visualmente no seletor (ex: `#D4AF37`).
+4. **Atendimento & Cobrança:**
+   - **WhatsApp de Atendimento:** Número oficial com DDD (ex: `5511999999999`).
+   - **Nome da Atendente:** Ex: `Ana` ou `Mariana`.
+   - **Valor da Mensalidade (R$):** Ex: `97.00` ou `147.00`.
+   - **Válido até:** Defina a data da primeira mensalidade (ex: daqui a 30 dias).
+5. Clique em **"Salvar e Ativar Licença"**.
+
+---
+
+### Passo 2.4: Como o Sistema da Outra Empresa Aplica Tudo Automaticamente
+O arquivo [`assets/js/tenant-config.js`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/js/tenant-config.js) funciona como um **bootloader inteligente**:
+1. Quando qualquer pessoa (ou a dona) abre o site ou painel no domínio dela (`joiasdaana.com.br`), o script consulta o seu Supabase Master.
+2. **Injeção de Cores:** Ele aplica as variáveis CSS (`--brand-terracotta`, `--gold-primary`) dinamicamente no navegador, mudando botões, detalhes e cabeçalhos para as cores escolhidas no seu Master.
+3. **Logos e Favicon:** Substitui as imagens de logo e o ícone da aba do navegador pelos links definidos no Master.
+4. **Banco Isolado:** Alimenta as variáveis `window.TENANT_SUPABASE_URL` e `window.TENANT_SUPABASE_ANON_KEY`, fazendo com que o [`assets/js/supabase.js`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/js/supabase.js) consulte exclusivamente o banco da cliente.
+5. **WhatsApp:** Todos os botões de contato e finalização de pedido chamam automaticamente o WhatsApp e o nome da atendente cadastrados no Master.
+6. **Bloqueio por Inadimplência:** Se a cliente não pagar a mensalidade na data estipulada, o painel `admin.html` dela é travado na hora com tela de aviso e botão direto para o seu WhatsApp para ela regularizar o Pix.
+
+> 💡 **Vantagem Absoluta:** O código-fonte dos arquivos da loja da cliente permanece 100% limpo e idêntico. Se você quiser mudar uma cor, o WhatsApp ou atualizar o logo da cliente no futuro, basta alterar no seu painel Master!
 
 ---
 
@@ -239,13 +257,22 @@ Na pasta `assets/js/` da loja da cliente, crie o arquivo `license-check.js` que 
 })();
 ```
 
-4. Nos arquivos `admin.html`, `admin-pedidos.html`, `admin-produto.html`, etc., basta incluir `<script src="assets/js/license-check.js"></script>` logo no início do `<head>`.
+### Passo 4.3: O Bootloader Unificado (`assets/js/tenant-config.js`)
+O script [`assets/js/tenant-config.js`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/js/tenant-config.js) unifica o **Gatekeeper de Licenças** e a **Injeção de Cores/Logos/Credenciais**:
+1. Ele é incluído no `<head>` das páginas públicas e administrativas da loja:
+   ```html
+   <script src="assets/js/tenant-config.js"></script>
+   ```
+2. Quando alguém tenta acessar o painel administrativo (`admin.html`, `admin-pedidos.html`, etc.), ele valida se a licença está com status `active` e se a data `valid_until` é igual ou posterior à data atual.
+3. Se a cliente atrasar o pagamento da mensalidade ou for suspensa:
+   - A tela de bloqueio substitui o painel com mensagem elegante de suspensão temporária.
+   - Um botão direto para o seu WhatsApp permite que ela envie o comprovante Pix de renovação.
 
-### Como renovar a mensalidade todo mês:
-Quando a Ana pagar o Pix de R$ 97 ou R$ 147 no seu WhatsApp:
-1. Você abre o seu Supabase Master.
-2. Na tabela `licenses`, na linha da Ana, altera a coluna `valid_until` para o próximo mês (ex: `2026-12-12`).
-3. O painel dela fica liberado por mais 30 dias na mesma hora.
+### Como renovar a mensalidade todo mês (Em 1 Clique!):
+Quando a contratante enviar o Pix da mensalidade (R$ 97, R$ 147, etc.):
+1. Abra o seu painel Master em [`admin-licencas.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin-licencas.html).
+2. Na linha da loja dela, basta clicar no botão verde **"+30 Dias (Pix)"**.
+3. O sistema calcula automaticamente mais 30 dias a partir da validade atual (ou da data de hoje), atualiza o banco e libera o acesso da cliente no mesmo segundo.
 
 ---
 
