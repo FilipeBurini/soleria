@@ -81,8 +81,8 @@ Tudo é configurado centralmente no seu próprio painel administrativo: [`admin-
 ### Passo 2.1: Rodar a Tabela Master de Licenças (Uma única vez)
 No seu próprio Supabase Master (o da Soléria ou central), execute o script [`schema_master_licencas.sql`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/schema_master_licencas.sql) no **SQL Editor**. Esse script cria a tabela `public.licenses` com todos os campos de controle, cores, credenciais e RLS de leitura segura.
 
-### Passo 2.2: Acessar a tela "Licenças White-Label" no seu Painel Master
-1. Abra o painel da sua loja Master em [`admin.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin.html) e clique no menu **"Licenças White-Label"** (ou acesse diretamente [`admin-licencas.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin-licencas.html)).
+### Passo 2.2: Acessar a tela "Lojas & Licenças" no seu Painel Master
+1. Abra o painel da sua loja Master em [`admin.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin.html) e clique no botão **"🔑 Lojas & Licenças"** no cabeçalho do painel 360° (ou acesse diretamente [`admin-licencas.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin-licencas.html)).
 2. Clique no botão dourado **"+ Nova Loja Parceira"**.
 
 ### Passo 2.3: Preencher os Parâmetros da Nova Loja no Formulário
