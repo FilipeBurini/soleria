@@ -253,17 +253,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 2. Editar Parâmetros da Loja
     document.querySelectorAll('.btn-action-edit').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
         const id = btn.dataset.id;
-        const lic = licensesData.find(l => l.id === id);
-        if (!lic) return;
+        const lic = licensesData.find(l => String(l.id) === String(id));
+        if (!lic) {
+          console.warn('Loja não encontrada para edição. ID:', id, 'Lista:', licensesData);
+          return;
+        }
         openModal(lic);
       });
     });
 
     // 3. Alternar Bloqueio / Desbloqueio
     document.querySelectorAll('.btn-action-toggle').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
         const id = btn.dataset.id;
         const currentStatus = btn.dataset.status;
         const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
@@ -284,11 +289,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Abrir Modal de Criação ou Edição
   function openModal(lic = null) {
+    if (!modal) {
+      console.error('Elemento #modal-license não encontrado no DOM!');
+      alert('Erro: Modal não encontrado no DOM.');
+      return;
+    }
+
     form.reset();
 
     if (lic) {
       modalTitle.textContent = `Editar Parâmetros: ${lic.client_name}`;
-      inpId.value = lic.id;
+      inpId.value = lic.id || '';
       inpClientName.value = lic.client_name || '';
       inpDomain.value = lic.domain || '';
       inpKey.value = lic.license_key || '';
@@ -302,16 +313,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       inpSecondaryPicker.value = lic.secondary_color || '#C5A465';
       inpWhatsapp.value = lic.whatsapp_number || '';
       inpAttendant.value = lic.attendant_name || 'Carla';
-      inpMonthlyFee.value = lic.monthly_fee || 97.00;
+      inpMonthlyFee.value = lic.monthly_fee !== undefined ? lic.monthly_fee : 97.00;
       inpValidUntil.value = lic.valid_until || '';
       inpStatus.value = lic.status || 'active';
     } else {
       modalTitle.textContent = 'Cadastrar Nova Loja Parceira';
       inpId.value = '';
+      inpClientName.value = '';
+      inpDomain.value = '';
+      inpKey.value = '';
+      inpSupabaseUrl.value = '';
+      inpSupabaseAnon.value = '';
+      inpLogoUrl.value = '';
+      inpIconUrl.value = '';
       inpPrimaryColor.value = '#AB5332';
       inpPrimaryPicker.value = '#AB5332';
       inpSecondaryColor.value = '#C5A465';
       inpSecondaryPicker.value = '#C5A465';
+      inpWhatsapp.value = '';
       inpAttendant.value = 'Carla';
       inpMonthlyFee.value = '97.00';
       inpStatus.value = 'active';
@@ -322,22 +341,65 @@ document.addEventListener('DOMContentLoaded', async () => {
       inpValidUntil.value = defaultExp.toISOString().split('T')[0];
     }
 
+    // Exibe o modal garantindo classe active e estilos visíveis
+    modal.classList.add('active');
     modal.style.display = 'flex';
+    modal.style.opacity = '1';
+    modal.style.pointerEvents = 'auto';
+    modal.style.visibility = 'visible';
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+
+    // Foca suavemente no campo do nome
+    setTimeout(() => inpClientName?.focus(), 80);
   }
 
   function closeModal() {
+    if (!modal) return;
+    modal.classList.remove('active');
     modal.style.display = 'none';
+    modal.style.opacity = '0';
+    modal.style.pointerEvents = 'none';
+    modal.style.visibility = 'hidden';
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
   }
 
-  btnOpenCreate?.addEventListener('click', () => openModal(null));
-  btnCloseModal?.addEventListener('click', closeModal);
-  btnCancelModal?.addEventListener('click', closeModal);
+  btnOpenCreate?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openModal(null);
+  });
+  btnCloseModal?.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeModal();
+  });
+  btnCancelModal?.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeModal();
+  });
+  
+  // Fechar ao clicar fora da janela
+  modal?.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      closeModal();
+    }
+  });
+
+  // Fechar com a tecla ESC
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal?.classList.contains('active')) {
+      closeModal();
+    }
+  });
+
   searchInput?.addEventListener('input', () => renderTable(licensesData));
 
   // Salvar Loja (Insert ou Update)
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btnSave = document.getElementById('btn-save-license');
+    if (!btnSave) return;
+
     btnSave.disabled = true;
     btnSave.textContent = 'Gravando...';
 
@@ -359,6 +421,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
+      if (!client) {
+        throw new Error('Supabase Client não inicializado. Verifique se assets/js/supabase.js está carregado.');
+      }
+
       const isEdit = Boolean(inpId.value);
       let resError = null;
 
@@ -374,9 +440,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       alert(`Loja "${payload.client_name}" salva com sucesso! Os parâmetros já estão ativos.`);
       closeModal();
-      loadLicenses();
+      await loadLicenses();
     } catch (err) {
-      alert('Erro ao salvar loja: ' + (err.message || err));
+      console.error('Erro ao salvar licença:', err);
+      alert('Erro ao salvar loja: ' + (err.message || JSON.stringify(err)));
     } finally {
       btnSave.disabled = false;
       btnSave.textContent = 'Salvar Parâmetros da Loja';

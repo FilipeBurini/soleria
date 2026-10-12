@@ -1,4 +1,4 @@
-# ✦ Manual Prático de Implantação White-Label & Gestão de Licenças — Soléria SaaS
+﻿# ✦ Manual Prático de Implantação White-Label & Gestão de Licenças — Soléria SaaS
 
 > **Objetivo deste manual:** Guia passo a passo para você vender, implantar e gerenciar lojas completas para novas clientes (ex: *"Joias da Ana"*, *"Pratas da Maria"*), utilizando **domínio próprio da cliente**, **banco de dados isolado com custo R$ 0,00** e **controle total de mensalidade via Chave de Licença**.
 
@@ -46,13 +46,13 @@ Cada cliente ganha seu próprio banco no plano gratuito do Supabase. Dessa forma
 ### Passo 1.2: Rodar os Scripts de Estrutura do Banco (SQL Editor)
 1. No menu lateral esquerdo do Supabase da cliente, clique no ícone **SQL Editor** (ícone de terminal `>_`).
 2. Clique em **"New Query"**.
-3. Abra o arquivo [`schema_completo_loja_nova.sql`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portfólios/Soléria/schema_completo_loja_nova.sql) do projeto, copie todo o conteúdo e cole no SQL Editor.
+3. Abra o arquivo [schema_completo_loja_nova.sql](./schema_completo_loja_nova.sql) na pasta do seu projeto, copie todo o conteúdo e cole no SQL Editor.
 4. Clique no botão verde **"Run"**.
    - Isso criará as tabelas: `products`, `orders`, `customers`, `coupons`, `supplies`, os triggers de baixa atômica de estoque e as colunas de baixa parcial (`amount_paid` e `balance_due`).
 
 ### Passo 1.3: Armazenamento de Fotos (Criado Automaticamente pelo SQL! 🎉)
-O próprio script schema_completo_loja_nova.sql executado no Passo 1.2 já cuida de tudo no Storage:
-- ✅ Cria o bucket Fotos Produtos como **público**;
+O próprio script [schema_completo_loja_nova.sql](./schema_completo_loja_nova.sql) executado no Passo 1.2 já cuida de tudo no Storage:
+- ✅ Cria o bucket `Fotos Produtos` como **público**;
 - ✅ Configura limite de 50MB por imagem;
 - ✅ Cria automaticamente as 4 políticas de acesso RLS (leitura pública para o catálogo e permissão de upload/edição/exclusão pelo painel administrativo).
 
@@ -76,14 +76,14 @@ O próprio script schema_completo_loja_nova.sql executado no Passo 1.2 já cuida
 ## 🎨 ETAPA 2: Configurar Tudo Diretamente pelo seu Sistema Master (Sem Mexer em Código!)
 
 Com o sistema de **Multi-Tenant e Licenças Master**, você **NÃO precisa editar arquivos de código, HTML ou CSS** para cada novo cliente.
-Tudo é configurado centralmente no seu próprio painel administrativo: [`admin-licencas.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin-licencas.html).
+Tudo é configurado centralmente no seu próprio painel administrativo: [admin-licencas.html](./admin-licencas.html).
 
 ### Passo 2.1: Rodar a Tabela Master de Licenças (Uma única vez)
-No seu próprio Supabase Master (o da Soléria ou central), execute o script [`schema_master_licencas.sql`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/schema_master_licencas.sql) no **SQL Editor**. Esse script cria a tabela `public.licenses` com todos os campos de controle, cores, credenciais e RLS de leitura segura.
+No seu próprio Supabase Master (o da Soléria ou central), execute o script [schema_master_licencas.sql](./schema_master_licencas.sql) no **SQL Editor**. Esse script cria a tabela `public.licenses` com todos os campos de controle, cores, credenciais e RLS de leitura segura.
 
 ### Passo 2.2: Acessar a tela "Lojas & Licenças" no seu Painel Master
-1. Abra o painel da sua loja Master em [`admin.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin.html) e clique no botão **"🔑 Lojas & Licenças"** no cabeçalho do painel 360° (ou acesse diretamente [`admin-licencas.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin-licencas.html)).
-2. Clique no botão dourado **"+ Nova Loja Parceira"**.
+1. Abra o painel da sua loja Master em [admin.html](./admin.html) e clique no botão **"🔑 Lojas & Licenças"** no cabeçalho do painel 360° (ou acesse diretamente [admin-licencas.html](./admin-licencas.html)).
+2. Clique no botão preto **"+ CADASTRAR NOVA LOJA PARCEIRA"**.
 
 ### Passo 2.3: Preencher os Parâmetros da Nova Loja no Formulário
 Na tela que se abre, preencha os dados da contratante:
@@ -91,7 +91,7 @@ Na tela que se abre, preencha os dados da contratante:
 1. **Identificação da Loja:**
    - **Nome da Cliente / Marca:** Ex: `Joias da Ana`
    - **Domínio Autorizado:** Ex: `joiasdaana.com.br` ou `joias-da-ana.pages.dev`
-   - **Chave de Licença:** Clique em **"Gerar Chave"** para gerar um código único (ex: `SLR-ANA-2026-X8Y9`).
+   - **Chave de Licença:** Clique no botão de raio `⚡` para gerar um código único (ex: `SLR-ANA-2026-X8Y9`).
 2. **Banco de Dados Dedicado da Cliente (Supabase Isolado):**
    - **Supabase URL do Cliente:** Cole a URL coletada no Passo 1.5 (ex: `https://xyzabcdefg.supabase.co`).
    - **Supabase Anon Key:** Cole a chave pública `anon` da cliente coletada no Passo 1.5.
@@ -105,18 +105,18 @@ Na tela que se abre, preencha os dados da contratante:
    - **Nome da Atendente:** Ex: `Ana` ou `Mariana`.
    - **Valor da Mensalidade (R$):** Ex: `97.00` ou `147.00`.
    - **Válido até:** Defina a data da primeira mensalidade (ex: daqui a 30 dias).
-5. Clique em **"Salvar e Ativar Licença"**.
+5. Clique em **"Salvar Parâmetros da Loja"**.
 
 ---
 
 ### Passo 2.4: Como o Sistema da Outra Empresa Aplica Tudo Automaticamente
-O arquivo [`assets/js/tenant-config.js`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/js/tenant-config.js) funciona como um **bootloader inteligente**:
+O arquivo [assets/js/tenant-config.js](./assets/js/tenant-config.js) funciona como um **bootloader inteligente**:
 1. Quando qualquer pessoa (ou a dona) abre o site ou painel no domínio dela (`joiasdaana.com.br`), o script consulta o seu Supabase Master.
 2. **Injeção de Cores:** Ele aplica as variáveis CSS (`--brand-terracotta`, `--gold-primary`) dinamicamente no navegador, mudando botões, detalhes e cabeçalhos para as cores escolhidas no seu Master.
 3. **Logos e Favicon:** Substitui as imagens de logo e o ícone da aba do navegador pelos links definidos no Master.
-4. **Banco Isolado:** Alimenta as variáveis `window.TENANT_SUPABASE_URL` e `window.TENANT_SUPABASE_ANON_KEY`, fazendo com que o [`assets/js/supabase.js`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/js/supabase.js) consulte exclusivamente o banco da cliente.
+4. **Banco Isolado:** Alimenta as variáveis `window.TENANT_SUPABASE_URL` e `window.TENANT_SUPABASE_ANON_KEY`, fazendo com que o [assets/js/supabase.js](./assets/js/supabase.js) consulte exclusivamente o banco da cliente.
 5. **WhatsApp:** Todos os botões de contato e finalização de pedido chamam automaticamente o WhatsApp e o nome da atendente cadastrados no Master.
-6. **Bloqueio por Inadimplência:** Se a cliente não pagar a mensalidade na data estipulada, o painel `admin.html` dela é travado na hora com tela de aviso e botão direto para o seu WhatsApp para ela regularizar o Pix.
+6. **Bloqueio por Inadimplência:** Se a cliente não pagar a mensalidade na data estipulada, o painel [admin.html](./admin.html) dela é travado na hora com tela de aviso e botão direto para o seu WhatsApp para ela regularizar o Pix.
 
 > 💡 **Vantagem Absoluta:** O código-fonte dos arquivos da loja da cliente permanece 100% limpo e idêntico. Se você quiser mudar uma cor, o WhatsApp ou atualizar o logo da cliente no futuro, basta alterar no seu painel Master!
 
@@ -172,107 +172,31 @@ Diga para a cliente (ou faça para ela acessando a conta dela onde ela comprou o
 
 ---
 
-## 🔒 ETAPA 4: Sistema de Chave Mestra e Bloqueio por Mensalidade (License Gatekeeper)
+## 🔒 ETAPA 4: Sistema de Bloqueio por Mensalidade & Chave Mestra (License Gatekeeper)
 
 Esta etapa garante que **você tem o controle do interruptor**: se a cliente pagar a mensalidade, o painel funciona perfeitamente; se atrasar, o acesso ao painel é bloqueado automaticamente.
 
-### Passo 4.1: Criar a Tabela de Licenças no seu Supabase Master
-No **seu próprio Supabase central** (o da Soléria ou em um projeto seu chamado `SaaS-Master`), rode este script no SQL Editor:
+### Passo 4.1: Como funciona o Bloqueio Automático ([assets/js/tenant-config.js](./assets/js/tenant-config.js))
+O script [assets/js/tenant-config.js](./assets/js/tenant-config.js) já vem incluído no cabeçalho das páginas da loja.
+1. Sempre que a dona da loja ou a equipe dela abre o painel administrativo ([admin.html](./admin.html), [admin-pedidos.html](./admin-pedidos.html), etc.), o script consulta a tabela de licenças no seu Supabase Master.
+2. Ele verifica duas condições:
+   - O status da loja precisa ser **`active`**;
+   - A data **`valid_until`** precisa ser igual ou superior à data de hoje.
+3. Se a licença estiver vencida ou com status suspenso:
+   - O painel é bloqueado na hora com uma tela escura de aviso elegante;
+   - Exibe a data em que expirou;
+   - Um botão com link direto para o seu WhatsApp permite que ela te envie o comprovante Pix de renovação.
 
-```sql
--- Tabela Central de Licenças de Clientes
-CREATE TABLE IF NOT EXISTS public.licenses (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  client_name TEXT NOT NULL,
-  license_key TEXT UNIQUE NOT NULL,
-  domain TEXT NOT NULL,
-  monthly_fee NUMERIC(10, 2) DEFAULT 97.00,
-  valid_until DATE NOT NULL,
-  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'cancelled')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+---
 
--- Ativar RLS com leitura pública restrita à checagem de chave
-ALTER TABLE public.licenses ENABLE ROW LEVEL SECURITY;
+### Passo 4.2: Como Renovar a Mensalidade Todo Mês (Em 1 Segundo!)
+Quando a contratante te enviar o Pix da mensalidade (R$ 97,00, R$ 147,00, etc.) no WhatsApp:
 
-CREATE POLICY "Verificacao publica de licenca" ON public.licenses
-  FOR SELECT USING (true);
-```
+1. Abra o seu painel Master em [admin-licencas.html](./admin-licencas.html).
+2. Na linha da loja dela, basta clicar no botão verde **`⚡ +30 Dias`**.
+3. O sistema calcula automaticamente mais 30 dias a partir da validade atual (ou da data de hoje), atualiza o banco e o painel dela é destravado no mesmo segundo.
 
-### Passo 4.2: Cadastrar a Licença da Nova Cliente
-No Table Editor do seu Supabase Master, adicione a linha da nova cliente:
-- **`client_name`:** `Joias da Ana`
-- **`license_key`:** `SLR-ANA-2026`
-- **`domain`:** `joiasdaana.com.br`
-- **`valid_until`:** Data de vencimento da primeira mensalidade (ex: `2026-11-12`)
-- **`status`:** `active`
-
-### Passo 4.3: O Código Gatekeeper no Painel da Cliente (`assets/js/license-check.js`)
-Na pasta `assets/js/` da loja da cliente, crie o arquivo `license-check.js` que roda antes de carregar o painel administrativo:
-
-```javascript
-/**
- * Verificador Central de Licença - Soléria SaaS Gatekeeper
- */
-(async function verifyClientLicense() {
-  // Configuração da Licença desta Loja
-  const STORE_LICENSE_KEY = "SLR-ANA-2026"; // Chave da Ana
-  const MASTER_SUPABASE_URL = "https://SEU-SUPABASE-MASTER.supabase.co";
-  const MASTER_ANON_KEY = "SUA-CHAVE-ANON-MASTER...";
-
-  try {
-    const res = await fetch(`${MASTER_SUPABASE_URL}/rest/v1/licenses?license_key=eq.${STORE_LICENSE_KEY}&select=*`, {
-      headers: {
-        "apikey": MASTER_ANON_KEY,
-        "Authorization": `Bearer ${MASTER_ANON_KEY}`
-      }
-    });
-
-    const licenses = await res.json();
-    const license = licenses && licenses[0];
-    const today = new Date().toISOString().split('T')[0];
-
-    // Se chave não existe, está suspensa ou passou da data de validade
-    if (!license || license.status !== 'active' || license.valid_until < today) {
-      document.body.innerHTML = `
-        <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #161513; color: #FAF8F5; font-family: sans-serif; padding: 2rem; text-align: center;">
-          <div style="max-width: 480px; background: #22201D; border: 1px solid #AB5332; border-radius: 12px; padding: 2.5rem 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div>
-            <h2 style="font-size: 1.4rem; color: #FAF8F5; margin-bottom: 0.75rem;">Acesso Administrativo Temporariamente Suspenso</h2>
-            <p style="font-size: 0.9rem; color: #B5B0A6; line-height: 1.6; margin-bottom: 1.5rem;">
-              A licença de uso deste sistema está com a mensalidade pendente ou expirou em <strong>${license ? license.valid_until : 'Data Indisponível'}</strong>.
-            </p>
-            <a href="https://wa.me/55SEUNUMERO?text=Ola!%20Gostaria%20de%20regularizar%20a%20mensalidade%20da%20loja%20Joias%20da%20Ana." target="_blank" style="display: inline-block; background: #AB5332; color: #fff; text-decoration: none; padding: 0.8rem 1.6rem; border-radius: 6px; font-weight: bold; font-size: 0.9rem;">
-              💬 Regularizar Mensalidade via WhatsApp
-            </a>
-          </div>
-        </div>
-      `;
-      throw new Error("Licença inativa ou expirada");
-    }
-  } catch (err) {
-    console.warn("Verificação de licença interrompeu a execução:", err);
-  }
-})();
-```
-
-### Passo 4.3: O Bootloader Unificado (`assets/js/tenant-config.js`)
-O script [`assets/js/tenant-config.js`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/js/tenant-config.js) unifica o **Gatekeeper de Licenças** e a **Injeção de Cores/Logos/Credenciais**:
-1. Ele é incluído no `<head>` das páginas públicas e administrativas da loja:
-   ```html
-   <script src="assets/js/tenant-config.js"></script>
-   ```
-2. Quando alguém tenta acessar o painel administrativo (`admin.html`, `admin-pedidos.html`, etc.), ele valida se a licença está com status `active` e se a data `valid_until` é igual ou posterior à data atual.
-3. Se a cliente atrasar o pagamento da mensalidade ou for suspensa:
-   - A tela de bloqueio substitui o painel com mensagem elegante de suspensão temporária.
-   - Um botão direto para o seu WhatsApp permite que ela envie o comprovante Pix de renovação.
-
-### Como renovar a mensalidade todo mês (Em 1 Clique!):
-Quando a contratante enviar o Pix da mensalidade (R$ 97, R$ 147, etc.):
-1. Abra o seu painel Master em [`admin-licencas.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin-licencas.html).
-2. Na linha da loja dela, basta clicar no botão verde **"+30 Dias (Pix)"**.
-3. O sistema calcula automaticamente mais 30 dias a partir da validade atual (ou da data de hoje), atualiza o banco e libera o acesso da cliente no mesmo segundo.
+> 💡 **Bloqueio Manual:** Se por qualquer motivo você precisar suspender a loja temporariamente (ex: cancelamento ou disputa), basta clicar no botão vermelho **`🔒 Bloquear`**. Para reativar, clique no botão verde **`🔓 Liberar`**.
 
 ---
 

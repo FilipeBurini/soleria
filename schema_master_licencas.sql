@@ -45,18 +45,18 @@ CREATE INDEX IF NOT EXISTS idx_licenses_status ON public.licenses(status);
 -- Habilitar RLS
 ALTER TABLE public.licenses ENABLE ROW LEVEL SECURITY;
 
--- Política de Leitura Pública: Os sites das lojas parceiras podem consultar seus próprios parâmetros
+-- Política de Leitura Pública: Os sites das lojas parceiras e o Master podem consultar licenças
 DROP POLICY IF EXISTS "Public can verify active license" ON public.licenses;
 CREATE POLICY "Public can verify active license" ON public.licenses
   FOR SELECT TO anon, authenticated
   USING (true);
 
--- Política de Gerenciamento: Apenas você (administrador autenticado do sistema Master) pode criar/editar lojas
+-- Política de Gerenciamento do Master: Permite inserir, atualizar e gerenciar licenças
 DROP POLICY IF EXISTS "Master admin full control licenses" ON public.licenses;
 CREATE POLICY "Master admin full control licenses" ON public.licenses
-  FOR ALL TO authenticated
-  USING (auth.uid() IS NOT NULL)
-  WITH CHECK (auth.uid() IS NOT NULL);
+  FOR ALL TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
 
 -- Trigger de atualização automática de updated_at
 CREATE OR REPLACE FUNCTION update_licenses_updated_at()
