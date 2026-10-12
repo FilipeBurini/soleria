@@ -46,7 +46,7 @@ Cada cliente ganha seu próprio banco no plano gratuito do Supabase. Dessa forma
 ### Passo 1.2: Rodar os Scripts de Estrutura do Banco (SQL Editor)
 1. No menu lateral esquerdo do Supabase da cliente, clique no ícone **SQL Editor** (ícone de terminal `>_`).
 2. Clique em **"New Query"**.
-3. Abra o arquivo [`supabase_orders.sql`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portfólios/Soléria/supabase_orders.sql) do projeto, copie todo o conteúdo e cole no SQL Editor.
+3. Abra o arquivo [`schema_completo_loja_nova.sql`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portfólios/Soléria/schema_completo_loja_nova.sql) do projeto, copie todo o conteúdo e cole no SQL Editor.
 4. Clique no botão verde **"Run"**.
    - Isso criará as tabelas: `products`, `orders`, `customers`, `coupons`, `supplies`, os triggers de baixa atômica de estoque e as colunas de baixa parcial (`amount_paid` e `balance_due`).
 
