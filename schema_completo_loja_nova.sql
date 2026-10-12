@@ -548,6 +548,52 @@ GRANT EXECUTE ON FUNCTION public.get_order_tracking(TEXT) TO anon, authenticated
 GRANT EXECUTE ON FUNCTION public.validate_coupon(TEXT, NUMERIC) TO anon, authenticated;
 
 -- ==========================================================================
--- PRONTO! Todas as tabelas, índices, triggers e funções foram criadas.
--- Agora basta criar o bucket 'Fotos Produtos' público no Supabase Storage.
+-- 11. CRIAÇÃO AUTOMÁTICA DO BUCKET DE FOTOS NO SUPABASE STORAGE
+-- ==========================================================================
+
+-- Cria o bucket 'Fotos Produtos' como público automaticamente
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'Fotos Produtos',
+  'Fotos Produtos',
+  true,
+  52428800, -- 50MB
+  ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml']
+)
+ON CONFLICT (id) DO UPDATE SET 
+  public = true,
+  allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+
+-- Políticas de RLS para o Storage (Fotos Produtos)
+DROP POLICY IF EXISTS "Public Access Fotos Produtos" ON storage.objects;
+CREATE POLICY "Public Access Fotos Produtos"
+ON storage.objects FOR SELECT
+TO anon, authenticated
+USING (bucket_id = 'Fotos Produtos');
+
+DROP POLICY IF EXISTS "Allow Upload Fotos Produtos" ON storage.objects;
+CREATE POLICY "Allow Upload Fotos Produtos"
+ON storage.objects FOR INSERT
+TO anon, authenticated
+WITH CHECK (bucket_id = 'Fotos Produtos');
+
+DROP POLICY IF EXISTS "Allow Update Fotos Produtos" ON storage.objects;
+CREATE POLICY "Allow Update Fotos Produtos"
+ON storage.objects FOR UPDATE
+TO anon, authenticated
+USING (bucket_id = 'Fotos Produtos');
+
+DROP POLICY IF EXISTS "Allow Delete Fotos Produtos" ON storage.objects;
+CREATE POLICY "Allow Delete Fotos Produtos"
+ON storage.objects FOR DELETE
+TO anon, authenticated
+USING (bucket_id = 'Fotos Produtos');
+
+-- ==========================================================================
+-- PRONTO! 100% da estrutura foi criada automaticamente em 1 clique:
+-- • Todas as tabelas (produtos, insumos, pedidos, clientes, cupons)
+-- • View de lucratividade e estoque
+-- • Triggers de baixa atômica de estoque
+-- • Funções RPC com segurança LGPD
+-- • Bucket de imagens 'Fotos Produtos' público e com permissão de upload
 -- ==========================================================================

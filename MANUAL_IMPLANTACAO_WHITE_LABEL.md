@@ -50,14 +50,13 @@ Cada cliente ganha seu próprio banco no plano gratuito do Supabase. Dessa forma
 4. Clique no botão verde **"Run"**.
    - Isso criará as tabelas: `products`, `orders`, `customers`, `coupons`, `supplies`, os triggers de baixa atômica de estoque e as colunas de baixa parcial (`amount_paid` e `balance_due`).
 
-### Passo 1.3: Configurar o Armazenamento de Fotos (Supabase Storage)
-1. No menu lateral, clique em **Storage**.
-2. Clique em **"New Bucket"**.
-3. Nome do bucket: digite exatamente `Fotos Produtos`.
-4. Marque a opção **"Public bucket"** (ativa para que as imagens carreguem publicamente no catálogo).
-5. Clique em **"Save bucket"**.
-6. Vá em **Storage > Policies**, localize o bucket `Fotos Produtos` e clique em **"New Policy"**:
-   - Selecione **"For full customization"** ou dê permissão de `SELECT`, `INSERT`, `UPDATE` para `anon` e `authenticated` para que o painel administrativo consiga fazer upload das fotos direto do navegador.
+### Passo 1.3: Armazenamento de Fotos (Criado Automaticamente pelo SQL! 🎉)
+O próprio script schema_completo_loja_nova.sql executado no Passo 1.2 já cuida de tudo no Storage:
+- ✅ Cria o bucket Fotos Produtos como **público**;
+- ✅ Configura limite de 50MB por imagem;
+- ✅ Cria automaticamente as 4 políticas de acesso RLS (leitura pública para o catálogo e permissão de upload/edição/exclusão pelo painel administrativo).
+
+*Você não precisa criar nada manualmente no Storage! Se quiser apenas conferir, clique em **Storage** no menu lateral do Supabase e o bucket já estará lá ativo.*
 
 ### Passo 1.4: Criar o Usuário Administrador da Cliente
 1. No menu lateral, clique em **Authentication > Users**.
