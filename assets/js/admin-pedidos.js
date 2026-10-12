@@ -42,10 +42,62 @@ document.addEventListener('DOMContentLoaded', async () => {
     return (Number(val) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
+  /**
+   * Converte strings monetárias (com vírgula ou ponto, ex: '363,40' ou '363.40') para float seguro
+   */
+  function parseMoneyInput(val) {
+    if (val === undefined || val === null) return 0;
+    const str = String(val).trim();
+    if (!str) return 0;
+    if (str.includes(',') && str.includes('.')) {
+      return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
+    }
+    if (str.includes(',')) {
+      return parseFloat(str.replace(',', '.')) || 0;
+    }
+    return parseFloat(str) || 0;
+  }
+
   function formatDate(iso) {
     if (!iso) return 'Recente';
     const d = new Date(iso);
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  /**
+   * Identifica detalhes de pagamento, valor recebido e saldo devedor
+   */
+  function getOrderPaymentInfo(order) {
+    if (!order) return { total: 0, paid: 0, due: 0, isPartial: false, isPaid: false, isPending: true };
+    const total = Number(order.total_amount) || 0;
+    let paid = null;
+
+    if (order.amount_paid !== undefined && order.amount_paid !== null && !isNaN(Number(order.amount_paid))) {
+      paid = Number(order.amount_paid);
+    } else if (order.admin_notes && typeof order.admin_notes === 'string') {
+      const match = order.admin_notes.match(/\[PAGAMENTO_PARCIAL:\s*pago=([\d.]+),\s*restante=([\d.]+)\]/i);
+      if (match) {
+        paid = parseFloat(match[1]);
+      }
+    }
+
+    if (paid === null) {
+      const st = (order.status || '').toLowerCase();
+      const paySt = (order.payment_status || '').toLowerCase();
+      if (paySt === 'pago' || paySt === 'quitado' || ['confirmado', 'preparacao', 'enviado', 'entregue'].includes(st)) {
+        paid = total;
+      } else {
+        paid = 0;
+      }
+    }
+
+    paid = Math.max(0, paid);
+    const due = Math.max(0, total - paid);
+    const isPartial = paid > 0 && due > 0.01;
+    const isPaid = paid >= (total - 0.01) && total > 0;
+    const isPending = paid <= 0;
+
+    return { total, paid, due, isPartial, isPaid, isPending };
   }
 
   // Mapas para resolução dinâmica de SKU em pedidos anteriores
@@ -90,6 +142,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       'discount_amount',
       'discount_code',
       'total_amount',
+      'amount_paid',
+      'balance_due',
       'status',
       'payment_method',
       'payment_status',
@@ -198,7 +252,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const selectedStatus = (statusFilter ? statusFilter.value : 'todos');
 
     const filtered = rawOrders.filter(order => {
-      const matchStatus = selectedStatus === 'todos' || (order.status && order.status.toLowerCase() === selectedStatus.toLowerCase());
+      let matchStatus = false;
+      if (selectedStatus === 'todos') {
+        matchStatus = true;
+      } else if (selectedStatus === 'parcial') {
+        matchStatus = getOrderPaymentInfo(order).isPartial;
+      } else {
+        matchStatus = (order.status && order.status.toLowerCase() === selectedStatus.toLowerCase());
+      }
 
       const qDigits = q.replace(/\D/g, '');
       const oDigits = (order.customer_phone || '').replace(/\D/g, '');
@@ -247,6 +308,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     filtered.forEach(order => {
       const stInfo = getStatusInfo(order.status);
+      const payInfo = getOrderPaymentInfo(order);
       const items = Array.isArray(order.items) ? order.items : [];
       const totalPieces = items.reduce((acc, i) => acc + (i.quantity || 1), 0);
       const phoneDigits = (order.customer_phone || '').replace(/\D/g, '');
@@ -268,6 +330,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
             <span class="admin-order-number">${order.order_number}</span>
             <span class="order-badge ${stInfo.class}">${stInfo.label}</span>
+            ${payInfo.isPartial 
+              ? `<span style="background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; border-radius: 4px; padding: 2px 8px; font-size: 0.72rem; font-weight: 700;">🟡 Baixa Parcial (Pago: ${formatMoney(payInfo.paid)} • Falta: ${formatMoney(payInfo.due)})</span>`
+              : (payInfo.isPaid && order.status !== 'recebido'
+                ? `<span style="background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; border-radius: 4px; padding: 2px 7px; font-size: 0.72rem; font-weight: 700;">✓ Quitado 100%</span>`
+                : ''
+              )
+            }
             ${order.payment_method === 'credit_card'
               ? `<span style="background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; border-radius: 4px; padding: 2px 7px; font-size: 0.72rem; font-weight: 700;">💳 Cartão PagBank (${order.pagbank_card?.installments || 1}x)</span>`
               : `<span style="background: #FAF5FF; color: #6B21A8; border: 1px solid #E9D5FF; border-radius: 4px; padding: 2px 7px; font-size: 0.72rem; font-weight: 700;">💠 PIX</span>`
@@ -310,6 +379,11 @@ document.addEventListener('DOMContentLoaded', async () => {
               <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Total</span>
               <div style="font-size: 1.15rem; font-weight: 700; color: var(--gold-dark);">${formatMoney(order.total_amount)}</div>
               ${order.discount_amount > 0 ? `<div style="font-size: 0.72rem; color: #16A34A; font-weight: 600;">Desconto: -${formatMoney(order.discount_amount)}</div>` : ''}
+              ${payInfo.isPartial ? `
+                <div style="font-size: 0.76rem; color: #DC2626; font-weight: 700; margin-top: 0.2rem;">
+                  Saldo a Receber: ${formatMoney(payInfo.due)}
+                </div>
+              ` : ''}
             </div>
             
             <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem;">
@@ -351,6 +425,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentDiscount = Number(order.discount_amount) || 0;
     let currentTotal = Number(order.total_amount) || 0;
 
+    const payInfo = getOrderPaymentInfo(order);
+    let currentAmountPaid = payInfo.paid;
+    let currentBalanceDue = Math.max(0, currentTotal - currentAmountPaid);
+
     function calculateSubtotal() {
       return editableItems.reduce((acc, it) => acc + (it.price * it.quantity), 0);
     }
@@ -368,17 +446,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         const skuStr = `<div style="font-size: 0.75rem; color: var(--text-secondary); font-family: monospace; margin-top: 0.25rem;">SKU: <strong style="color: var(--brand-terracotta); background: #FAF3EA; padding: 2px 7px; border-radius: 3px; border: 1px solid #E8DCCB;">${skuVal}</strong></div>`;
         const lineTotal = i.price * i.quantity;
         return `
-          <div class="admin-item-row" data-idx="${idx}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border-subtle); font-size: 0.85rem; gap: 0.75rem;">
-            <div style="flex-grow: 1;">
+          <div class="admin-item-row" data-idx="${idx}">
+            <div class="admin-item-name-col">
               <strong style="color: var(--text-primary); font-size: 0.9rem;">${i.quantity}x</strong> ${i.name} ${aroStr}
               ${skuStr}
             </div>
-            <div style="display: flex; align-items: center; gap: 0.35rem;">
-              <span style="font-size: 0.75rem; color: var(--text-muted);">R$</span>
-              <input type="number" step="0.01" min="0" class="admin-item-edit-input item-price-input" data-idx="${idx}" value="${i.price.toFixed(2)}" title="Preço unitário cobrado por esta peça">
-            </div>
-            <div class="item-line-total" style="font-weight: 700; color: var(--gold-dark); min-width: 80px; text-align: right;">
-              ${formatMoney(lineTotal)}
+            <div class="admin-item-pricing-wrap">
+              <div style="display: flex; align-items: center; gap: 0.35rem;">
+                <span style="font-size: 0.75rem; color: var(--text-muted);">R$</span>
+                <input type="text" inputmode="decimal" class="admin-item-edit-input item-price-input" data-idx="${idx}" value="${i.price.toFixed(2)}" style="width: 85px; text-align: right;" title="Preço unitário cobrado por esta peça">
+              </div>
+              <div class="item-line-total" style="font-weight: 700; color: var(--gold-dark); min-width: 80px; text-align: right;">
+                ${formatMoney(lineTotal)}
+              </div>
             </div>
           </div>
         `;
@@ -386,24 +466,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     modalContent.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; padding-right: 3.5rem;">
+      <div class="admin-order-manage-header">
         <div>
           <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Gestão do Pedido</span>
-          <h3 style="font-family: monospace; font-size: 1.4rem; color: var(--brand-terracotta); margin: 0.15rem 0;">
+          <h3 style="font-family: monospace; font-size: 1.4rem; color: var(--brand-terracotta); margin: 0.15rem 0; white-space: nowrap;">
             ${order.order_number}
           </h3>
           <span style="font-size: 0.78rem; color: var(--text-muted);">${formatDate(order.created_at)}</span>
         </div>
         <div>
-          <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp-order" style="width: auto; padding: 0.45rem 0.85rem; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+          <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp-order">
             💬 Conversar com Cliente
           </a>
         </div>
       </div>
 
       <!-- Dados da Cliente & Endereço -->
-      <div style="background: #FCFBF9; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1.25rem; font-size: 0.85rem;">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+      <div class="admin-order-customer-card">
+        <div class="admin-order-customer-grid">
           <div>
             <span style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block;">Cliente</span>
             <strong>${order.customer_name}</strong>
@@ -428,7 +508,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       <!-- Peças Selecionadas & Ajuste de Preço -->
       <div style="margin-bottom: 1.25rem;">
-        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem; flex-wrap: wrap; gap: 0.35rem;">
           <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Peças & Valores Cobrados</span>
           <span style="font-size: 0.72rem; color: var(--brand-terracotta);">Edite os valores se concedeu desconto no WhatsApp</span>
         </div>
@@ -454,7 +534,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           </div>
           <div style="display: flex; align-items: center; gap: 0.35rem;">
             <span style="font-size: 0.75rem; color: var(--text-muted);">R$</span>
-            <input type="number" step="0.01" min="0" id="order-input-discount" class="admin-item-edit-input" style="width: 85px;" value="${currentDiscount.toFixed(2)}">
+            <input type="text" inputmode="decimal" id="order-input-discount" class="admin-item-edit-input" style="width: 95px; text-align: right;" value="${currentDiscount.toFixed(2)}">
           </div>
         </div>
 
@@ -462,12 +542,63 @@ document.addEventListener('DOMContentLoaded', async () => {
           <strong style="color: var(--text-primary);">Valor Final a Cobrar:</strong>
           <div style="display: flex; align-items: center; gap: 0.35rem;">
             <span style="font-size: 0.85rem; font-weight: 700; color: var(--gold-dark);">R$</span>
-            <input type="number" step="0.01" min="0" id="order-input-total" class="admin-item-edit-input" style="width: 105px; font-size: 1rem; font-weight: 700; color: var(--gold-dark); border-color: var(--gold-primary);" value="${currentTotal.toFixed(2)}">
+            <input type="text" inputmode="decimal" id="order-input-total" class="admin-item-edit-input" style="width: 115px; font-size: 1.05rem; font-weight: 700; color: var(--gold-dark); border-color: var(--gold-primary); text-align: right;" value="${currentTotal.toFixed(2)}">
           </div>
         </div>
 
         <div id="modal-discount-tag" style="display: ${currentDiscount > 0 ? 'inline-block' : 'none'}; margin-top: 0.5rem; font-size: 0.72rem; color: #15803D; background: #DCFCE7; padding: 0.2rem 0.6rem; border-radius: var(--radius-xs); font-weight: 600;">
           🏷️ Preço Especial: Desconto de ${formatMoney(currentDiscount)} aplicado
+        </div>
+      </div>
+
+      <!-- Controle de Pagamento & Baixa Parcial (Entrada / Saldo Devedor) -->
+      <div class="admin-payment-control-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.4rem;">
+          <strong style="font-size: 0.85rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.35rem;">
+            <span>💳</span> Controle de Pagamento & Baixa Parcial
+          </strong>
+          <span id="badge-payment-status" style="font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 4px;"></span>
+        </div>
+
+        <!-- 3 Cards: Total / Valor Pago / Saldo Restante -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.65rem; margin-bottom: 0.85rem;">
+          <div style="background: #FFFFFF; border: 1px solid var(--border-medium); border-radius: 6px; padding: 0.6rem 0.75rem;">
+            <span style="font-size: 0.68rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block;">Valor do Pedido</span>
+            <strong id="display-payment-total" style="font-size: 1rem; color: var(--text-primary);">${formatMoney(currentTotal)}</strong>
+          </div>
+          <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 6px; padding: 0.6rem 0.75rem;">
+            <span style="font-size: 0.68rem; text-transform: uppercase; color: #166534; font-weight: 700; display: block;">Valor Já Pago (Entrada)</span>
+            <strong id="display-payment-paid" style="font-size: 1rem; color: #166534;">${formatMoney(currentAmountPaid)}</strong>
+          </div>
+          <div id="box-balance-due" style="background: #FEF2F2; border: 1px solid #FECACA; border-radius: 6px; padding: 0.6rem 0.75rem;">
+            <span id="label-balance-due" style="font-size: 0.68rem; text-transform: uppercase; color: #991B1B; font-weight: 700; display: block;">Saldo Restante</span>
+            <strong id="display-payment-due" style="font-size: 1rem; color: #DC2626;">${formatMoney(currentBalanceDue)}</strong>
+          </div>
+        </div>
+
+        <!-- Edição do Valor Pago -->
+        <div style="background: #FFFFFF; border: 1px solid var(--border-subtle); border-radius: 6px; padding: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; flex-wrap: wrap; gap: 0.35rem;">
+            <label for="order-input-amount-paid" style="font-size: 0.76rem; font-weight: 600; color: var(--text-secondary);">
+              Registrar Valor Pago / Entrada Recebida:
+            </label>
+            <div style="display: flex; gap: 0.25rem;">
+              <button type="button" class="admin-price-chip-btn" id="btn-pay-zero">Zerar (R$ 0)</button>
+              <button type="button" class="admin-price-chip-btn" id="btn-pay-50pct">50% Entrada</button>
+              <button type="button" class="admin-price-chip-btn" id="btn-pay-full">Quitar 100%</button>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.45rem;">
+            <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">R$</span>
+            <input type="text" inputmode="decimal" id="order-input-amount-paid" class="form-input" style="font-weight: 700; font-size: 1.05rem; color: #166534; text-align: right;" value="${currentAmountPaid.toFixed(2)}">
+          </div>
+        </div>
+
+        <!-- Botão WhatsApp com Recibo / Lembrete de Saldo -->
+        <div id="partial-whatsapp-notice-wrap" style="margin-top: 0.65rem; display: ${currentBalanceDue > 0.01 && currentAmountPaid > 0 ? 'block' : 'none'};">
+          <a href="#" target="_blank" rel="noopener noreferrer" id="btn-whatsapp-partial-receipt" class="btn-secondary-action" style="font-size: 0.75rem; color: #166534; border-color: #86EFAC; display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.75rem; text-decoration: none;">
+            <span>💬</span> Enviar Comprovante de Entrada & Saldo no WhatsApp
+          </a>
         </div>
       </div>
 
@@ -575,7 +706,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <span style="font-size: 0.72rem; color: #15803d; font-weight: 600;">${order.customer_phone || 'Sem telefone'}</span>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem;">
+          <div class="btn-whatsapp-notify-grid">
             <button type="button" class="btn-whatsapp-notify" data-type="pago" style="padding: 0.45rem 0.65rem; font-size: 0.74rem; background: #fff; border: 1px solid #86EFAC; border-radius: 4px; color: #166534; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 0.35rem; font-weight: 500;">
               <span>💚</span> Pagamento Aprovado
             </button>
@@ -611,7 +742,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const inputTotal = modalContent.querySelector('#order-input-total');
     const discountTag = modalContent.querySelector('#modal-discount-tag');
 
-    function syncPricingUI() {
+    function syncPricingUI(updateInputs = true) {
       currentSubtotal = calculateSubtotal();
       if (subtotalDisplay) subtotalDisplay.textContent = formatMoney(currentSubtotal);
 
@@ -624,15 +755,186 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (discountTag) discountTag.style.display = 'none';
       }
 
-      if (inputDiscount) inputDiscount.value = currentDiscount.toFixed(2);
-      if (inputTotal) inputTotal.value = currentTotal.toFixed(2);
+      if (updateInputs) {
+        if (inputDiscount && document.activeElement !== inputDiscount) {
+          inputDiscount.value = currentDiscount.toFixed(2);
+        }
+        if (inputTotal && document.activeElement !== inputTotal) {
+          inputTotal.value = currentTotal.toFixed(2);
+        }
+      } else {
+        // Atualiza apenas o campo oposto se ele não estiver focado
+        if (inputDiscount && document.activeElement !== inputDiscount) {
+          inputDiscount.value = currentDiscount.toFixed(2);
+        }
+        if (inputTotal && document.activeElement !== inputTotal) {
+          inputTotal.value = currentTotal.toFixed(2);
+        }
+      }
+
+      syncPaymentControlUI(false);
     }
+
+    // Elementos de Controle de Pagamento & Baixa Parcial
+    const dispPayTotal = modalContent.querySelector('#display-payment-total');
+    const dispPayPaid = modalContent.querySelector('#display-payment-paid');
+    const dispPayDue = modalContent.querySelector('#display-payment-due');
+    const boxBalanceDue = modalContent.querySelector('#box-balance-due');
+    const labelBalanceDue = modalContent.querySelector('#label-balance-due');
+    const badgePayStatus = modalContent.querySelector('#badge-payment-status');
+    const inputAmountPaid = modalContent.querySelector('#order-input-amount-paid');
+    const partialNoticeWrap = modalContent.querySelector('#partial-whatsapp-notice-wrap');
+    const btnWaPartial = modalContent.querySelector('#btn-whatsapp-partial-receipt');
+
+    function syncPaymentControlUI(updateInputPaid = false) {
+      currentBalanceDue = Math.max(0, currentTotal - currentAmountPaid);
+
+      if (dispPayTotal) dispPayTotal.textContent = formatMoney(currentTotal);
+      if (dispPayPaid) dispPayPaid.textContent = formatMoney(currentAmountPaid);
+      if (dispPayDue) dispPayDue.textContent = formatMoney(currentBalanceDue);
+
+      if (updateInputPaid && inputAmountPaid && document.activeElement !== inputAmountPaid) {
+        inputAmountPaid.value = currentAmountPaid.toFixed(2);
+      }
+
+      if (currentBalanceDue <= 0.01 && currentTotal > 0) {
+        // Quitado 100%
+        if (boxBalanceDue) {
+          boxBalanceDue.style.background = '#F0FDF4';
+          boxBalanceDue.style.borderColor = '#BBF7D0';
+        }
+        if (labelBalanceDue) {
+          labelBalanceDue.textContent = 'Status Financeiro';
+          labelBalanceDue.style.color = '#166534';
+        }
+        if (dispPayDue) {
+          dispPayDue.textContent = 'Quitado 100%';
+          dispPayDue.style.color = '#166534';
+        }
+        if (badgePayStatus) {
+          badgePayStatus.textContent = '✓ Quitado 100%';
+          badgePayStatus.style.background = '#DCFCE7';
+          badgePayStatus.style.color = '#15803D';
+        }
+        if (partialNoticeWrap) partialNoticeWrap.style.display = 'none';
+      } else if (currentAmountPaid > 0 && currentBalanceDue > 0.01) {
+        // Pagamento Parcial
+        if (boxBalanceDue) {
+          boxBalanceDue.style.background = '#FEF2F2';
+          boxBalanceDue.style.borderColor = '#FECACA';
+        }
+        if (labelBalanceDue) {
+          labelBalanceDue.textContent = 'Saldo a Receber';
+          labelBalanceDue.style.color = '#991B1B';
+        }
+        if (dispPayDue) {
+          dispPayDue.textContent = formatMoney(currentBalanceDue);
+          dispPayDue.style.color = '#DC2626';
+        }
+        if (badgePayStatus) {
+          badgePayStatus.textContent = '🟡 Pagamento Parcial';
+          badgePayStatus.style.background = '#FEF3C7';
+          badgePayStatus.style.color = '#92400E';
+        }
+        if (partialNoticeWrap) partialNoticeWrap.style.display = 'block';
+
+        if (btnWaPartial) {
+          const clientFirst = (order.customer_name || 'Cliente').split(' ')[0];
+          const waTxt = encodeURIComponent(`Olá, ${clientFirst}! ✨ Confirmamos o recebimento da sua entrada de ${formatMoney(currentAmountPaid)} referente ao pedido *${order.order_number}* na Soléria.\n\nSaldo restante a acertar: *${formatMoney(currentBalanceDue)}*.\nSuas peças já estão reservadas com todo o carinho! Qualquer dúvida, estou à disposição.`);
+          btnWaPartial.href = `https://wa.me/55${phoneDigits}?text=${waTxt}`;
+        }
+      } else {
+        // Pendente
+        if (boxBalanceDue) {
+          boxBalanceDue.style.background = '#FFFBEB';
+          boxBalanceDue.style.borderColor = '#FDE68A';
+        }
+        if (labelBalanceDue) {
+          labelBalanceDue.textContent = 'Pendente Total';
+          labelBalanceDue.style.color = '#B45309';
+        }
+        if (dispPayDue) {
+          dispPayDue.textContent = formatMoney(currentTotal);
+          dispPayDue.style.color = '#B45309';
+        }
+        if (badgePayStatus) {
+          badgePayStatus.textContent = 'Aguardando Pagamento';
+          badgePayStatus.style.background = '#FEF3C7';
+          badgePayStatus.style.color = '#92400E';
+        }
+        if (partialNoticeWrap) partialNoticeWrap.style.display = 'none';
+      }
+    }
+
+    // Eventos do Campo de Entrada / Valor Pago
+    if (inputAmountPaid) {
+      inputAmountPaid.addEventListener('focus', () => {
+        setTimeout(() => inputAmountPaid.select(), 20);
+      });
+      inputAmountPaid.addEventListener('mouseup', () => {
+        if (document.activeElement === inputAmountPaid && inputAmountPaid.selectionStart === inputAmountPaid.selectionEnd) {
+          inputAmountPaid.select();
+        }
+      });
+      inputAmountPaid.addEventListener('input', () => {
+        currentAmountPaid = Math.max(0, parseMoneyInput(inputAmountPaid.value));
+        syncPaymentControlUI(false);
+      });
+      inputAmountPaid.addEventListener('blur', () => {
+        currentAmountPaid = Math.max(0, parseMoneyInput(inputAmountPaid.value));
+        inputAmountPaid.value = currentAmountPaid.toFixed(2);
+        syncPaymentControlUI(true);
+      });
+      inputAmountPaid.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          inputAmountPaid.blur();
+        }
+      });
+    }
+
+    const btnPayZero = modalContent.querySelector('#btn-pay-zero');
+    if (btnPayZero) {
+      btnPayZero.addEventListener('click', () => {
+        currentAmountPaid = 0;
+        if (inputAmountPaid) inputAmountPaid.value = '0.00';
+        syncPaymentControlUI(true);
+      });
+    }
+
+    const btnPay50pct = modalContent.querySelector('#btn-pay-50pct');
+    if (btnPay50pct) {
+      btnPay50pct.addEventListener('click', () => {
+        currentAmountPaid = Math.round((currentTotal / 2) * 100) / 100;
+        if (inputAmountPaid) inputAmountPaid.value = currentAmountPaid.toFixed(2);
+        syncPaymentControlUI(true);
+      });
+    }
+
+    const btnPayFull = modalContent.querySelector('#btn-pay-full');
+    if (btnPayFull) {
+      btnPayFull.addEventListener('click', () => {
+        currentAmountPaid = currentTotal;
+        if (inputAmountPaid) inputAmountPaid.value = currentAmountPaid.toFixed(2);
+        syncPaymentControlUI(true);
+      });
+    }
+
+    syncPaymentControlUI(false);
 
     // Edição individual de preço de peça
     modalContent.querySelectorAll('.item-price-input').forEach(inp => {
+      inp.addEventListener('focus', () => {
+        setTimeout(() => inp.select(), 20);
+      });
+      inp.addEventListener('mouseup', () => {
+        if (document.activeElement === inp && inp.selectionStart === inp.selectionEnd) {
+          inp.select();
+        }
+      });
       inp.addEventListener('input', () => {
         const idx = Number(inp.dataset.idx);
-        const val = parseFloat(inp.value) || 0;
+        const val = Math.max(0, parseMoneyInput(inp.value));
         if (editableItems[idx]) {
           editableItems[idx].price = val;
           const lineElem = modalContent.querySelector(`.admin-item-row[data-idx="${idx}"] .item-line-total`);
@@ -640,25 +942,80 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         currentSubtotal = calculateSubtotal();
         currentTotal = Math.max(0, currentSubtotal - currentDiscount);
-        syncPricingUI();
+        syncPricingUI(false);
+      });
+      inp.addEventListener('blur', () => {
+        const idx = Number(inp.dataset.idx);
+        const val = Math.max(0, parseMoneyInput(inp.value));
+        if (editableItems[idx]) {
+          editableItems[idx].price = val;
+        }
+        inp.value = val.toFixed(2);
+        syncPricingUI(true);
+      });
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          inp.blur();
+        }
       });
     });
 
     // Edição do Desconto
     if (inputDiscount) {
+      inputDiscount.addEventListener('focus', () => {
+        setTimeout(() => inputDiscount.select(), 20);
+      });
+      inputDiscount.addEventListener('mouseup', () => {
+        if (document.activeElement === inputDiscount && inputDiscount.selectionStart === inputDiscount.selectionEnd) {
+          inputDiscount.select();
+        }
+      });
       inputDiscount.addEventListener('input', () => {
-        currentDiscount = parseFloat(inputDiscount.value) || 0;
+        currentDiscount = Math.max(0, parseMoneyInput(inputDiscount.value));
         currentTotal = Math.max(0, currentSubtotal - currentDiscount);
-        syncPricingUI();
+        syncPricingUI(false);
+      });
+      inputDiscount.addEventListener('blur', () => {
+        currentDiscount = Math.max(0, parseMoneyInput(inputDiscount.value));
+        currentTotal = Math.max(0, currentSubtotal - currentDiscount);
+        inputDiscount.value = currentDiscount.toFixed(2);
+        syncPricingUI(true);
+      });
+      inputDiscount.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          inputDiscount.blur();
+        }
       });
     }
 
-    // Edição do Total Direto (ex: cliente negociou R$ 60,00)
+    // Edição do Total Direto (ex: cliente negociou R$ 350,00)
     if (inputTotal) {
+      inputTotal.addEventListener('focus', () => {
+        setTimeout(() => inputTotal.select(), 20);
+      });
+      inputTotal.addEventListener('mouseup', () => {
+        if (document.activeElement === inputTotal && inputTotal.selectionStart === inputTotal.selectionEnd) {
+          inputTotal.select();
+        }
+      });
       inputTotal.addEventListener('input', () => {
-        currentTotal = parseFloat(inputTotal.value) || 0;
+        currentTotal = Math.max(0, parseMoneyInput(inputTotal.value));
         currentDiscount = Math.max(0, currentSubtotal - currentTotal);
-        syncPricingUI();
+        syncPricingUI(false);
+      });
+      inputTotal.addEventListener('blur', () => {
+        currentTotal = Math.max(0, parseMoneyInput(inputTotal.value));
+        currentDiscount = Math.max(0, currentSubtotal - currentTotal);
+        inputTotal.value = currentTotal.toFixed(2);
+        syncPricingUI(true);
+      });
+      inputTotal.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          inputTotal.blur();
+        }
       });
     }
 
@@ -673,7 +1030,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           currentDiscount = Number((currentSubtotal * (pct / 100)).toFixed(2));
           currentTotal = Math.max(0, currentSubtotal - currentDiscount);
         }
-        syncPricingUI();
+        if (inputDiscount) inputDiscount.value = currentDiscount.toFixed(2);
+        if (inputTotal) inputTotal.value = currentTotal.toFixed(2);
+        syncPricingUI(true);
       });
     });
 
@@ -859,30 +1218,55 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         order.status = newStatus;
         order.tracking_code = newTracking;
-        order.admin_notes = newNotes;
         order.items = editableItems;
         order.subtotal = currentSubtotal;
         order.discount_amount = currentDiscount;
         order.total_amount = currentTotal;
+        order.amount_paid = currentAmountPaid;
+        order.balance_due = Math.max(0, currentTotal - currentAmountPaid);
+        order.payment_status = order.balance_due <= 0.01 ? 'pago' : (currentAmountPaid > 0 ? 'parcial' : 'aguardando_pagamento');
+
+        // Atualiza nota interna mantendo structured tag de pagamento
+        let cleanedNotes = newNotes.replace(/\[PAGAMENTO_PARCIAL:[^\]]+\]/gi, '').replace(/\[PAGAMENTO_QUITADO:[^\]]+\]/gi, '').trim();
+        if (order.payment_status === 'parcial') {
+          cleanedNotes = `[PAGAMENTO_PARCIAL: pago=${currentAmountPaid.toFixed(2)}, restante=${order.balance_due.toFixed(2)}] ${cleanedNotes}`.trim();
+        } else if (order.payment_status === 'pago') {
+          cleanedNotes = `[PAGAMENTO_QUITADO: 100%] ${cleanedNotes}`.trim();
+        }
+        order.admin_notes = cleanedNotes;
         order.updated_at = new Date().toISOString();
 
         if (hasDb) {
+          const updatePayload = {
+            status: order.status,
+            tracking_code: order.tracking_code,
+            admin_notes: order.admin_notes,
+            payment_status: order.payment_status,
+            items: order.items,
+            subtotal: order.subtotal,
+            discount_amount: order.discount_amount,
+            total_amount: order.total_amount,
+            amount_paid: order.amount_paid,
+            balance_due: order.balance_due,
+            stock_deducted: order.stock_deducted,
+            updated_at: order.updated_at
+          };
+
           const { error } = await client
             .from('orders')
-            .update({
-              status: order.status,
-              tracking_code: order.tracking_code,
-              admin_notes: order.admin_notes,
-              items: order.items,
-              subtotal: order.subtotal,
-              discount_amount: order.discount_amount,
-              total_amount: order.total_amount,
-              stock_deducted: order.stock_deducted,
-              updated_at: order.updated_at
-            })
+            .update(updatePayload)
             .eq('order_number', order.order_number);
 
-          if (error) throw error;
+          if (error) {
+            // Se falhou por ausência das colunas amount_paid/balance_due na tabela orders, tenta sem elas
+            delete updatePayload.amount_paid;
+            delete updatePayload.balance_due;
+            const { error: retryError } = await client
+              .from('orders')
+              .update(updatePayload)
+              .eq('order_number', order.order_number);
+            if (retryError) throw retryError;
+          }
         }
 
         updateLocalOrder(order);

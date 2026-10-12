@@ -30,7 +30,88 @@ document.addEventListener('DOMContentLoaded', async () => {
   const adminVisualGrid = document.getElementById('admin-visual-grid');
   const tableResponsiveContainer = document.getElementById('table-responsive-container');
 
+  // Elementos do Dashboard 360
+  const viewDashboard360 = document.getElementById('view-dashboard-360');
+  const viewEstoqueInventory = document.getElementById('view-estoque-inventory');
+  const btnTabDashboard = document.getElementById('btn-tab-dashboard');
+  const btnTabInventory = document.getElementById('btn-tab-inventory');
+  const navItemDashboard = document.getElementById('nav-item-dashboard');
+  const navItemEstoque = document.getElementById('nav-item-estoque');
+  const btnGotoInventoryTab = document.getElementById('btn-goto-inventory-tab');
+  const btnRefreshDashboard = document.getElementById('btn-refresh-dashboard');
+
+  const dashKpiFaturamento = document.getElementById('dash-kpi-faturamento');
+  const dashKpiFaturamentoSub = document.getElementById('dash-kpi-faturamento-sub');
+  const dashKpiVendasMes = document.getElementById('dash-kpi-vendas-mes');
+  const dashKpiVendasMesCount = document.getElementById('dash-kpi-vendas-mes-count');
+  const dashKpiTicketMedio = document.getElementById('dash-kpi-ticket-medio');
+  const dashKpiCapitalEstoque = document.getElementById('dash-kpi-capital-estoque');
+  const dashKpiPecasCount = document.getElementById('dash-kpi-pecas-count');
+  const dashKpiClientesTotal = document.getElementById('dash-kpi-clientes-total');
+  const dashKpiClientesSub = document.getElementById('dash-kpi-clientes-sub');
+
+  const dashCountRecebido = document.getElementById('dash-count-recebido');
+  const dashValRecebido = document.getElementById('dash-val-recebido');
+  const dashCountPrep = document.getElementById('dash-count-prep');
+  const dashValPrep = document.getElementById('dash-val-prep');
+  const dashCountEnvio = document.getElementById('dash-count-envio');
+  const dashValEnvio = document.getElementById('dash-val-envio');
+  const dashCountEntregue = document.getElementById('dash-count-entregue');
+  const dashValEntregue = document.getElementById('dash-val-entregue');
+
+  const dashRecentOrdersList = document.getElementById('dash-recent-orders-list');
+  const dashAlertEsgotados = document.getElementById('dash-alert-esgotados');
+  const dashAlertBaixo = document.getElementById('dash-alert-baixo');
+  const dashStockAlertsList = document.getElementById('dash-stock-alerts-list');
+  const dashCrmConversao = document.getElementById('dash-crm-conversao');
+  const dashCrmLtv = document.getElementById('dash-crm-ltv');
+  const dashTopClientsList = document.getElementById('dash-top-clients-list');
+
+  // Notificação de Baixa Parcial / Saldos a Receber
+  const dashPartialNotification = document.getElementById('dash-partial-notification');
+  const dashPartialBadgeCount = document.getElementById('dash-partial-badge-count');
+  const dashPartialTotalDue = document.getElementById('dash-partial-total-due');
+  const dashPartialOrdersList = document.getElementById('dash-partial-orders-list');
+
   let rawFinancialsData = [];
+  let rawOrdersData = [];
+  let rawCustomersData = [];
+
+  /**
+   * Helper para cálculo de pagamento, entrada e saldo devedor
+   */
+  function getOrderPaymentInfo(order) {
+    if (!order) return { total: 0, paid: 0, due: 0, isPartial: false, isPaid: false, isPending: true };
+    const total = Number(order.total_amount) || 0;
+    let paid = null;
+
+    if (order.amount_paid !== undefined && order.amount_paid !== null && !isNaN(Number(order.amount_paid))) {
+      paid = Number(order.amount_paid);
+    } else if (order.admin_notes && typeof order.admin_notes === 'string') {
+      const match = order.admin_notes.match(/\[PAGAMENTO_PARCIAL:\s*pago=([\d.]+),\s*restante=([\d.]+)\]/i);
+      if (match) {
+        paid = parseFloat(match[1]);
+      }
+    }
+
+    if (paid === null) {
+      const st = (order.status || '').toLowerCase();
+      const paySt = (order.payment_status || '').toLowerCase();
+      if (paySt === 'pago' || paySt === 'quitado' || ['confirmado', 'preparacao', 'enviado', 'entregue'].includes(st)) {
+        paid = total;
+      } else {
+        paid = 0;
+      }
+    }
+
+    paid = Math.max(0, paid);
+    const due = Math.max(0, total - paid);
+    const isPartial = paid > 0 && due > 0.01;
+    const isPaid = paid >= (total - 0.01) && total > 0;
+    const isPending = paid <= 0;
+
+    return { total, paid, due, isPartial, isPaid, isPending };
+  }
 
   // ==========================================================================
   // Fluxo de Autenticação
@@ -49,7 +130,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       authSection.style.display = 'none';
       adminApp.style.display = 'block';
       adminUserEmail.textContent = user.email || 'Operador Autenticado';
-      loadFinancials();
+      loadAllData();
     } else {
       // Não autenticado: mostra formulário de login
       authSection.style.display = 'flex';
@@ -261,6 +342,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     renderVisualGrid(filtered);
     renderFinancialsTable(filtered);
+    renderDashboard360();
   }
 
   // ==========================================================================
@@ -498,9 +580,498 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (btnRefresh) {
     btnRefresh.addEventListener('click', () => {
-      loadFinancials();
-      showToast('Dados recarregados.', 'info');
+      loadAllData();
+      showToast('Dados de estoque recarregados.', 'info');
     });
+  }
+
+  // ==========================================================================
+  // Controle de Abas (Visão Geral 360 vs Posição de Estoque)
+  // ==========================================================================
+
+  function switchTab(targetTab) {
+    if (targetTab === 'inventory') {
+      if (viewDashboard360) viewDashboard360.style.display = 'none';
+      if (viewEstoqueInventory) viewEstoqueInventory.style.display = 'block';
+      if (btnTabDashboard) btnTabDashboard.classList.remove('active');
+      if (btnTabInventory) btnTabInventory.classList.add('active');
+      if (navItemDashboard) navItemDashboard.classList.remove('active');
+      if (navItemEstoque) navItemEstoque.classList.add('active');
+      window.history.replaceState(null, '', '?tab=estoque');
+    } else {
+      if (viewDashboard360) viewDashboard360.style.display = 'block';
+      if (viewEstoqueInventory) viewEstoqueInventory.style.display = 'none';
+      if (btnTabDashboard) btnTabDashboard.classList.add('active');
+      if (btnTabInventory) btnTabInventory.classList.remove('active');
+      if (navItemDashboard) navItemDashboard.classList.add('active');
+      if (navItemEstoque) navItemEstoque.classList.remove('active');
+      window.history.replaceState(null, '', 'admin.html');
+    }
+  }
+
+  if (btnTabDashboard) btnTabDashboard.addEventListener('click', () => switchTab('dashboard'));
+  if (btnTabInventory) btnTabInventory.addEventListener('click', () => switchTab('inventory'));
+  if (navItemDashboard) navItemDashboard.addEventListener('click', (e) => { e.preventDefault(); switchTab('dashboard'); });
+  if (navItemEstoque) navItemEstoque.addEventListener('click', (e) => { e.preventDefault(); switchTab('inventory'); });
+  if (btnGotoInventoryTab) btnGotoInventoryTab.addEventListener('click', () => switchTab('inventory'));
+  if (btnRefreshDashboard) btnRefreshDashboard.addEventListener('click', () => {
+    loadAllData();
+    showToast('Dashboard atualizado com sucesso!', 'info');
+  });
+
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('tab') === 'estoque' || window.location.hash === '#estoque') {
+    switchTab('inventory');
+  } else {
+    switchTab('dashboard');
+  }
+
+  // ==========================================================================
+  // Carregamento de Pedidos e Clientes Unificados para o Dashboard 360
+  // ==========================================================================
+
+  async function loadAllData() {
+    await Promise.all([
+      loadFinancials(),
+      loadOrdersAndCustomers()
+    ]);
+    renderDashboard360();
+  }
+
+  async function loadOrdersAndCustomers() {
+    try {
+      const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db) ||
+                     (window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
+
+      if (client && isSupabaseConfigured()) {
+        const [ordersRes, customersRes] = await Promise.all([
+          client.from('orders').select('*').order('created_at', { ascending: false }),
+          client.from('customers').select('*').order('created_at', { ascending: false })
+        ]);
+
+        if (ordersRes && ordersRes.data) {
+          rawOrdersData = ordersRes.data;
+        } else {
+          rawOrdersData = getFallbackOrders();
+        }
+
+        if (customersRes && customersRes.data) {
+          rawCustomersData = customersRes.data;
+        } else {
+          rawCustomersData = getFallbackCustomers();
+        }
+      } else {
+        rawOrdersData = getFallbackOrders();
+        rawCustomersData = getFallbackCustomers();
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar dados complementares para o Dashboard 360:', e);
+      rawOrdersData = getFallbackOrders();
+      rawCustomersData = getFallbackCustomers();
+    }
+  }
+
+  function getFallbackOrders() {
+    try {
+      const raw = localStorage.getItem('soleria_orders') ||
+                  localStorage.getItem('soleria_orders_db_v1') || 
+                  localStorage.getItem('soleria_orders_v1') ||
+                  localStorage.getItem('soleria_local_orders');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function getFallbackCustomers() {
+    try {
+      const raw = localStorage.getItem('soleria_customers') ||
+                  localStorage.getItem('soleria_customers_db_v1');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // ==========================================================================
+  // Renderizadores do Dashboard 360°
+  // ==========================================================================
+
+  function renderDashboard360() {
+    // 1. Processamento Financeiro e Vendas
+    const completedStatuses = ['confirmado', 'preparacao', 'enviado', 'entregue'];
+    const pendingStatuses = ['recebido', 'aguardando_pagamento', 'pendente'];
+
+    const completedOrders = rawOrdersData.filter(o => completedStatuses.includes((o.status || '').toLowerCase()));
+    const pendingOrders = rawOrdersData.filter(o => pendingStatuses.includes((o.status || '').toLowerCase()));
+
+    const totalFaturamento = completedOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+    const totalPendente = pendingOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    const monthOrders = completedOrders.filter(o => {
+      if (!o.created_at) return false;
+      const d = new Date(o.created_at);
+      return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+    });
+
+    const monthRevenue = monthOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+    const avgTicket = completedOrders.length > 0 ? (totalFaturamento / completedOrders.length) : 0;
+
+    // Capital investido e estoque de peças
+    let totalInvested = 0;
+    let totalStockPieces = 0;
+    rawFinancialsData.forEach(item => {
+      totalInvested += (item.totalCost * item.stock);
+      totalStockPieces += item.stock;
+    });
+
+    // 1. Consolidação de Clientes e Compradoras (Base Unificada)
+    const allCustomersMap = new Map();
+
+    // Clientes cadastrados na base
+    (rawCustomersData || []).forEach(c => {
+      const cleanCpf = c.cpf ? String(c.cpf).replace(/\D/g, '') : '';
+      const cleanPhone = c.phone ? String(c.phone).replace(/\D/g, '') : '';
+      const key = cleanCpf || cleanPhone || (c.email ? c.email.trim().toLowerCase() : (c.id ? String(c.id) : ''));
+      if (key) {
+        allCustomersMap.set(key, {
+          name: c.name || 'Cliente',
+          phone: c.phone || '',
+          cpf: cleanCpf,
+          hasOrders: false
+        });
+      }
+    });
+
+    // Clientes identificados a partir dos pedidos
+    const buyersSet = new Set();
+    (rawOrdersData || []).forEach(o => {
+      const isCancelled = (o.status || '').toLowerCase() === 'cancelado';
+      const cleanCpf = o.customer_cpf ? String(o.customer_cpf).replace(/\D/g, '') : '';
+      const cleanPhone = o.customer_phone ? String(o.customer_phone).replace(/\D/g, '') : '';
+      const key = cleanCpf || cleanPhone || (o.customer_name ? o.customer_name.trim().toLowerCase() : '');
+
+      if (key) {
+        if (!allCustomersMap.has(key)) {
+          allCustomersMap.set(key, {
+            name: o.customer_name || 'Cliente',
+            phone: o.customer_phone || '',
+            cpf: cleanCpf,
+            hasOrders: !isCancelled
+          });
+        }
+        if (!isCancelled) {
+          buyersSet.add(key);
+          const entry = allCustomersMap.get(key);
+          if (entry) entry.hasOrders = true;
+        }
+      }
+    });
+
+    const totalCustomers = Math.max(allCustomersMap.size, buyersSet.size);
+    const buyersCount = buyersSet.size;
+    const rawRate = totalCustomers > 0 ? (buyersCount / totalCustomers) * 100 : 0;
+    const conversionRate = Math.min(100, Math.max(0, Math.round(rawRate)));
+
+    // Atualiza KPIs Topo
+    if (dashKpiFaturamento) dashKpiFaturamento.textContent = formatBRL(totalFaturamento);
+    if (dashKpiFaturamentoSub) dashKpiFaturamentoSub.textContent = `${completedOrders.length} vendas confirmadas • ${formatBRL(totalPendente)} pendente`;
+    if (dashKpiVendasMes) dashKpiVendasMes.textContent = formatBRL(monthRevenue);
+    if (dashKpiVendasMesCount) dashKpiVendasMesCount.textContent = `${monthOrders.length} pedido(s) no mês atual`;
+    if (dashKpiTicketMedio) dashKpiTicketMedio.textContent = formatBRL(avgTicket);
+    if (dashKpiCapitalEstoque) dashKpiCapitalEstoque.textContent = formatBRL(totalInvested);
+    if (dashKpiPecasCount) dashKpiPecasCount.textContent = `${totalStockPieces} peças físicas em acervo`;
+    if (dashKpiClientesTotal) dashKpiClientesTotal.textContent = String(totalCustomers);
+    if (dashKpiClientesSub) dashKpiClientesSub.textContent = `${buyersCount} compradora(s) ativas (${conversionRate}% conversão)`;
+
+    // 2. Pipeline Operacional de Pedidos
+    const statusGroups = {
+      recebido: { count: 0, total: 0 },
+      prep: { count: 0, total: 0 },
+      envio: { count: 0, total: 0 },
+      entregue: { count: 0, total: 0 }
+    };
+
+    rawOrdersData.forEach(o => {
+      const st = (o.status || '').toLowerCase();
+      const val = Number(o.total_amount) || 0;
+      if (st === 'recebido' || st === 'aguardando_pagamento' || st === 'pendente') {
+        statusGroups.recebido.count++;
+        statusGroups.recebido.total += val;
+      } else if (st === 'confirmado' || st === 'preparacao') {
+        statusGroups.prep.count++;
+        statusGroups.prep.total += val;
+      } else if (st === 'enviado') {
+        statusGroups.envio.count++;
+        statusGroups.envio.total += val;
+      } else if (st === 'entregue') {
+        statusGroups.entregue.count++;
+        statusGroups.entregue.total += val;
+      }
+    });
+
+    if (dashCountRecebido) dashCountRecebido.textContent = statusGroups.recebido.count;
+    if (dashValRecebido) dashValRecebido.textContent = formatBRL(statusGroups.recebido.total);
+    if (dashCountPrep) dashCountPrep.textContent = statusGroups.prep.count;
+    if (dashValPrep) dashValPrep.textContent = formatBRL(statusGroups.prep.total);
+    if (dashCountEnvio) dashCountEnvio.textContent = statusGroups.envio.count;
+    if (dashValEnvio) dashValEnvio.textContent = formatBRL(statusGroups.envio.total);
+    if (dashCountEntregue) dashCountEntregue.textContent = statusGroups.entregue.count;
+    if (dashValEntregue) dashValEntregue.textContent = formatBRL(statusGroups.entregue.total);
+
+    // 2.5. Notificação de Pedidos com Saldo a Receber (Baixa Parcial)
+    const partialOrders = rawOrdersData.filter(o => {
+      const pay = getOrderPaymentInfo(o);
+      return pay.isPartial && (o.status || '').toLowerCase() !== 'cancelado';
+    });
+    renderPartialNotification(partialOrders);
+
+    // 3. Renderiza Pedidos Mais Recentes
+    renderRecentOrders();
+
+    // 4. Renderiza Alertas de Estoque
+    renderStockAlerts();
+
+    // 5. Renderiza Top Clientes VIP & CRM
+    renderCrmRadar(conversionRate);
+  }
+
+  function renderPartialNotification(partialOrders) {
+    if (!dashPartialNotification) return;
+
+    if (!partialOrders || partialOrders.length === 0) {
+      dashPartialNotification.style.display = 'none';
+      return;
+    }
+
+    dashPartialNotification.style.display = 'block';
+    const totalDue = partialOrders.reduce((sum, o) => sum + getOrderPaymentInfo(o).due, 0);
+
+    if (dashPartialBadgeCount) {
+      dashPartialBadgeCount.textContent = `${partialOrders.length} pendência(s)`;
+    }
+    if (dashPartialTotalDue) {
+      dashPartialTotalDue.textContent = formatBRL(totalDue);
+    }
+
+    if (dashPartialOrdersList) {
+      const html = partialOrders.slice(0, 5).map(o => {
+        const pay = getOrderPaymentInfo(o);
+        const cleanPhone = (o.customer_phone || '').replace(/\D/g, '');
+        const clientFirst = (o.customer_name || 'Cliente').split(' ')[0];
+        const waMsg = encodeURIComponent(`Olá, ${clientFirst}! ✨ Passando com muito carinho para conferir o saldo de ${formatBRL(pay.due)} referente ao pedido *${o.order_number}* na Soléria. Suas peças estão guardadas com todo o carinho!`);
+        const waLink = cleanPhone ? `https://wa.me/55${cleanPhone}?text=${waMsg}` : '#';
+
+        return `
+          <div class="dashboard-partial-item">
+            <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex-wrap: wrap;">
+              <strong style="font-family: monospace; font-size: 0.82rem; color: var(--brand-terracotta);">${o.order_number}</strong>
+              <span style="font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;">
+                ${o.customer_name || 'Cliente'}
+              </span>
+              <span style="font-size: 0.72rem; color: #166534; background: #DCFCE7; padding: 2px 7px; border-radius: 4px; font-weight: 600;">
+                Entrada: ${formatBRL(pay.paid)}
+              </span>
+              <span style="font-size: 0.72rem; color: #991B1B; background: #FEE2E2; padding: 2px 7px; border-radius: 4px; font-weight: 700;">
+                Falta: ${formatBRL(pay.due)}
+              </span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              ${cleanPhone ? `
+                <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="btn-secondary-action" style="padding: 0.25rem 0.55rem; font-size: 0.72rem; color: #166534; border-color: #86EFAC;" title="Lembrar cliente no WhatsApp">
+                  💬 Cobrar WhatsApp
+                </a>
+              ` : ''}
+              <a href="admin-pedidos.html?pedido=${o.order_number}" class="btn-secondary-action" style="padding: 0.25rem 0.55rem; font-size: 0.72rem;" title="Abrir pedido para dar baixa no restante">
+                Dar Baixa &rarr;
+              </a>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      dashPartialOrdersList.innerHTML = html;
+    }
+  }
+
+  function renderRecentOrders() {
+    if (!dashRecentOrdersList) return;
+    if (rawOrdersData.length === 0) {
+      dashRecentOrdersList.innerHTML = `
+        <div style="text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.82rem;">
+          Nenhum pedido registrado no sistema ainda.
+        </div>
+      `;
+      return;
+    }
+
+    const recent = rawOrdersData.slice(0, 5);
+    const html = recent.map(o => {
+      const st = (o.status || 'recebido').toLowerCase();
+      let badgeClass = 'status-recebido';
+      let badgeLabel = 'Aguardando PIX';
+      if (st === 'confirmado' || st === 'preparacao') { badgeClass = 'status-preparacao'; badgeLabel = 'Em Preparação'; }
+      else if (st === 'enviado') { badgeClass = 'status-enviado'; badgeLabel = 'A Caminho'; }
+      else if (st === 'entregue') { badgeClass = 'status-entregue'; badgeLabel = 'Entregue'; }
+      else if (st === 'cancelado') { badgeClass = 'status-cancelado'; badgeLabel = 'Cancelado'; }
+
+      const pay = getOrderPaymentInfo(o);
+      const partialTag = (pay.isPartial && st !== 'cancelado')
+        ? `<span style="font-size: 0.64rem; padding: 0.15rem 0.45rem; background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; border-radius: 4px; font-weight: 700;">🟡 Falta ${formatBRL(pay.due)}</span>`
+        : '';
+
+      const itemCount = Array.isArray(o.items) ? o.items.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0) : 1;
+
+      return `
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.65rem 0.5rem; border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap;">
+          <div style="display: flex; flex-direction: column;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <strong style="font-family: monospace; font-size: 0.85rem; color: var(--brand-terracotta);">${o.order_number}</strong>
+              <span class="order-badge ${badgeClass}" style="font-size: 0.64rem; padding: 0.15rem 0.45rem;">${badgeLabel}</span>
+              ${partialTag}
+            </div>
+            <span style="font-size: 0.8rem; color: var(--text-primary); margin-top: 0.15rem; font-weight: 500;">
+              ${o.customer_name || 'Cliente'} &bull; <span style="color: var(--text-muted);">${itemCount} peça(s)</span>
+            </span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <strong style="font-size: 0.92rem; color: var(--text-primary); font-variant-numeric: tabular-nums;">
+              ${formatBRL(o.total_amount)}
+            </strong>
+            <a href="admin-pedidos.html?pedido=${o.order_number}" class="btn-secondary-action" style="padding: 0.35rem 0.65rem; font-size: 0.74rem;" title="Abrir gestão deste pedido">
+              Gerenciar &rarr;
+            </a>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    dashRecentOrdersList.innerHTML = html;
+  }
+
+  function renderStockAlerts() {
+    if (!dashStockAlertsList) return;
+    const activeProducts = rawFinancialsData.filter(p => p.status === 'ativo');
+    const esgotados = activeProducts.filter(p => p.stock === 0);
+    const baixoEstoque = activeProducts.filter(p => p.stock > 0 && p.stock <= 2);
+
+    if (dashAlertEsgotados) dashAlertEsgotados.textContent = `${esgotados.length} modelos`;
+    if (dashAlertBaixo) dashAlertBaixo.textContent = `${baixoEstoque.length} modelos`;
+
+    const criticalItems = [...esgotados, ...baixoEstoque];
+    if (criticalItems.length === 0) {
+      dashStockAlertsList.innerHTML = `
+        <div style="text-align: center; padding: 1.5rem; color: #166534; background: #F0FDF4; border-radius: 8px; font-size: 0.82rem; font-weight: 500;">
+          ✓ Excelente! Todas as joias ativas estão com estoque saudável.
+        </div>
+      `;
+      return;
+    }
+
+    const itemsToShow = criticalItems.slice(0, 6);
+    const html = itemsToShow.map(p => {
+      const img = (Array.isArray(p.images) && p.images[0]) ? p.images[0] : 'assets/images/logo-simbolo.png';
+      const isOut = p.stock === 0;
+      const badgeHtml = isOut 
+        ? `<span style="background: #FEE2E2; color: #DC2626; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.68rem; font-weight: 700;">Esgotado</span>`
+        : `<span style="background: #FEF3C7; color: #D97706; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.68rem; font-weight: 700;">Restam ${p.stock} un.</span>`;
+
+      return `
+        <div class="dashboard-stock-alert-item">
+          <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0;">
+            <img src="${img}" alt="${p.name}" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border-subtle); flex-shrink: 0;" onerror="this.src='assets/images/logo-simbolo.png'">
+            <div style="min-width: 0;">
+              <div style="font-weight: 600; font-size: 0.82rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;">
+                ${p.name}
+              </div>
+              <span style="font-family: monospace; font-size: 0.7rem; color: var(--text-muted);">${p.sku} &bull; ${p.category}</span>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+            ${badgeHtml}
+            <a href="admin-editar-produto.html?id=${p.id}" class="btn-secondary-action" style="padding: 0.3rem 0.55rem; font-size: 0.72rem;" title="Editar estoque e insumos desta joia">
+              Editar &rarr;
+            </a>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    dashStockAlertsList.innerHTML = html;
+  }
+
+  function renderCrmRadar(conversionRate) {
+    if (!dashTopClientsList) return;
+    if (dashCrmConversao) dashCrmConversao.textContent = `${conversionRate}%`;
+
+    // Agrupa compras por cliente (apenas pedidos válidos / não cancelados)
+    const clientsMap = new Map();
+    rawOrdersData.forEach(o => {
+      if ((o.status || '').toLowerCase() === 'cancelado') return;
+      const key = o.customer_cpf ? String(o.customer_cpf).replace(/\D/g, '') : (o.customer_phone ? String(o.customer_phone).replace(/\D/g, '') : (o.customer_name || 'Desconhecido'));
+      if (!clientsMap.has(key)) {
+        clientsMap.set(key, {
+          name: o.customer_name || 'Cliente',
+          phone: o.customer_phone || '',
+          ordersCount: 0,
+          totalSpent: 0
+        });
+      }
+      const client = clientsMap.get(key);
+      client.ordersCount++;
+      client.totalSpent += (Number(o.total_amount) || 0);
+    });
+
+    const buyersList = Array.from(clientsMap.values()).filter(c => c.totalSpent > 0);
+    buyersList.sort((a, b) => b.totalSpent - a.totalSpent);
+
+    const totalBuyers = buyersList.length;
+    const totalSpentAll = buyersList.reduce((acc, c) => acc + c.totalSpent, 0);
+    const avgLtv = totalBuyers > 0 ? (totalSpentAll / totalBuyers) : 0;
+    if (dashCrmLtv) dashCrmLtv.textContent = formatBRL(avgLtv);
+
+    if (buyersList.length === 0) {
+      dashTopClientsList.innerHTML = `
+        <div style="text-align: center; padding: 1.25rem; color: var(--text-muted); font-size: 0.8rem;">
+          Nenhuma compra registrada por clientes ainda.
+        </div>
+      `;
+      return;
+    }
+
+    const topClients = buyersList.slice(0, 4);
+    const html = topClients.map(c => {
+      const cleanPhone = (c.phone || '').replace(/\D/g, '');
+      const initials = (c.name || 'C').split(' ').filter(Boolean).slice(0, 2).map(n => n[0].toUpperCase()).join('');
+      const waMsg = encodeURIComponent(`Olá, ${c.name.split(' ')[0]}! Tudo bem? Passando para agradecer por escolher a Soléria e conferir se precisa de algo especial!`);
+      const waLink = cleanPhone ? `https://wa.me/55${cleanPhone}?text=${waMsg}` : '#';
+
+      return `
+        <div class="dashboard-vip-item">
+          <div style="display: flex; align-items: center; gap: 0.65rem;">
+            <div class="dashboard-avatar">${initials}</div>
+            <div>
+              <strong style="font-size: 0.82rem; color: var(--text-primary); display: block;">${c.name}</strong>
+              <span style="font-size: 0.72rem; color: var(--text-muted);">${c.ordersCount} pedido(s) realizados</span>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.65rem;">
+            <strong style="font-size: 0.88rem; color: var(--brand-terracotta);">${formatBRL(c.totalSpent)}</strong>
+            ${cleanPhone ? `
+              <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="btn-secondary-action" style="padding: 0.3rem 0.55rem; font-size: 0.72rem; color: #166534; border-color: #86EFAC;" title="Conversar no WhatsApp">
+                💬
+              </a>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    dashTopClientsList.innerHTML = html;
   }
 
   // Inicializa verificação de autenticação

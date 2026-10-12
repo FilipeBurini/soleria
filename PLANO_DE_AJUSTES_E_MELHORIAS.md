@@ -89,7 +89,7 @@ Melhorias de usabilidade para evitar atritos na navegação, transparência em v
     1. Adicionado link *"Esqueci minha senha"* no formulário de login de [`minha-conta.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/minha-conta.html).
     2. Exibição de dica transparente de acesso rápido (senha inicial padrão composta pelos 4 primeiros dígitos do CPF para pedidos concluídos no catálogo).
     3. Criado formulário de redefinição imediata com dupla checagem de identidade (CPF + WhatsApp cadastrado) chamando a nova função RPC `customer_reset_password` no Supabase (e fallback local).
-    4. Adicionado botão para suporte concierge direto no WhatsApp oficial da Soléria (`wa.me/5516997990729`) com mensagem pré-formatada contendo o CPF da cliente.
+    4. Adicionado botão para suporte direto com a Carla no WhatsApp oficial da Soléria (`wa.me/5516997990729`) com mensagem pré-formatada contendo o CPF da cliente.
 
 - [x] **Etapa 4.2: Transparência e Opções de Frete no Checkout** *(Concluído em 01/10/2026)*
   - **Arquivo:** [`assets/js/carrinho.js`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/js/carrinho.js)
@@ -124,7 +124,7 @@ Recursos implementados para transformar o catálogo em uma operação de vendas 
     2. Cards de métricas com Total de Clientes, Clientes Compradoras, Taxa de Conversão da Base e LTV Médio por Compradora.
     3. Tabela interativa com busca em tempo real (Nome, CPF, WhatsApp, E-mail, Cidade) e filtros por perfil (VIP > R$ 500, Frequente, Compradora ou Sem Compras).
     4. Modal de Histórico de Pedidos por Cliente com visualização de todos os pedidos, status, itens comprados e endereço de entrega.
-    5. Botão de contato direto no WhatsApp (`wa.me`) para cada cliente com mensagem concierge personalizada.
+    5. Botão de contato direto no WhatsApp (`wa.me`) para cada cliente com mensagem personalizada da Carla.
     6. Exportação da base de clientes para planilha Excel/CSV em UTF-8 com BOM.
 
 - [x] **Etapa 5.3: Sistema de Cupons de Desconto** *(Concluído em 01/10/2026)*
@@ -141,7 +141,7 @@ Recursos implementados para transformar o catálogo em uma operação de vendas 
   - **Arquivos:** [`admin-pedidos.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin-pedidos.html) e [`assets/js/admin-pedidos.js`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/js/admin-pedidos.js)
   - **Status:** **Implementado.**
     1. Criado painel no modal de gestão de pedidos com 4 botões de disparo em 1 clique: *"Pagamento Aprovado"*, *"Envio & Rastreio"*, *"Pronto p/ Retirada"* e *"Pedido Entregue"*.
-    2. Textos pré-formatados com concierge luxuoso contendo o primeiro nome da cliente, protocolo do pedido, código de rastreio e link direto para a página de rastreio.
+    2. Textos pré-formatados com atendimento personalizado contendo o primeiro nome da cliente, protocolo do pedido, código de rastreio e link direto para a página de rastreio.
     3. Modal de configuração de Webhook para integração transparente com APIs de mensageria (Evolution API, Z-API, n8n, Make ou Zapier), com suporte a URL, Bearer Token/API Key e disparo automático ao salvar alterações de status.
 
 - [x] **Etapa 5.5: Exportação de Relatórios Financeiros** *(Concluído em 01/10/2026)*
@@ -153,7 +153,56 @@ Recursos implementados para transformar o catálogo em uma operação de vendas 
 
 ---
 
+## ✅ Fase 6: Dashboard 360°, Gestão Financeira Avançada (Baixa Parcial) e Refinamento de Interface (CONCLUÍDA)
+
+- [x] **Etapa 6.1: Dashboard 360° Unificado & Central de Inteligência** *(Concluído em 12/10/2026)*
+  - **Arquivos:** [`admin.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin.html) e [`assets/js/admin.js`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/js/admin.js)
+  - **Status:** **Implementado.**
+    1. Criado layout unificado com abas dinâmicas *"Visão Geral 360°"* e *"Posição de Estoque & Peças"*.
+    2. Consolidação de KPIs executivos em tempo real: Faturamento Realizado, Vendas do Mês, Ticket Médio, Capital em Estoque, Base de Clientes Cadastrados e Taxa de Conversão Real da Base.
+    3. Grid de monitoramento por status de pedidos (Aguardando Pagamento, Preparação, Enviados e Entregues) com contadores e montantes calculados na hora.
+    4. Widget de Alerta de Estoque Crítico exibindo peças com 0 ou 1 unidade restante com botão de reabastecimento.
+    5. Ranking de Clientes VIP com maior volume de compras para relacionamento ativo.
+
+- [x] **Etapa 6.2: Controle de Baixa Parcial (Entrada/Sinal) & Saldos a Receber** *(Concluído em 12/10/2026)*
+  - **Arquivos:** [`admin-pedidos.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin-pedidos.html), [`assets/js/admin-pedidos.js`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/js/admin-pedidos.js), [`admin.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin.html), [`assets/js/admin.js`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/js/admin.js) e [`supabase_orders.sql`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/supabase_orders.sql)
+  - **Status:** **Implementado.**
+    1. Adicionado bloco de controle de pagamento dentro do modal de gestão de pedidos com cards de Valor Total, Valor Já Pago (Entrada) e Saldo Restante calculado em tempo real.
+    2. Atalhos de 1 clique: *"Zerar (R$ 0)"*, *"50% Entrada"* e *"Quitar 100%"*.
+    3. Status dinâmico: *"✓ Quitado 100%"*, *"🟡 Pagamento Parcial"* e *"Aguardando Pagamento"*.
+    4. Botão integrado para envio de comprovante no WhatsApp da cliente com texto pré-formatado da Carla detalhando entrada recebida e saldo restante a acertar.
+    5. Filtro rápido *"🟡 Com Saldo a Receber"* na listagem de pedidos de `admin-pedidos.html`.
+    6. Banner inteligente de notificação no topo do Dashboard 360° listando todas as clientes com saldo pendente de acerto, total devedor consolidado e atalhos de cobrança no WhatsApp.
+    7. Migração do banco com adição das colunas `amount_paid` e `balance_due` na tabela `orders`.
+
+- [x] **Etapa 6.3: Correção de Digitação Livre e Formatação Monetária Brasileira** *(Concluído em 12/10/2026)*
+  - **Arquivos:** [`assets/js/admin-pedidos.js`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/js/admin-pedidos.js)
+  - **Status:** **Corrigido.**
+    1. Eliminada a sobreposição e travamento do cursor ao digitar ou apagar valores nos campos de Valor Final a Cobrar, Desconto e Valor Já Pago.
+    2. Suporte nativo à digitação brasileira com vírgula ou ponto (ex: `350,00`, `350.50`, `350`).
+    3. Adicionada proteção `document.activeElement` para impedir sobrescrita do campo ativo durante a digitação.
+    4. Seleção automática do texto completo ao focar/clicar (`input.select()`), permitindo alteração instantânea com um único clique.
+    5. Formatação com 2 casas decimais aplicada no evento de saída (`blur`) e ao pressionar Enter.
+
+- [x] **Etapa 6.4: Padronização do Atendimento WhatsApp (Carla)** *(Concluído em 12/10/2026)*
+  - **Arquivos:** [`index.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/index.html), [`carrinho.js`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/js/carrinho.js), [`rastreio.js`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/js/rastreio.js) e [`rastreio.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/rastreio.html)
+  - **Status:** **Padronizado.**
+    1. Todas as mensagens e botões agora informam atendimento exclusivo com a **Carla** (removendo qualquer menção a "Concierge").
+    2. Ajustada a responsividade do QR Code de pagamento PIX no checkout mobile.
+    3. Corrigido botão de WhatsApp na consulta de pedidos da tela de rastreamento.
+
+- [x] **Etapa 6.5: Redesenho do Menu Superior Administrativo & Margem Superior** *(Concluído em 12/10/2026)*
+  - **Arquivos:** [`assets/css/style.css`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/assets/css/style.css), [`admin.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin.html), [`admin-pedidos.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin-pedidos.html), [`admin-produto.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin-produto.html), [`admin-editar-produto.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin-editar-produto.html), [`admin-insumos.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin-insumos.html) e [`admin-clientes.html`](file:///e:/Criação%20de%20Paginas/02%20-%20Clientes%20e%20Portf%C3%B3lios/Soléria/admin-clientes.html)
+  - **Status:** **Concluído.**
+    1. Removida a caixinha/tag quebrada que ficava ao lado do logo ("Gestão de Pedidos" / "Backoffice") em todas as 6 telas administrativas.
+    2. Menu reformulado e aumentado: itens com tipografia `0.88rem`, padding `0.62rem 1.05rem`, bordas arredondadas e ícones de `17px`.
+    3. Itens de navegação perfeitamente centralizados no centro da barra, com a logo à esquerda e o usuário à direita em equilíbrio simétrico.
+    4. Blindagem do logo contra sobreposição (`flex-shrink: 0; min-width: 220px`).
+    5. Adicionado espaçamento generoso no topo do conteúdo (`padding-top: 2rem !important;`), eliminando o aspecto colado no cabeçalho em todas as páginas do backoffice.
+
+---
+
 ## 🏆 Resumo Geral do Plano
 
-Todas as 5 Fases propostas para estabilização, segurança, inteligência de estoque e expansão comercial da Soléria foram 100% concluídas com sucesso e validadas!
+Todas as 6 Fases de estabilização, inteligência de estoque, blindagem, CRM, dashboard unificado e gestão financeira com baixa parcial da Soléria foram 100% concluídas com sucesso e validadas!
 

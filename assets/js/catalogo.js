@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const modal = document.getElementById('product-modal');
   const modalCloseBtn = document.getElementById('modal-close-btn');
   const modalMainImg = document.getElementById('modal-main-img');
+  const modalMainImageWrap = document.getElementById('modal-main-image-wrap');
   const modalThumbnails = document.getElementById('modal-thumbnails');
   const modalTitle = document.getElementById('modal-title');
   const modalCategory = document.getElementById('modal-category');
@@ -51,6 +52,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalWhatsappBtn = document.getElementById('modal-whatsapp-btn');
   const modalSizesWrapper = document.getElementById('modal-sizes-wrapper');
   const modalSizesList = document.getElementById('modal-sizes-list');
+
+  // Lightbox DOM (Foto Ampliada)
+  const lightboxModal = document.getElementById('image-lightbox-modal');
+  const lightboxImg = document.getElementById('lightbox-img');
+  const lightboxCloseBtn = document.getElementById('lightbox-close-btn');
+  const lightboxCloseBottom = document.getElementById('lightbox-btn-close-bottom');
+  const lightboxCounter = document.getElementById('lightbox-counter');
+  const lightboxPrevBtn = document.getElementById('lightbox-prev');
+  const lightboxNextBtn = document.getElementById('lightbox-next');
+  const lightboxThumbnails = document.getElementById('lightbox-thumbnails');
+  const lightboxImgWrapper = document.getElementById('lightbox-img-wrapper');
+
+  // Estado da galeria do produto em exibição
+  let currentProductGallery = [];
+  let currentGalleryIndex = 0;
 
   // Dados de demonstração caso o banco ainda esteja vazio ou em configuração
   const DEMO_PRODUCTS = [
@@ -359,6 +375,8 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function openProductModal(product) {
     const images = parseImages(product.images);
+    currentProductGallery = images;
+    currentGalleryIndex = 0;
 
     const promo = calculatePromotionalPricing(product);
 
@@ -411,6 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
           modalThumbnails.querySelectorAll('.modal-thumb').forEach(t => t.classList.remove('active'));
           thumb.classList.add('active');
           modalMainImg.src = imgUrl;
+          currentGalleryIndex = idx;
         });
 
         modalThumbnails.appendChild(thumb);
@@ -436,7 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateWhatsappLink() {
       const phone = '5516997990729'; // WhatsApp Soléria (Carla)
-      let text = `Olá! Gostaria de mais informações sobre a peça "${product.name}" (${formatBRL(product.sale_price)}) que visualizei no catálogo Soléria.`;
+      let text = `Olá, Carla! Gostaria de mais informações sobre a peça "${product.name}" (${formatBRL(product.sale_price)}) que visualizei no catálogo Soléria.`;
       if (selectedSize) {
         text += ` Tenho interesse no Aro ${selectedSize}.`;
       }
@@ -486,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Configura botão de atendimento WhatsApp Concierge
+    // Configura botão de atendimento WhatsApp com a Carla
     updateWhatsappLink();
 
     // Configura Botão "Adicionar à Sacola"
@@ -529,15 +548,198 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Fecha o modal
+   * Abre o lightbox de visualização da foto em tela cheia
+   */
+  function openLightbox(index = 0) {
+    if (!lightboxModal || !lightboxImg) return;
+    if (!currentProductGallery || currentProductGallery.length === 0) {
+      if (modalMainImg && modalMainImg.src) {
+        currentProductGallery = [modalMainImg.src];
+      } else {
+        return;
+      }
+    }
+
+    currentGalleryIndex = Math.max(0, Math.min(index, currentProductGallery.length - 1));
+    updateLightboxView();
+
+    lightboxModal.classList.add('active');
+    lightboxModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  /**
+   * Atualiza a imagem e controles do lightbox
+   */
+  function updateLightboxView() {
+    if (!lightboxImg || !currentProductGallery[currentGalleryIndex]) return;
+
+    lightboxImg.src = currentProductGallery[currentGalleryIndex];
+    lightboxImg.alt = modalTitle ? modalTitle.textContent : 'Foto da joia ampliada';
+
+    if (lightboxCounter) {
+      if (currentProductGallery.length > 1) {
+        lightboxCounter.textContent = `${currentGalleryIndex + 1} de ${currentProductGallery.length}`;
+        lightboxCounter.style.display = 'inline-block';
+      } else {
+        lightboxCounter.textContent = '1 de 1';
+        lightboxCounter.style.display = 'inline-block';
+      }
+    }
+
+    if (currentProductGallery.length > 1) {
+      if (lightboxPrevBtn) lightboxPrevBtn.style.display = 'flex';
+      if (lightboxNextBtn) lightboxNextBtn.style.display = 'flex';
+    } else {
+      if (lightboxPrevBtn) lightboxPrevBtn.style.display = 'none';
+      if (lightboxNextBtn) lightboxNextBtn.style.display = 'none';
+    }
+
+    if (lightboxThumbnails) {
+      lightboxThumbnails.innerHTML = '';
+      if (currentProductGallery.length > 1) {
+        currentProductGallery.forEach((imgUrl, idx) => {
+          const thumb = document.createElement('div');
+          thumb.className = `lightbox-thumb ${idx === currentGalleryIndex ? 'active' : ''}`;
+          thumb.innerHTML = `<img src="${imgUrl}" alt="Miniatura ${idx + 1}">`;
+          thumb.addEventListener('click', (e) => {
+            e.stopPropagation();
+            currentGalleryIndex = idx;
+            updateLightboxView();
+            syncModalGallery();
+          });
+          lightboxThumbnails.appendChild(thumb);
+        });
+        lightboxThumbnails.style.display = 'flex';
+      } else {
+        lightboxThumbnails.style.display = 'none';
+      }
+    }
+  }
+
+  /**
+   * Sincroniza a foto ativa de volta para o modal do produto
+   */
+  function syncModalGallery() {
+    if (modalMainImg && currentProductGallery[currentGalleryIndex]) {
+      modalMainImg.src = currentProductGallery[currentGalleryIndex];
+    }
+    if (modalThumbnails) {
+      const thumbs = modalThumbnails.querySelectorAll('.modal-thumb');
+      thumbs.forEach((t, i) => {
+        if (i === currentGalleryIndex) t.classList.add('active');
+        else t.classList.remove('active');
+      });
+    }
+  }
+
+  /**
+   * Fecha o lightbox
+   */
+  function closeLightbox() {
+    if (!lightboxModal) return;
+    lightboxModal.classList.remove('active');
+    lightboxModal.setAttribute('aria-hidden', 'true');
+    syncModalGallery();
+    // Se o modal do produto ainda estiver ativo, mantém body sem scroll
+    if (modal && modal.classList.contains('active')) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+  }
+
+  function nextLightboxImage() {
+    if (currentProductGallery.length <= 1) return;
+    currentGalleryIndex = (currentGalleryIndex + 1) % currentProductGallery.length;
+    updateLightboxView();
+    syncModalGallery();
+  }
+
+  function prevLightboxImage() {
+    if (currentProductGallery.length <= 1) return;
+    currentGalleryIndex = (currentGalleryIndex - 1 + currentProductGallery.length) % currentProductGallery.length;
+    updateLightboxView();
+    syncModalGallery();
+  }
+
+  /**
+   * Fecha o modal do produto
    */
   function closeModal() {
+    if (lightboxModal && lightboxModal.classList.contains('active')) {
+      closeLightbox();
+    }
     modal.classList.remove('active');
     modal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
   }
 
-  // Event Listeners de Fechamento do Modal
+  // Evento para abrir foto ampliada ao clicar na imagem do produto
+  if (modalMainImageWrap) {
+    modalMainImageWrap.addEventListener('click', () => {
+      openLightbox(currentGalleryIndex);
+    });
+    modalMainImageWrap.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openLightbox(currentGalleryIndex);
+      }
+    });
+  } else if (modalMainImg) {
+    modalMainImg.addEventListener('click', () => {
+      openLightbox(currentGalleryIndex);
+    });
+  }
+
+  // Event Listeners de Fechamento e Controles do Lightbox
+  if (lightboxCloseBtn) lightboxCloseBtn.addEventListener('click', closeLightbox);
+  if (lightboxCloseBottom) lightboxCloseBottom.addEventListener('click', closeLightbox);
+  if (lightboxPrevBtn) {
+    lightboxPrevBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      prevLightboxImage();
+    });
+  }
+  if (lightboxNextBtn) {
+    lightboxNextBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      nextLightboxImage();
+    });
+  }
+  if (lightboxModal) {
+    lightboxModal.addEventListener('click', (e) => {
+      if (e.target === lightboxModal || e.target === lightboxImgWrapper || e.target.id === 'lightbox-content') {
+        closeLightbox();
+      }
+    });
+
+    // Suporte a gestos touch (swipe lateral para trocar imagem)
+    let touchStartX = 0;
+    let touchStartY = 0;
+    lightboxModal.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    lightboxModal.addEventListener('touchend', (e) => {
+      if (e.changedTouches.length === 1) {
+        const deltaX = e.changedTouches[0].clientX - touchStartX;
+        const deltaY = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY)) {
+          if (deltaX < 0) {
+            nextLightboxImage();
+          } else {
+            prevLightboxImage();
+          }
+        }
+      }
+    }, { passive: true });
+  }
+
+  // Event Listeners de Fechamento do Modal de Produto
   modalCloseBtn.addEventListener('click', closeModal);
   const modalCloseSecondary = document.getElementById('btn-modal-close-secondary');
   if (modalCloseSecondary) {
@@ -547,6 +749,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === modal) closeModal();
   });
   document.addEventListener('keydown', (e) => {
+    if (lightboxModal && lightboxModal.classList.contains('active')) {
+      if (e.key === 'Escape') {
+        closeLightbox();
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        nextLightboxImage();
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        prevLightboxImage();
+        return;
+      }
+    }
+
     if (e.key === 'Escape' && modal.classList.contains('active')) {
       closeModal();
     }

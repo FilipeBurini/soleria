@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS orders (
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'pix';
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'aguardando_pagamento';
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS pagbank_card JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS amount_paid NUMERIC DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS balance_due NUMERIC DEFAULT 0;
 
 -- 2. Índices de busca rápida
 CREATE INDEX IF NOT EXISTS idx_orders_order_number ON orders(order_number);

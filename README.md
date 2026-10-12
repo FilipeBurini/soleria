@@ -1,6 +1,6 @@
 # Soléria — Haute Joaillerie & Accessoires
 
-> **Plataforma web de alta joalheria:** Catálogo público de luxo para clientes com concierge WhatsApp integrado, acompanhado de um backoffice administrativo completo com gestão de insumos, precificação inteligente, cálculo de margem de lucro em tempo real e grade de aros para anéis.
+> **Plataforma web de alta joalheria:** Catálogo público de luxo para clientes com atendimento WhatsApp com a Carla integrado, acompanhado de um backoffice administrativo completo com gestão de insumos, precificação inteligente, cálculo de margem de lucro em tempo real e grade de aros para anéis.
 
 ---
 
@@ -20,27 +20,46 @@ O projeto **Soléria** foi desenvolvido com foco em performance extrema, elegân
 - **Filtros e Busca Instantânea:** Filtragem dinâmica por categorias (Anéis, Colares, Brincos, Pulseiras, etc.) e busca textual em tempo real por nome ou descrição.
 - **Grade de Aros em Estoque (Anéis):** Exibe para o cliente **apenas os tamanhos (Aro 10 ao 20) que realmente possuem peças disponíveis** (`> 0`), indicando a quantidade de unidades restantes.
 - **Modal de Detalhes & Galeria:** Visualização ampliada com suporte a até 6 fotos em alta resolução por peça e troca intuitiva de miniaturas.
-- **Atendimento WhatsApp Concierge:** Ao selecionar um aro e clicar no botão de atendimento, o cliente é direcionado ao WhatsApp com uma mensagem personalizada já preenchida contendo o nome da joia, valor e o aro selecionado.
+- **Atendimento WhatsApp com a Carla:** Ao selecionar um aro e clicar no botão de atendimento, o cliente é direcionado ao WhatsApp da Carla com uma mensagem personalizada já preenchida contendo o nome da joia, valor e o aro selecionado.
 - **Proteção Total de Dados Sensíveis:** O catálogo é estritamente restrito pela segurança do banco (RLS) — custos de fabricação, insumos e margem de lucro nunca são transmitidos ao navegador do cliente.
 
-### 2. Painel Administrativo & Dashboard Financeiro ([`admin.html`](admin.html))
+### 2. Dashboard 360° & Central de Inteligência ([`admin.html`](admin.html))
 - **Acesso Restrito:** Autenticação bloqueante com e-mail e senha via **Supabase Auth**.
-- **Indicadores Chave de Performance (KPIs):**
+- **Painel Unificado:** Abas dinâmicas *"Visão Geral 360°"* e *"Posição de Estoque & Peças"*.
+- **Indicadores Chave de Performance (KPIs em Tempo Real):**
+  - **Faturamento Realizado:** Vendas aprovadas e entradas confirmadas.
+  - **Vendas deste Mês & Ticket Médio:** Acompanhamento dinâmico de performance comercial.
   - **Capital Investido em Estoque:** $\sum (\text{Custo de Fabricação} + \text{Insumos}) \times \text{Quantidade em Estoque}$.
-  - **Lucro Total Projetado:** $\sum \text{Lucro Unitário} \times \text{Quantidade em Estoque}$.
-  - **Volume de Acervo:** Total de peças físicas em estoque e quantidade de modelos cadastrados.
-- **Tabela Consolidada de Estoque:** Consulta em tempo real com filtros por status (Ativo/Inativo), campo de busca rápida por SKU ou nome, margens calculadas e botão de edição direta.
+  - **Base Ativa de Clientes & Taxa de Conversão:** Monitoramento da carteira de compradores.
+- **Alertas Financeiros:** Banner inteligente de **Pedidos com Saldo a Receber (Pagamento Parcial)** com botão direto para cobrança/recibo via WhatsApp.
+- **Alertas de Estoque Crítico:** Monitoramento de peças esgotadas ou com 1 unidade.
+- **Ranking de Clientes VIP:** Top compradoras para relacionamento ativo.
+- **Tabela Consolidada de Estoque:** Consulta em tempo real com filtros por status (Ativo/Inativo), busca rápida por SKU ou nome, margens calculadas e exportação em CSV.
 
-### 3. Cadastro Inteligente de Produtos & Insumos ([`admin-produto.html`](admin-produto.html))
+### 3. Gestão Completa de Pedidos & Baixa Parcial ([`admin-pedidos.html`](admin-pedidos.html))
+- **Novo Pedido Presencial:** Emissão com pré-cadastro por CPF vinculado automaticamente à conta da cliente.
+- **Controle de Pagamento & Baixa Parcial:**
+  - Registro de entrada/sinal recebido com atalhos (*Zerar*, *50% Entrada*, *Quitar 100%*).
+  - Cálculo instantâneo do Saldo Restante a acertar.
+  - Status financeiro: `✓ Quitado 100%`, `🟡 Pagamento Parcial` e `Aguardando Pagamento`.
+  - Recibo pré-formatado com protocolo e valores disparado no WhatsApp da cliente.
+- **Edição Flexível de Preços & Descontos:** Digitação livre no formato brasileiro (`350,00` ou `350.00`), seleção automática com 1 clique e botões de desconto rápido (-5%, -10%, -15%, Zerar).
+- **Disparos Automáticos no WhatsApp da Carla:** Notificações em 1 clique para *Pagamento Aprovado*, *Envio & Rastreio*, *Pronto p/ Retirada* e *Pedido Entregue*.
+- **Gestão de Rastreamento & Baixa de Estoque Atômica.**
+
+### 4. Cadastro Inteligente de Produtos & Insumos ([`admin-produto.html`](admin-produto.html))
 - **Geração Automática de SKU:** Padronização com base nas três primeiras letras da categoria seguidas de numeração sequencial (ex: `ANE-0001`, `COL-0002`).
 - **Grade Dinâmica de Aros (Aros 10 ao 20):** Ao selecionar ou digitar a categoria "Anéis", a grade de aros se abre automaticamente. Ao preencher as unidades de cada aro, o **estoque total é somado em tempo real**.
 - **Engenharia de Custos ao Vivo:** Permite vincular múltiplos insumos cadastrados à peça (ex: banho de ouro, embalagem de veludo, pedras). O sistema soma o custo da peça + insumos e calcula a margem de lucro unitária instantaneamente conforme o preço de venda é digitado.
 - **Upload Automatizado de Imagens:** Envio direto para o **Supabase Storage** no bucket `Fotos Produtos`. O sistema cria e organiza automaticamente as imagens dentro de subpastas nomeadas com o **SKU do produto** (ex: `Fotos Produtos/AN5032/foto-1.jpg`). Também suporta inserção direta de links de imagem.
 
-### 4. Gestão de Matérias-Primas e Insumos ([`admin-insumos.html`](admin-insumos.html))
+### 5. Gestão de Matérias-Primas e Insumos ([`admin-insumos.html`](admin-insumos.html))
 - Cadastro centralizado de embalagens, metais, gemas e serviços terceirizados.
 - Definição de custo unitário e unidade de medida (`un`, `g`, `cm`, `par`, `ml`, etc.).
 - Atualização e exclusão com proteção relacional.
+
+### 6. CRM de Clientes ([`admin-clientes.html`](admin-clientes.html))
+- Base completa de clientes com histórico de compras, ticket total, endereço de entrega e contato no WhatsApp com a Carla.
 
 ---
 

@@ -1,6 +1,6 @@
 /**
  * SOLÉRIA — HAUTE JOAILLERIE & ACCESSOIRES
- * Módulo de Sacola de Compras, Checkout Concierge e Criação de Pedidos
+ * Módulo de Sacola de Compras, Checkout e Criação de Pedidos
  */
 
 (function () {
@@ -519,7 +519,7 @@
     `;
 
     if (isCheckoutStep) {
-      // Exibe formulário de Checkout Concierge
+      // Exibe formulário de Checkout Direto
       body.innerHTML = `
         <div class="checkout-view">
           <button type="button" class="btn-secondary-action" id="btn-back-to-items" style="align-self: flex-start; margin-bottom: 0.5rem; font-size: 0.75rem;">
@@ -1524,7 +1524,7 @@
     const isCreditCard = order.payment_method === 'credit_card';
     const isWhatsApp = order.payment_method === 'whatsapp';
 
-    const whatsappText = `Olá, Soléria! Acabei de fazer o pedido *${order.order_number}* no catálogo:\n\n` +
+    const whatsappText = `Olá, Carla! Acabei de fazer o pedido *${order.order_number}* no catálogo:\n\n` +
       `*Cliente:* ${order.customer_name}\n` +
       `*Peças:*\n${itemsSummary}\n` +
       `${discountSummary}` +
@@ -1609,9 +1609,9 @@
           <label style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.3rem;">
             Código PIX Copia e Cola
           </label>
-          <div style="display: flex; gap: 0.4rem;">
-            <input type="text" id="pix-copia-cola-input" readonly value="${pixPayload}" style="flex: 1; font-family: monospace; font-size: 0.72rem; background: #fff; border: 1px solid #dcd3cb; padding: 0.5rem 0.6rem; border-radius: 6px; color: #444;">
-            <button type="button" id="btn-copy-pix" class="btn-proceed-checkout" style="padding: 0.5rem 0.85rem; font-size: 0.75rem; white-space: nowrap; margin-top: 0; width: auto;">
+          <div style="display: flex; gap: 0.35rem; width: 100%; align-items: stretch;">
+            <input type="text" id="pix-copia-cola-input" readonly value="${pixPayload}" style="flex: 1; min-width: 0; font-family: monospace; font-size: 0.72rem; background: #fff; border: 1px solid #dcd3cb; padding: 0.55rem 0.6rem; border-radius: 6px; color: #444; box-sizing: border-box;">
+            <button type="button" id="btn-copy-pix" class="btn-copy-pix-styled">
               Copiar PIX
             </button>
           </div>
@@ -1654,7 +1654,7 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.63c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.12-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.78 2.71 4.3 3.8 2.53 1.09 2.53.73 2.99.69.45-.05 1.47-.6 1.68-1.18.21-.59.21-1.09.15-1.19-.06-.1-.23-.17-.48-.29z"/>
         </svg>
-        ${isCreditCard ? 'Falar com Carla no WhatsApp' : 'Enviar Pedido / Comprovante no WhatsApp'}
+        ${isCreditCard ? 'Falar com a Carla no WhatsApp' : 'Enviar Pedido / Comprovante no WhatsApp'}
       </a>
 
       <a href="rastreio.html?pedido=${order.order_number}" class="btn-secondary" style="width: 100%; display: block; text-align: center; text-decoration: none; font-size: 0.82rem; padding: 0.65rem; margin-top: 0.6rem;">
@@ -1742,8 +1742,8 @@
       modal.id = 'pix-payment-modal-overlay';
       modal.className = 'modal-overlay';
       modal.innerHTML = `
-        <div class="modal-window" style="max-width: 500px; padding: 2rem 1.75rem; position: relative;">
-          <button class="modal-close-btn" id="btn-close-pix-modal" aria-label="Fechar" style="position: absolute; top: 1rem; right: 1rem;">
+        <div class="modal-window pix-modal-window" style="position: relative;">
+          <button class="modal-close-btn" id="btn-close-pix-modal" aria-label="Fechar">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -1787,58 +1787,66 @@
 
     const content = modal.querySelector('#pix-payment-modal-content');
     content.innerHTML = `
-      <div style="text-align: center;">
-        <div style="width: 48px; height: 48px; border-radius: 50%; background: #DCFCE7; color: #16A34A; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 0.75rem;">
+      <div style="text-align: center; box-sizing: border-box; width: 100%;">
+        <div style="width: 40px; height: 40px; border-radius: 50%; background: #DCFCE7; color: #16A34A; display: inline-flex; align-items: center; justify-content: center; font-size: 1.3rem; margin-bottom: 0.4rem;">
           ✓
         </div>
-        <h3 style="font-family: var(--font-serif); font-size: 1.45rem; color: var(--text-primary); margin-bottom: 0.25rem;">
+        <h3 style="font-family: var(--font-serif); font-size: 1.25rem; color: var(--text-primary); margin-bottom: 0.15rem; line-height: 1.2;">
           Pague com PIX Instantâneo
         </h3>
-        <p style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 0.85rem;">
+        <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.65rem;">
           Pedido <strong>${orderNum}</strong> • ${customerName}
         </p>
 
-        <div style="background: #FAF8F5; border: 1.5px dashed var(--gold-primary); border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1rem;">
-          <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.15rem;">Valor a Pagar</span>
-          <span style="font-size: 1.45rem; font-weight: 700; color: var(--brand-terracotta);">${formatMoney(totalAmount)}</span>
+        <!-- Faixa de Valor a Pagar Compacta -->
+        <div style="background: #FAF8F5; border: 1.5px dashed var(--gold-primary); border-radius: var(--radius-sm); padding: 0.5rem 0.85rem; margin-bottom: 0.85rem; display: flex; align-items: center; justify-content: space-between;">
+          <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Valor a Pagar:</span>
+          <span style="font-size: 1.25rem; font-weight: 700; color: var(--brand-terracotta);">${formatMoney(totalAmount)}</span>
         </div>
 
-        <!-- Imagem do QR Code -->
-        <div style="display: inline-block; background: #ffffff; padding: 12px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); margin-bottom: 1rem;">
-          <img src="${qrCodeUrl}" alt="QR Code PIX Soléria" style="width: 200px; height: 200px; display: block;" onerror="this.alt='Erro ao carregar QR Code'">
-        </div>
-
-        <!-- Código Copia e Cola -->
-        <div style="text-align: left; margin-bottom: 1rem;">
-          <label style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 0.35rem;">
-            Código PIX Copia e Cola
-          </label>
-          <div style="display: flex; gap: 0.4rem;">
-            <input type="text" id="pix-direct-input" readonly value="${pixPayload}" style="flex: 1; font-family: monospace; font-size: 0.74rem; background: #fff; border: 1px solid #dcd3cb; padding: 0.55rem 0.65rem; border-radius: 6px; color: #333;">
-            <button type="button" id="btn-copy-pix-direct" class="btn-primary" style="padding: 0.55rem 0.95rem; font-size: 0.76rem; white-space: nowrap; cursor: pointer;">
-              Copiar PIX
+        <!-- Módulo PIX Copia e Cola (Destaque Principal para Celular) -->
+        <div style="text-align: left; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 0.75rem; margin-bottom: 0.85rem; box-sizing: border-box;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+            <label style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: #1E293B; font-weight: 700; display: block;">
+              📱 PIX Copia e Cola (Celular)
+            </label>
+          </div>
+          <div style="display: flex; gap: 0.35rem; align-items: stretch; width: 100%;">
+            <input type="text" id="pix-direct-input" readonly value="${pixPayload}" style="flex: 1; min-width: 0; font-family: monospace; font-size: 0.74rem; background: #fff; border: 1px solid #CBD5E1; padding: 0.55rem 0.6rem; border-radius: 6px; color: #334155; box-sizing: border-box;">
+            <button type="button" id="btn-copy-pix-direct" class="btn-copy-pix-styled">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              <span>Copiar PIX</span>
             </button>
           </div>
-          <div id="pix-direct-feedback" style="font-size: 0.74rem; color: #16A34A; font-weight: 600; display: none; margin-top: 0.35rem;">
-            ✓ Código PIX copiado com sucesso! Abra o aplicativo do seu banco e escolha a opção PIX Copia e Cola.
+          <div id="pix-direct-feedback" style="font-size: 0.72rem; color: #16A34A; font-weight: 600; display: none; margin-top: 0.4rem; line-height: 1.3;">
+            ✓ Código PIX copiado com sucesso! Abra o app do seu banco e cole na opção PIX Copia e Cola.
           </div>
         </div>
 
-        <div style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.45;">
+        <!-- QR Code Compacto -->
+        <div style="display: inline-block; background: #ffffff; padding: 8px; border: 1px solid #E2E8F0; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 0.4rem;">
+          <img src="${qrCodeUrl}" alt="QR Code PIX Soléria" style="width: 145px; height: 145px; display: block;" onerror="this.alt='Erro ao carregar QR Code'">
+        </div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+          Aponte a câmera de outro celular para escanear
+        </div>
+
+        <div style="font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 0.85rem; line-height: 1.35;">
           ✦ Chave PIX (E-mail): <strong>carlamotasemijoias@gmail.com</strong> (Carla Mota)<br>
           Após o pagamento, envie o comprovante no WhatsApp abaixo para priorizarmos o envio das suas peças.
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 0.55rem;">
-          <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="background: #16A34A; border-color: #16A34A; justify-content: center; height: 44px; font-size: 0.88rem; text-decoration: none; display: flex; align-items: center; gap: 0.45rem;">
+        <!-- Botões de Ação -->
+        <div style="display: flex; flex-direction: column; gap: 0.45rem;">
+          <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp-order" style="height: 42px; margin: 0; font-size: 0.84rem; justify-content: center; width: 100%;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.63c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.12-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.78 2.71 4.3 3.8 2.53 1.09 2.53.73 2.99.69.45-.05 1.47-.6 1.68-1.18.21-.59.21-1.09.15-1.19-.06-.1-.23-.17-.48-.29z"/>
             </svg>
             Enviar Comprovante no WhatsApp
           </a>
 
-          <button type="button" class="btn-secondary-action" id="btn-close-pix-action" style="height: 40px; justify-content: center; font-size: 0.82rem;">
-            Fechar
+          <button type="button" class="btn-secondary-action" id="btn-close-pix-action" style="height: 38px; justify-content: center; font-size: 0.8rem; margin: 0; width: 100%;">
+            Fechar Janela
           </button>
         </div>
       </div>
