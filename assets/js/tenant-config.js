@@ -13,8 +13,8 @@
 
 // CONFIGURAÇÃO DO SEU SERVIDOR MASTER (Onde ficam cadastradas as licenças)
 const MASTER_CONFIG = {
-  supabaseUrl: "https://kgmkvskdhoficppjskgy.supabase.co", // Substitua pela URL do seu Supabase Master
-  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." // Substitua pela Anon Key do seu Supabase Master
+  supabaseUrl: "https://kgmkvskdhoficppjskgy.supabase.co",
+  supabaseAnonKey: "sb_publishable_P-XdBQaYxckZYoussxYHFA_ZW_ZSgmq"
 };
 
 (async function initTenant() {

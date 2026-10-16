@@ -1,4 +1,4 @@
-﻿# ✦ Manual Prático de Implantação White-Label & Gestão de Licenças — Soléria SaaS
+# ✦ Manual Prático de Implantação White-Label & Gestão de Licenças — Soléria SaaS
 
 > **Objetivo deste manual:** Guia passo a passo para você vender, implantar e gerenciar lojas completas para novas clientes (ex: *"Joias da Ana"*, *"Pratas da Maria"*), utilizando **domínio próprio da cliente**, **banco de dados isolado com custo R$ 0,00** e **controle total de mensalidade via Chave de Licença**.
 
@@ -48,7 +48,12 @@ Cada cliente ganha seu próprio banco no plano gratuito do Supabase. Dessa forma
 2. Clique em **"New Query"**.
 3. Abra o arquivo [schema_completo_loja_nova.sql](./schema_completo_loja_nova.sql) na pasta do seu projeto, copie todo o conteúdo e cole no SQL Editor.
 4. Clique no botão verde **"Run"**.
-   - Isso criará as tabelas: `products`, `orders`, `customers`, `coupons`, `supplies`, os triggers de baixa atômica de estoque e as colunas de baixa parcial (`amount_paid` e `balance_due`).
+   - Isso criará em 1 clique:
+     - 💎 **Catálogo:** `products`, grade de aros (10-20), até 6 fotos, view financeira e de lucratividade;
+     - 🏢 **Fornecedores & Lotes de Compra:** `vendors`, `purchase_batches`, `batch_items` e controle de custo de reposição;
+     - 📦 **Insumos:** `supplies` e engenharia de custos (`product_supplies`);
+     - 🛍️ **Vendas & Caixa:** `orders` com baixa parcial (`amount_paid` e `balance_due`) e triggers automáticos de estoque;
+     - 👥 **CRM & Fidelização:** `customers` com autenticação segura e `coupons` com validação RPC.
 
 ### Passo 1.3: Armazenamento de Fotos (Criado Automaticamente pelo SQL! 🎉)
 O próprio script [schema_completo_loja_nova.sql](./schema_completo_loja_nova.sql) executado no Passo 1.2 já cuida de tudo no Storage:
