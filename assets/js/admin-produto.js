@@ -60,7 +60,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('prod-img-6')
   ];
 
-  // Insumos
+  // Insumos, Fornecedores e Lotes
+  const prodVendorSelect = document.getElementById('prod-vendor');
+  const prodBatchSelect = document.getElementById('prod-batch');
   const supplySelect = document.getElementById('supply-select');
   const supplyQtyInput = document.getElementById('supply-qty');
   const btnAddSupply = document.getElementById('btn-add-supply');
@@ -133,12 +135,52 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 1.3 Carrega insumos disponíveis
     loadAvailableSupplies();
 
-    // 1.4 Renderiza miniaturas iniciais e cálculos
+    // 1.4 Carrega fornecedores e lotes para associação
+    loadVendorsAndBatches();
+
+    // 1.5 Renderiza miniaturas iniciais e cálculos
     renderImagePreviews();
     recalculateFinancials();
   }
 
   init();
+
+  // ==========================================================================
+  // Carregamento de Fornecedores e Lotes
+  // ==========================================================================
+  async function loadVendorsAndBatches() {
+    try {
+      const client = getDb();
+      if (!client) return;
+
+      const [vRes, bRes] = await Promise.all([
+        client.from('vendors').select('id, name, trade_name').order('name'),
+        client.from('purchase_batches').select('id, batch_code, vendor_id, purchase_date').order('created_at', { ascending: false })
+      ]);
+
+      if (vRes.data && prodVendorSelect) {
+        prodVendorSelect.innerHTML = '<option value="">Nenhum / Não informado</option>';
+        vRes.data.forEach(v => {
+          const opt = document.createElement('option');
+          opt.value = v.id;
+          opt.textContent = v.trade_name ? `${v.name} (${v.trade_name})` : v.name;
+          prodVendorSelect.appendChild(opt);
+        });
+      }
+
+      if (bRes.data && prodBatchSelect) {
+        prodBatchSelect.innerHTML = '<option value="">Nenhum / Peça avulsa</option>';
+        bRes.data.forEach(b => {
+          const opt = document.createElement('option');
+          opt.value = b.id;
+          opt.textContent = `${b.batch_code}${b.purchase_date ? ` (${new Date(b.purchase_date + 'T12:00:00Z').toLocaleDateString('pt-BR')})` : ''}`;
+          prodBatchSelect.appendChild(opt);
+        });
+      }
+    } catch (e) {
+      console.warn('Aviso ao carregar fornecedores e lotes:', e);
+    }
+  }
 
   // ==========================================================================
   // 2. Geração Inteligente de SKU sem Colisões
@@ -889,6 +931,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         original_price: originalPriceVal,
         stock: parseInt(stockInput.value, 10) || 0,
         stock_qty: parseInt(stockInput.value, 10) || 0,
+        vendor_id: (prodVendorSelect && prodVendorSelect.value) ? prodVendorSelect.value : null,
+        batch_id: (prodBatchSelect && prodBatchSelect.value) ? prodBatchSelect.value : null,
         images: getValidImages(),
         sizes: ringSizes
       };

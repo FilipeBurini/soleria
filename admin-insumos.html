@@ -55,6 +55,14 @@
           </svg>
           Clientes
         </a>
+        <a href="admin-lotes.html" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+          Lotes & Fornecedores
+        </a>
         <a href="admin-produto.html" class="admin-nav-item">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
@@ -91,7 +99,7 @@
     <div class="admin-page-header">
       <div>
         <h1 class="admin-page-title">Cadastro de Insumos & Matérias-Primas</h1>
-        <p class="admin-page-subtitle">Gerencie os custos de banhos de ouro, pedras preciosas, fechos, embalagens e estojos.</p>
+        <p class="admin-page-subtitle">Gerencie fornecedores e os custos de banhos de ouro, pedras preciosas, fechos, embalagens e estojos.</p>
       </div>
       <div>
         <button id="btn-open-new-supply" class="btn-primary">
@@ -103,7 +111,7 @@
     <!-- Formulário de Criação/Edição de Insumo (Card Colapsável ou Inline) -->
     <div id="supply-form-card" class="form-card" style="display: none;">
       <h3 class="form-section-title" id="form-supply-title">Novo Insumo</h3>
-      <p class="form-section-desc">Defina o nome do insumo, seu custo unitário e a unidade de fracionamento.</p>
+      <p class="form-section-desc">Defina o nome do insumo, fornecedor parceiro, custo unitário e a unidade de fracionamento.</p>
 
       <form id="supply-form">
         <input type="hidden" id="supply-edit-id">
@@ -114,12 +122,19 @@
             <input type="text" id="supply-name" class="form-input" placeholder="Ex: Banho de Ouro 18k (10 milésimos)" required>
           </div>
 
-          <div class="form-group col-3">
+          <div class="form-group col-6">
+            <label class="form-label" for="supply-vendor">Fornecedor Parceiro</label>
+            <select id="supply-vendor" class="form-select">
+              <option value="">Nenhum / Não informado</option>
+            </select>
+          </div>
+
+          <div class="form-group col-6">
             <label class="form-label" for="supply-cost">Custo Unitário (R$) <span class="required">*</span></label>
             <input type="number" step="0.01" min="0" id="supply-cost" class="form-input" placeholder="0.00" required>
           </div>
 
-          <div class="form-group col-3">
+          <div class="form-group col-6">
             <label class="form-label" for="supply-unit">Unidade de Medida <span class="required">*</span></label>
             <input type="text" id="supply-unit" list="unit-suggestions" class="form-input" placeholder="Ex: un, g, ml, par..." required>
             <datalist id="unit-suggestions">
@@ -145,7 +160,7 @@
     <!-- Tabela de Insumos -->
     <section class="table-card">
       <div class="table-toolbar">
-        <input type="text" id="search-supplies-input" class="table-search-input" placeholder="Buscar por insumo ou unidade...">
+        <input type="text" id="search-supplies-input" class="table-search-input" placeholder="Buscar por insumo, fornecedor ou unidade...">
         <div style="font-size: 0.8rem; color: var(--text-secondary);" id="supplies-count">
           0 insumos cadastrados
         </div>
@@ -156,6 +171,7 @@
           <thead>
             <tr>
               <th>Nome do Insumo</th>
+              <th>Fornecedor</th>
               <th style="text-align: right;">Custo Unitário</th>
               <th style="text-align: center;">Unidade de Medida</th>
               <th style="text-align: center; width: 140px;">Ações</th>

@@ -56,7 +56,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnToggleSlots = document.getElementById('btn-toggle-slots');
   const manualUrlSlots = document.getElementById('manual-url-slots');
 
-  // Insumos
+  // Insumos, Fornecedor e Lote
+  const prodVendorSelect = document.getElementById('prod-vendor');
+  const prodBatchSelect = document.getElementById('prod-batch');
   const supplySelect = document.getElementById('supply-select');
   const supplyQtyInput = document.getElementById('supply-qty');
   const btnAddSupply = document.getElementById('btn-add-supply');
@@ -105,6 +107,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       // 1. Carrega insumos disponíveis primeiro (para vincular nomes e custos unitários)
       await loadAvailableSupplies();
+
+      // 1.1 Carrega fornecedores e lotes
+      await loadVendorsAndBatches();
 
       // 2. Carrega produto do banco
       const prod = await fetchProductWithFallback(productId);
@@ -200,6 +205,43 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ==========================================================================
+  // Carregamento de Fornecedores e Lotes
+  // ==========================================================================
+  async function loadVendorsAndBatches() {
+    try {
+      const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
+      if (!client) return;
+
+      const [vRes, bRes] = await Promise.all([
+        client.from('vendors').select('id, name, trade_name').order('name'),
+        client.from('purchase_batches').select('id, batch_code, purchase_date').order('created_at', { ascending: false })
+      ]);
+
+      if (vRes.data && prodVendorSelect) {
+        prodVendorSelect.innerHTML = '<option value="">Nenhum / Não informado</option>';
+        vRes.data.forEach(v => {
+          const opt = document.createElement('option');
+          opt.value = v.id;
+          opt.textContent = v.trade_name ? `${v.name} (${v.trade_name})` : v.name;
+          prodVendorSelect.appendChild(opt);
+        });
+      }
+
+      if (bRes.data && prodBatchSelect) {
+        prodBatchSelect.innerHTML = '<option value="">Nenhum / Peça avulsa</option>';
+        bRes.data.forEach(b => {
+          const opt = document.createElement('option');
+          opt.value = b.id;
+          opt.textContent = `${b.batch_code}${b.purchase_date ? ` (${new Date(b.purchase_date + 'T12:00:00Z').toLocaleDateString('pt-BR')})` : ''}`;
+          prodBatchSelect.appendChild(opt);
+        });
+      }
+    } catch (e) {
+      console.warn('Aviso ao carregar fornecedores e lotes:', e);
+    }
+  }
+
+  // ==========================================================================
   // 3. Preenchimento de Campos do Formulário
   // ==========================================================================
 
@@ -209,6 +251,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (statusInput) statusInput.value = prod.status || 'ativo';
     if (categoryInput) categoryInput.value = prod.category || '';
     if (skuInput) skuInput.value = prod.sku || '';
+
+    if (prodVendorSelect && (prod.vendor_id || prod.vendor)) {
+      prodVendorSelect.value = prod.vendor_id || prod.vendor || '';
+    }
+    if (prodBatchSelect && (prod.batch_id || prod.batch)) {
+      prodBatchSelect.value = prod.batch_id || prod.batch || '';
+    }
 
     if (badgeProdSku && prod.sku) {
       badgeProdSku.textContent = prod.sku;
@@ -739,6 +788,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       sale_price: parseFloat(priceInput.value) || 0,
       original_price: origPriceVal,
       stock: parseInt(stockInput.value, 10) || 0,
+      vendor_id: (prodVendorSelect && prodVendorSelect.value) ? prodVendorSelect.value : null,
+      batch_id: (prodBatchSelect && prodBatchSelect.value) ? prodBatchSelect.value : null,
       images: getValidImages(),
       sizes: ringSizes
     };

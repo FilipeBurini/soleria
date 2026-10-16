@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const form = document.getElementById('supply-form');
   const editIdInput = document.getElementById('supply-edit-id');
   const nameInput = document.getElementById('supply-name');
+  const supplyVendorSelect = document.getElementById('supply-vendor');
   const costInput = document.getElementById('supply-cost');
   const unitInput = document.getElementById('supply-unit');
   const btnOpenNew = document.getElementById('btn-open-new-supply');
@@ -33,10 +34,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   const suppliesCount = document.getElementById('supplies-count');
 
   let allSupplies = [];
+  let allVendors = [];
 
   // ==========================================================================
-  // Carregamento dos Insumos da Tabela supplies
+  // Carregamento de Fornecedores e Insumos
   // ==========================================================================
+
+  async function fetchVendors() {
+    try {
+      const { data } = await db.from('vendors').select('id, name, trade_name').order('name');
+      allVendors = data || [];
+      if (supplyVendorSelect) {
+        supplyVendorSelect.innerHTML = '<option value="">Nenhum / Não informado</option>';
+        allVendors.forEach(v => {
+          const opt = document.createElement('option');
+          opt.value = v.id;
+          opt.textContent = v.trade_name ? `${v.name} (${v.trade_name})` : v.name;
+          supplyVendorSelect.appendChild(opt);
+        });
+      }
+    } catch (e) {
+      console.warn('Aviso ao buscar fornecedores:', e);
+    }
+  }
 
   async function fetchSupplies() {
     suppliesLoading.style.display = 'block';
@@ -45,7 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const { data, error } = await db
         .from('supplies')
-        .select('*')
+        .select('*, vendor:vendors(id, name, trade_name)')
         .order('name', { ascending: true });
 
       if (error) {
@@ -72,9 +92,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const q = (searchInput ? searchInput.value.trim().toLowerCase() : '');
 
     const filtered = allSupplies.filter(item => {
+      const vName = item.vendor?.trade_name || item.vendor?.name || '';
       return !q || 
         (item.name && item.name.toLowerCase().includes(q)) ||
-        (item.unit && item.unit.toLowerCase().includes(q));
+        (item.unit && item.unit.toLowerCase().includes(q)) ||
+        (vName && vName.toLowerCase().includes(q));
     });
 
     if (suppliesCount) {
@@ -91,9 +113,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     suppliesEmpty.style.display = 'none';
 
     filtered.forEach(item => {
+      const vName = item.vendor?.trade_name || item.vendor?.name || '—';
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td style="font-weight: 500;">${item.name}</td>
+        <td><span style="font-size: 0.8rem; color: var(--text-secondary);">${vName}</span></td>
         <td style="text-align: right;" class="val-currency">${formatBRL(item.unit_cost)}</td>
         <td style="text-align: center;"><span style="font-family: monospace; background: var(--bg-surface-alt); padding: 0.2rem 0.5rem; border-radius: var(--radius-sm);">${item.unit || 'un'}</span></td>
         <td style="text-align: center;">
@@ -135,6 +159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnSave.textContent = 'Salvar Insumo';
     editIdInput.value = '';
     form.reset();
+    if (supplyVendorSelect) supplyVendorSelect.value = '';
     formCard.style.display = 'block';
     nameInput.focus();
     formCard.scrollIntoView({ behavior: 'smooth' });
@@ -148,6 +173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnSave.textContent = 'Atualizar Insumo';
     editIdInput.value = supply.id;
     nameInput.value = supply.name || '';
+    if (supplyVendorSelect) supplyVendorSelect.value = supply.vendor_id || '';
     costInput.value = Number(supply.unit_cost || 0).toFixed(2);
     unitInput.value = supply.unit || 'un';
 
@@ -160,6 +186,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     formCard.style.display = 'none';
     form.reset();
     editIdInput.value = '';
+    if (supplyVendorSelect) supplyVendorSelect.value = '';
   }
 
   btnOpenNew.addEventListener('click', openNewSupply);
@@ -189,6 +216,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const payload = {
       name: nameInput.value.trim(),
+      vendor_id: (supplyVendorSelect && supplyVendorSelect.value) ? supplyVendorSelect.value : null,
       unit_cost: parseFloat(costInput.value) || 0,
       unit: unitInput.value.trim().toLowerCase()
     };
@@ -255,5 +283,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Inicialização
-  fetchSupplies();
+  (async () => {
+    await fetchVendors();
+    await fetchSupplies();
+  })();
 });

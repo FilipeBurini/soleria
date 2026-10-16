@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Soléria — Gestão de Lotes de Compra & Fornecedores</title>
+  <link rel="icon" type="image/png" href="assets/images/logo-simbolo.png">
+  <link rel="stylesheet" href="assets/css/style.css?v=4.2">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* Estilos de Alta Joalheria para Lotes & Fornecedores */
+    .tabs-pill-wrapper {
+      display: inline-flex;
+      background: #F4EFEB;
+      padding: 5px;
+      border-radius: var(--radius-md);
+      gap: 6px;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border-medium);
+    }
+    .tab-pill-btn {
+      background: transparent;
+      border: none;
+      padding: 0.65rem 1.35rem;
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      outline: none;
+    }
+    .tab-pill-btn.active {
+      background: #FFFFFF;
+      color: var(--brand-terracotta);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    .tab-pill-btn:hover:not(.active) {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.5);
+    }
+    
+    .table-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+      overflow: hidden;
+      margin-bottom: 2.5rem;
+    }
+    .table-toolbar {
+      padding: 1rem 1.35rem;
+      border-bottom: 1px solid var(--border-light);
+      background: #FAF8F5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+      text-align: left;
+    }
+    .data-table th {
+      background-color: #F8F6F2;
+      color: var(--gold-dark);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      padding: 0.95rem 1.15rem;
+      border-bottom: 1.5px solid var(--border-medium);
+      white-space: nowrap;
+    }
+    .data-table td {
+      padding: 1rem 1.15rem;
+      border-bottom: 1px solid #F1ECE6;
+      color: var(--text-primary);
+      vertical-align: middle;
+    }
+    .data-table tbody tr:hover {
+      background-color: #FAF8F5;
+    }
+    
+    .badge-category {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 0.25rem 0.65rem;
+      border-radius: 999px;
+      background: #F5EFEB;
+      color: var(--brand-terracotta);
+      border: 1px solid #EADBCE;
+      white-space: nowrap;
+    }
+    .wa-btn-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      text-decoration: none;
+      color: #065F46;
+      background: #ECFDF5;
+      border: 1px solid #A7F3D0;
+      padding: 0.3rem 0.65rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .wa-btn-badge:hover {
+      background: #D1FAE5;
+      border-color: #6EE7B7;
+      transform: translateY(-1px);
+    }
+    
+    .item-row {
+      display: grid;
+      grid-template-columns: 140px 1fr 90px 120px 120px 40px;
+      gap: 0.65rem;
+      align-items: center;
+      padding: 0.75rem 0.6rem;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .item-row:last-child {
+      border-bottom: none;
+    }
+    .btn-remove-row {
+      background: #FEE2E2;
+      color: #DC2626;
+      border: 1px solid #FCA5A5;
+      border-radius: var(--radius-sm);
+      height: 38px;
+      width: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+      font-weight: bold;
+      line-height: 1;
+      transition: background 0.15s ease;
+    }
+    .btn-remove-row:hover {
+      background: #FCA5A5;
+    }
+
+    /* Utilitários de grid completos para os modais */
+    .col-1 { grid-column: span 1; }
+    .col-2 { grid-column: span 2; }
+    .col-3 { grid-column: span 3; }
+    .col-4 { grid-column: span 4; }
+    .col-5 { grid-column: span 5; }
+    .col-6 { grid-column: span 6; }
+    .col-7 { grid-column: span 7; }
+    .col-8 { grid-column: span 8; }
+    .col-9 { grid-column: span 9; }
+    .col-10 { grid-column: span 10; }
+    .col-11 { grid-column: span 11; }
+    .col-12 { grid-column: span 12; }
+
+    @media (max-width: 768px) {
+      .col-1, .col-2, .col-3, .col-4, .col-5, .col-6, .col-7, .col-8, .col-9, .col-10, .col-11 {
+        grid-column: span 12 !important;
+      }
+      .item-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header Admin -->
+  <header class="admin-header">
+    <div class="container admin-header-content">
+      <div class="admin-header-brand">
+        <a href="admin.html" class="admin-brand-link" title="Painel Soléria">
+          <img src="assets/images/logo-simbolo.png" alt="Soléria" class="admin-logo-icon">
+          <span class="brand-title" style="color: #FAF8F5; font-size: 1.45rem;">Soléria</span>
+        </a>
+      </div>
+
+      <nav class="admin-nav">
+        <a href="admin.html" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          Dashboard 360°
+        </a>
+        <a href="admin.html?tab=estoque" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 17 12 22 22 17"></polyline>
+            <polyline points="2 12 12 17 22 12"></polyline>
+          </svg>
+          Estoque
+        </a>
+        <a href="admin-pedidos.html" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          Pedidos
+        </a>
+        <a href="admin-clientes.html" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          Clientes
+        </a>
+        <a href="admin-lotes.html" class="admin-nav-item active">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+          Lotes & Fornecedores
+        </a>
+        <a href="admin-produto.html" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="16"></line>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+          </svg>
+          Novo Produto
+        </a>
+        <a href="admin-insumos.html" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          </svg>
+          Insumos
+        </a>
+        <a href="index.html" target="_blank" class="admin-nav-item">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          Ver Catálogo
+        </a>
+      </nav>
+
+      <div class="admin-user-menu">
+        <span class="admin-user-email" id="admin-user-email">Carregando...</span>
+        <button id="btn-logout" class="btn-logout">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main class="container">
+    <div class="admin-page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h1 class="admin-page-title">Lotes de Compra & Fornecedores</h1>
+        <p class="admin-page-subtitle">Categorize suas peças e insumos por fornecedor, acompanhe entradas de compras e controle o custo de cada reposição.</p>
+      </div>
+      <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <button id="btn-open-new-vendor" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+          + Novo Fornecedor
+        </button>
+        <button id="btn-open-new-batch" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.4rem; box-shadow: 0 4px 14px rgba(184, 115, 51, 0.25);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          + Entrada de Novo Lote
+        </button>
+      </div>
+    </div>
+
+    <!-- Cards de Métricas Rápidas -->
+    <section class="metrics-grid" style="margin-bottom: 2rem;">
+      <div class="metric-card accent-terracotta">
+        <div class="metric-card-label">Fornecedores Parceiros</div>
+        <div class="metric-card-value" id="kpi-vendors-count">0</div>
+        <div class="metric-card-footer">Ourivesarias, galvanoplastia e embalagens</div>
+      </div>
+
+      <div class="metric-card accent-blue">
+        <div class="metric-card-label">Lotes Registrados</div>
+        <div class="metric-card-value" id="kpi-batches-count">0</div>
+        <div class="metric-card-footer" id="kpi-batches-pending-info">0 pendentes de recebimento</div>
+      </div>
+
+      <div class="metric-card accent-green">
+        <div class="metric-card-label">Total em Compras de Lotes</div>
+        <div class="metric-card-value" id="kpi-batches-total-cost">R$ 0,00</div>
+        <div class="metric-card-footer" id="kpi-batches-items-count">0 itens adquiridos</div>
+      </div>
+    </section>
+
+    <!-- Navegação por Abas (Segmented Control Elegante) -->
+    <div style="display: flex; justify-content: flex-start; margin-bottom: 0.5rem;">
+      <div class="tabs-pill-wrapper">
+        <button type="button" class="tab-pill-btn active" id="tab-btn-batches" data-tab="batches">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          Lotes de Compra & Reposição
+        </button>
+        <button type="button" class="tab-pill-btn" id="tab-btn-vendors" data-tab="vendors">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          Fornecedores Cadastrados
+        </button>
+      </div>
+    </div>
+
+    <!-- ABA 1: LOTES DE COMPRA -->
+    <section id="tab-content-batches" class="table-card">
+      <!-- Barra de Filtros Integrada -->
+      <div class="table-toolbar">
+        <div style="display: flex; gap: 0.75rem; flex: 1; min-width: 280px; flex-wrap: wrap; align-items: center;">
+          <input type="text" id="search-batches-input" class="table-search-input" placeholder="Buscar por código do lote, NF ou notas..." style="flex: 1; min-width: 220px;">
+          <select id="filter-batch-vendor" class="form-select" style="width: auto; min-width: 190px; padding: 0.52rem 0.75rem; font-size: 0.82rem;">
+            <option value="">Todos os Fornecedores</option>
+          </select>
+          <select id="filter-batch-status" class="form-select" style="width: auto; min-width: 140px; padding: 0.52rem 0.75rem; font-size: 0.82rem;">
+            <option value="">Todos os Status</option>
+            <option value="recebido">Recebido</option>
+            <option value="pendente">Pendente</option>
+            <option value="em_transito">Em Trânsito</option>
+            <option value="concluido">Concluído</option>
+          </select>
+        </div>
+        <div id="batches-count-badge" style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap;">
+          0 lote(s)
+        </div>
+      </div>
+
+      <!-- Tabela de Lotes -->
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 140px;">Código do Lote</th>
+              <th style="min-width: 200px;">Fornecedor</th>
+              <th style="width: 120px;">Data Compra</th>
+              <th style="width: 130px;">NF / Recibo</th>
+              <th style="width: 100px; text-align: center;">Qtd Itens</th>
+              <th style="width: 130px; text-align: right;">Custo Total</th>
+              <th style="width: 120px; text-align: center;">Status</th>
+              <th style="width: 150px; text-align: center;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="batches-tbody">
+            <!-- Preenchido via admin-lotes.js -->
+          </tbody>
+        </table>
+      </div>
+
+      <div id="batches-loading" class="spinner" style="margin: 3rem auto;"></div>
+      <div id="batches-empty" class="empty-state" style="display: none; padding: 3rem 1rem;">
+        <div class="empty-state-icon">📦</div>
+        <h3 class="empty-state-title">Nenhum lote registrado</h3>
+        <p class="empty-state-desc">Cadastre seu primeiro lote de reposição para registrar custos de compra e associar itens aos seus fornecedores.</p>
+        <button type="button" class="btn-primary" onclick="document.getElementById('btn-open-new-batch').click()">+ Registrar Primeiro Lote</button>
+      </div>
+    </section>
+
+    <!-- ABA 2: FORNECEDORES -->
+    <section id="tab-content-vendors" class="table-card" style="display: none;">
+      <!-- Barra de Filtros Integrada -->
+      <div class="table-toolbar">
+        <div style="display: flex; gap: 0.75rem; flex: 1; min-width: 280px; flex-wrap: wrap; align-items: center;">
+          <input type="text" id="search-vendors-input" class="table-search-input" placeholder="Buscar por razão social, nome fantasia, documento ou telefone..." style="flex: 1; min-width: 240px;">
+          <select id="filter-vendor-category" class="form-select" style="width: auto; min-width: 190px; padding: 0.52rem 0.75rem; font-size: 0.82rem;">
+            <option value="">Todas as Categorias</option>
+          </select>
+        </div>
+        <div id="vendors-count-badge" style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap;">
+          0 fornecedor(es)
+        </div>
+      </div>
+
+      <!-- Tabela de Fornecedores -->
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="min-width: 180px;">Razão Social / Nome</th>
+              <th style="min-width: 140px;">Nome Comercial / Contato</th>
+              <th style="width: 150px;">Categoria</th>
+              <th style="width: 150px;">WhatsApp / Telefone</th>
+              <th style="min-width: 150px;">E-mail</th>
+              <th style="width: 70px; text-align: center;">Lotes</th>
+              <th style="width: 130px; text-align: center;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="vendors-tbody">
+            <!-- Preenchido via admin-lotes.js -->
+          </tbody>
+        </table>
+      </div>
+
+      <div id="vendors-loading" class="spinner" style="margin: 3rem auto; display: none;"></div>
+      <div id="vendors-empty" class="empty-state" style="display: none; padding: 3rem 1rem;">
+        <div class="empty-state-icon">🏢</div>
+        <h3 class="empty-state-title">Nenhum fornecedor cadastrado</h3>
+        <p class="empty-state-desc">Cadastre as empresas e parceiros que fornecem joias, banhos, pedras ou embalagens para a sua marca.</p>
+        <button type="button" class="btn-primary" onclick="document.getElementById('btn-open-new-vendor').click()">+ Cadastrar Fornecedor</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL: CADASTRAR / EDITAR FORNECEDOR                                   -->
+  <!-- ====================================================================== -->
+  <div class="modal-overlay" id="modal-vendor" role="dialog" aria-hidden="true">
+    <div class="modal-window" style="max-width: 650px; max-height: 90vh; overflow-y: auto;">
+      <button class="modal-close-btn" id="btn-close-vendor-modal" aria-label="Fechar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      <div style="padding: 1.75rem 2rem;">
+        <div style="border-bottom: 1px solid var(--border-light); padding-bottom: 0.85rem; margin-bottom: 1.25rem;">
+          <h3 id="modal-vendor-title" style="font-family: var(--font-serif); font-size: 1.35rem; color: var(--text-primary); margin: 0;">Novo Fornecedor Parceiro</h3>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0.25rem 0 0;">Cadastre os dados de contato e categoria do parceiro comercial.</p>
+        </div>
+
+        <form id="form-vendor">
+          <input type="hidden" id="vendor-id">
+
+          <div class="form-grid">
+            <div class="form-group col-12">
+              <label class="form-label" for="vendor-name">Razão Social / Nome Oficial <span class="required" style="color: #DC2626;">*</span></label>
+              <input type="text" id="vendor-name" class="form-input" placeholder="Ex: Ourivesaria Imperial Ltda" required>
+            </div>
+
+            <div class="form-group col-6">
+              <label class="form-label" for="vendor-trade-name">Nome Fantasia / Contato</label>
+              <input type="text" id="vendor-trade-name" class="form-input" placeholder="Ex: Imperial Joias / Sr. Carlos">
+            </div>
+
+            <div class="form-group col-6">
+              <label class="form-label" for="vendor-category">Categoria do Fornecedor <span class="required" style="color: #DC2626;">*</span></label>
+              <input type="text" id="vendor-category" list="vendor-category-suggestions" class="form-input" placeholder="Ex: Joias & Ouro, Banhos, Embalagens..." required>
+              <datalist id="vendor-category-suggestions">
+                <option value="Joias & Ouro">
+                <option value="Prata 925">
+                <option value="Banhos & Galvanoplastia">
+                <option value="Embalagens & Estojos">
+                <option value="Pedras & Gemas">
+                <option value="Fundição & Moldes">
+                <option value="Gravação a Laser">
+                <option value="Fotografia & Catálogo">
+                <option value="Transporte & Logística">
+                <option value="Geral">
+              </datalist>
+            </div>
+
+            <div class="form-group col-6">
+              <label class="form-label" for="vendor-document">CNPJ ou CPF</label>
+              <input type="text" id="vendor-document" class="form-input" placeholder="00.000.000/0001-00">
+            </div>
+
+            <div class="form-group col-6">
+              <label class="form-label" for="vendor-phone">Telefone / WhatsApp</label>
+              <input type="tel" id="vendor-phone" class="form-input" placeholder="(11) 98765-4321">
+            </div>
+
+            <div class="form-group col-12">
+              <label class="form-label" for="vendor-email">E-mail Comercial</label>
+              <input type="email" id="vendor-email" class="form-input" placeholder="comercial@fornecedor.com">
+            </div>
+
+            <div class="form-group col-12">
+              <label class="form-label" for="vendor-notes">Observações / Chave PIX / Condições de Pagamento</label>
+              <textarea id="vendor-notes" class="form-textarea" rows="3" placeholder="Ex: Pagamento 30 dias, chave PIX CNPJ, prazo de entrega de 15 dias..."></textarea>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; border-top: 1px solid var(--border-light); padding-top: 1rem;">
+            <button type="button" class="btn-secondary" id="btn-cancel-vendor">Cancelar</button>
+            <button type="submit" class="btn-primary" id="btn-save-vendor">Salvar Fornecedor</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL: REGISTRAR / EDITAR LOTE DE COMPRA                               -->
+  <!-- ====================================================================== -->
+  <div class="modal-overlay" id="modal-batch" role="dialog" aria-hidden="true">
+    <div class="modal-window" style="max-width: 880px; max-height: 92vh; overflow-y: auto;">
+      <button class="modal-close-btn" id="btn-close-batch-modal" aria-label="Fechar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      <div style="padding: 1.75rem 2rem;">
+        <div style="border-bottom: 1px solid var(--border-light); padding-bottom: 0.85rem; margin-bottom: 1.25rem;">
+          <h3 id="modal-batch-title" style="font-family: var(--font-serif); font-size: 1.35rem; color: var(--text-primary); margin: 0;">Entrada de Lote de Compra</h3>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin: 0.25rem 0 0;">Registre os itens recebidos neste lote, custos de aquisição e o fornecedor responsável.</p>
+        </div>
+
+        <form id="form-batch">
+          <input type="hidden" id="batch-id">
+
+          <!-- 1. DADOS DO LOTE -->
+          <div style="background: #FAF8F5; border: 1px solid #EFEAE3; border-radius: var(--radius-sm); padding: 1.25rem; margin-bottom: 1.25rem;">
+            <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--gold-dark); letter-spacing: 0.05em; margin-bottom: 1rem;">
+              1. Identificação do Lote & Fornecedor
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group col-6">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                  <label class="form-label" for="batch-code" style="margin: 0;">Código do Lote <span class="required" style="color: #DC2626;">*</span></label>
+                  <button type="button" id="btn-gen-batch-code" style="background: none; border: none; color: var(--brand-terracotta); font-size: 0.72rem; font-weight: 600; cursor: pointer; padding: 0;">⚡ Gerar Código</button>
+                </div>
+                <input type="text" id="batch-code" class="form-input" placeholder="Ex: LOT-2026-001" required style="font-family: monospace; font-weight: 600; text-transform: uppercase;">
+              </div>
+
+              <div class="form-group col-6">
+                <label class="form-label" for="batch-vendor-id">Fornecedor <span class="required" style="color: #DC2626;">*</span></label>
+                <select id="batch-vendor-id" class="form-select" required>
+                  <option value="">Selecione o Fornecedor...</option>
+                </select>
+              </div>
+
+              <div class="form-group col-4">
+                <label class="form-label" for="batch-date">Data da Compra <span class="required" style="color: #DC2626;">*</span></label>
+                <input type="date" id="batch-date" class="form-input" required>
+              </div>
+
+              <div class="form-group col-4">
+                <label class="form-label" for="batch-invoice">Nota Fiscal / Recibo</label>
+                <input type="text" id="batch-invoice" class="form-input" placeholder="Ex: NF-e 45892">
+              </div>
+
+              <div class="form-group col-4">
+                <label class="form-label" for="batch-status">Status da Entrega</label>
+                <select id="batch-status" class="form-select">
+                  <option value="recebido" selected>Recebido (Disponível)</option>
+                  <option value="pendente">Pendente / Comprado</option>
+                  <option value="em_transito">Em Trânsito</option>
+                  <option value="concluido">Concluído</option>
+                </select>
+              </div>
+
+              <div class="form-group col-12">
+                <label class="form-label" for="batch-shipping">Frete / Custos Extras de Envio (R$)</label>
+                <input type="number" step="0.01" min="0" id="batch-shipping" class="form-input" placeholder="0.00">
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. ITENS DO LOTE -->
+          <div style="background: #FFFFFF; border: 1.5px solid var(--border-medium); border-radius: var(--radius-sm); padding: 1.25rem; margin-bottom: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem;">
+              <span style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; color: var(--brand-terracotta); letter-spacing: 0.05em;">
+                2. Itens Adquiridos Neste Lote
+              </span>
+              <button type="button" id="btn-add-batch-item-row" class="btn-secondary" style="padding: 0.4rem 0.85rem; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                + Adicionar Item ao Lote
+              </button>
+            </div>
+
+            <!-- Cabeçalho da grade de itens -->
+            <div style="display: grid; grid-template-columns: 140px 1fr 90px 120px 120px 40px; gap: 0.65rem; font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); padding: 0.5rem 0.6rem; background: #F8F6F2; border-radius: var(--radius-sm); margin-bottom: 0.5rem; align-items: center;">
+              <div>Tipo</div>
+              <div>Item do Sistema</div>
+              <div style="text-align: center;">Qtd</div>
+              <div style="text-align: right;">Custo Unit. (R$)</div>
+              <div style="text-align: right;">Subtotal (R$)</div>
+              <div></div>
+            </div>
+
+            <!-- Container de linhas dinâmicas de itens -->
+            <div id="batch-items-container" style="max-height: 260px; overflow-y: auto;">
+              <!-- Linhas inseridas dinamicamente via JS -->
+            </div>
+
+            <!-- Rodapé com Totais do Lote -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; margin-top: 0.75rem; border-top: 1.5px dashed var(--border-medium);">
+              <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                <label style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                  <input type="checkbox" id="batch-update-stock" checked>
+                  <strong>Atualizar estoque das joias automaticamente</strong> com as quantidades deste lote
+                </label>
+              </div>
+              <div style="text-align: right;">
+                <span style="font-size: 0.8rem; color: var(--text-muted); display: block;">Total do Lote (Itens + Frete):</span>
+                <span id="batch-total-display" style="font-size: 1.4rem; font-weight: 700; color: var(--brand-terracotta); font-family: monospace;">R$ 0,00</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1.25rem;">
+            <label class="form-label" for="batch-notes">Notas / Observações Adicionais do Lote</label>
+            <textarea id="batch-notes" class="form-textarea" rows="2" placeholder="Ex: Peças com banho especial, garantia de 1 ano do fornecedor, etc..."></textarea>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid var(--border-light); padding-top: 1rem;">
+            <button type="button" class="btn-secondary" id="btn-cancel-batch">Cancelar</button>
+            <button type="submit" class="btn-primary" id="btn-save-batch">Salvar Entrada de Lote</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- MODAL: VISUALIZAR DETALHES DO LOTE (ITENS & HISTÓRICO)                  -->
+  <!-- ====================================================================== -->
+  <div class="modal-overlay" id="modal-batch-details" role="dialog" aria-hidden="true">
+    <div class="modal-window" style="max-width: 720px; max-height: 90vh; overflow-y: auto;">
+      <button class="modal-close-btn" id="btn-close-details-modal" aria-label="Fechar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      <div style="padding: 1.75rem 2rem;">
+        <div style="border-bottom: 1px solid var(--border-light); padding-bottom: 0.85rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span id="detail-batch-code" style="font-family: monospace; font-size: 1.2rem; font-weight: 700; color: var(--brand-terracotta);">LOT-XXXX</span>
+              <span id="detail-batch-status" class="badge-category">Recebido</span>
+            </div>
+            <p id="detail-batch-vendor" style="font-size: 0.88rem; color: var(--text-secondary); margin: 0.25rem 0 0;">Fornecedor: Carregando...</p>
+          </div>
+          <div style="text-align: right;">
+            <div id="detail-batch-date" style="font-size: 0.8rem; color: var(--text-muted);">Data: --/--/----</div>
+            <div id="detail-batch-invoice" style="font-size: 0.8rem; color: var(--text-muted);">NF: ---</div>
+          </div>
+        </div>
+
+        <h4 style="font-size: 0.82rem; text-transform: uppercase; color: var(--gold-dark); letter-spacing: 0.05em; margin-bottom: 0.65rem;">
+          Itens Comprados Neste Lote:
+        </h4>
+        <div class="table-responsive" style="margin-bottom: 1.25rem;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Item</th>
+                <th style="text-align: center;">Qtd</th>
+                <th style="text-align: right;">Custo Unit.</th>
+                <th style="text-align: right;">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody id="detail-items-tbody">
+              <!-- Preenchido via JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <div style="background: #FAF8F5; border-radius: var(--radius-sm); padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+          <div>
+            <span style="font-size: 0.78rem; color: var(--text-muted); display: block;">Frete / Extras: <strong id="detail-batch-shipping">R$ 0,00</strong></span>
+            <span id="detail-batch-notes" style="font-size: 0.78rem; color: var(--text-secondary); font-style: italic;"></span>
+          </div>
+          <div style="text-align: right;">
+            <span style="font-size: 0.78rem; color: var(--text-muted); display: block;">Total Investido no Lote:</span>
+            <strong id="detail-batch-total" style="font-size: 1.3rem; color: var(--brand-terracotta); font-family: monospace;">R$ 0,00</strong>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button type="button" class="btn-secondary" id="btn-close-details">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="assets/js/supabase.js"></script>
+  <script src="assets/js/admin-lotes.js"></script>
+</body>
+</html>

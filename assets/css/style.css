@@ -693,7 +693,7 @@ a {
 .modal-close-btn:hover {
   background-color: var(--text-primary);
   color: var(--text-inverse);
-  transform: rotate(90deg);
+  transform: none;
 }
 
 .modal-product-layout {
