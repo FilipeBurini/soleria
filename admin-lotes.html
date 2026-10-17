@@ -183,14 +183,14 @@
   <header class="admin-header">
     <div class="container admin-header-content">
       <div class="admin-header-brand">
-        <a href="admin.html" class="admin-brand-link" title="Painel Soléria">
+        <a href="admin" class="admin-brand-link" title="Painel Soléria">
           <img src="assets/images/logo-simbolo.png" alt="Soléria" class="admin-logo-icon">
           <span class="brand-title" style="color: #FAF8F5; font-size: 1.45rem;">Soléria</span>
         </a>
       </div>
 
       <nav class="admin-nav">
-        <a href="admin.html" class="admin-nav-item">
+        <a href="admin" class="admin-nav-item">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="7" height="7"></rect>
             <rect x="14" y="3" width="7" height="7"></rect>
@@ -199,7 +199,7 @@
           </svg>
           Dashboard 360°
         </a>
-        <a href="admin.html?tab=estoque" class="admin-nav-item">
+        <a href="admin?tab=estoque" class="admin-nav-item">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
             <polyline points="2 17 12 22 22 17"></polyline>
@@ -207,7 +207,7 @@
           </svg>
           Estoque
         </a>
-        <a href="admin-pedidos.html" class="admin-nav-item">
+        <a href="admin-pedidos" class="admin-nav-item">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
             <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -215,7 +215,7 @@
           </svg>
           Pedidos
         </a>
-        <a href="admin-clientes.html" class="admin-nav-item">
+        <a href="admin-clientes" class="admin-nav-item">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
             <circle cx="9" cy="7" r="4"></circle>
@@ -224,7 +224,7 @@
           </svg>
           Clientes
         </a>
-        <a href="admin-lotes.html" class="admin-nav-item active">
+        <a href="admin-lotes" class="admin-nav-item active">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
             <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
@@ -232,7 +232,7 @@
           </svg>
           Lotes & Fornecedores
         </a>
-        <a href="admin-produto.html" class="admin-nav-item">
+        <a href="admin-produto" class="admin-nav-item">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="12" y1="8" x2="12" y2="16"></line>
@@ -240,13 +240,13 @@
           </svg>
           Novo Produto
         </a>
-        <a href="admin-insumos.html" class="admin-nav-item">
+        <a href="admin-insumos" class="admin-nav-item">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
           </svg>
           Insumos
         </a>
-        <a href="index.html" target="_blank" class="admin-nav-item">
+        <a href="/" target="_blank" class="admin-nav-item">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
             <polyline points="15 3 21 3 21 9"></polyline>
@@ -561,12 +561,17 @@
             </div>
           </div>
 
-          <!-- 2. ITENS DO LOTE -->
+          <!-- 2. ITENS DO LOTE (OPCIONAL) -->
           <div style="background: #FFFFFF; border: 1.5px solid var(--border-medium); border-radius: var(--radius-sm); padding: 1.25rem; margin-bottom: 1.25rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem;">
-              <span style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; color: var(--brand-terracotta); letter-spacing: 0.05em;">
-                2. Itens Adquiridos Neste Lote
-              </span>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.5rem;">
+              <div>
+                <span style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; color: var(--brand-terracotta); letter-spacing: 0.05em; display: block;">
+                  2. Itens Adquiridos Neste Lote <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal; text-transform: none;">(Opcional — você pode gerar o lote vazio e incluir itens depois)</span>
+                </span>
+                <span style="font-size: 0.75rem; color: var(--text-secondary);">
+                  Adicione joias ou insumos agora, ou salve apenas os dados de compra e vincule depois pelo catálogo ou pelos detalhes do lote.
+                </span>
+              </div>
               <button type="button" id="btn-add-batch-item-row" class="btn-secondary" style="padding: 0.4rem 0.85rem; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 0.35rem;">
                 + Adicionar Item ao Lote
               </button>
@@ -588,7 +593,7 @@
             </div>
 
             <!-- Rodapé com Totais do Lote -->
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; margin-top: 0.75rem; border-top: 1.5px dashed var(--border-medium);">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; margin-top: 0.75rem; border-top: 1.5px dashed var(--border-medium); flex-wrap: wrap; gap: 0.75rem;">
               <div style="font-size: 0.8rem; color: var(--text-secondary);">
                 <label style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;">
                   <input type="checkbox" id="batch-update-stock" checked>
@@ -617,43 +622,79 @@
   </div>
 
   <!-- ====================================================================== -->
-  <!-- MODAL: VISUALIZAR DETALHES DO LOTE (ITENS & HISTÓRICO)                  -->
+  <!-- MODAL: VISUALIZAR DETALHES DO LOTE (ITENS & HISTÓRICO - ESTILO ESTOQUE) -->
   <!-- ====================================================================== -->
   <div class="modal-overlay" id="modal-batch-details" role="dialog" aria-hidden="true">
-    <div class="modal-window" style="max-width: 720px; max-height: 90vh; overflow-y: auto;">
-      <button class="modal-close-btn" id="btn-close-details-modal" aria-label="Fechar">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <div class="modal-window" style="max-width: 1040px; width: 95vw; max-height: 92vh; overflow-y: auto; padding: 0;">
+      <button class="modal-close-btn" id="btn-close-details-modal" aria-label="Fechar" style="top: 1.25rem; right: 1.25rem; z-index: 10;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
       </button>
-      <div style="padding: 1.75rem 2rem;">
-        <div style="border-bottom: 1px solid var(--border-light); padding-bottom: 0.85rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: flex-start;">
+
+      <!-- Cabeçalho Luxuoso do Lote -->
+      <div style="background: linear-gradient(135deg, #FAF7F2 0%, #F5EFE6 100%); padding: 1.75rem 2rem 1.25rem; border-bottom: 1px solid var(--border-medium);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; padding-right: 2.5rem;">
           <div>
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <span id="detail-batch-code" style="font-family: monospace; font-size: 1.2rem; font-weight: 700; color: var(--brand-terracotta);">LOT-XXXX</span>
-              <span id="detail-batch-status" class="badge-category">Recebido</span>
+            <div style="display: flex; align-items: center; gap: 0.65rem; margin-bottom: 0.35rem;">
+              <span id="detail-batch-code" style="font-family: monospace; font-size: 1.35rem; font-weight: 700; color: var(--brand-terracotta); background: #FFFFFF; padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid #EADBCE; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">LOT-XXXX</span>
+              <span id="detail-batch-status" class="badge-category" style="font-size: 0.78rem; padding: 0.3rem 0.7rem;">Recebido</span>
             </div>
-            <p id="detail-batch-vendor" style="font-size: 0.88rem; color: var(--text-secondary); margin: 0.25rem 0 0;">Fornecedor: Carregando...</p>
+            <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.4rem;">
+              <span id="detail-batch-vendor">🏢 Fornecedor: <strong>Carregando...</strong></span>
+              <span id="detail-batch-date">📅 Data: <strong>--/--/----</strong></span>
+              <span id="detail-batch-invoice">📄 NF: <strong>—</strong></span>
+            </div>
+            <div id="detail-batch-notes" style="font-size: 0.78rem; color: var(--text-muted); font-style: italic; margin-top: 0.4rem;"></div>
           </div>
-          <div style="text-align: right;">
-            <div id="detail-batch-date" style="font-size: 0.8rem; color: var(--text-muted);">Data: --/--/----</div>
-            <div id="detail-batch-invoice" style="font-size: 0.8rem; color: var(--text-muted);">NF: ---</div>
+
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <button type="button" id="btn-open-add-item-modal" class="btn-primary" style="font-size: 0.82rem; padding: 0.55rem 1rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+              <span>+</span> Incluir Item no Lote
+            </button>
           </div>
         </div>
+      </div>
 
-        <h4 style="font-size: 0.82rem; text-transform: uppercase; color: var(--gold-dark); letter-spacing: 0.05em; margin-bottom: 0.65rem;">
-          Itens Comprados Neste Lote:
-        </h4>
-        <div class="table-responsive" style="margin-bottom: 1.25rem;">
+      <!-- Barra de Controle & Alternador de Visão (Igual ao Estoque) -->
+      <div style="padding: 1rem 2rem 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div class="admin-view-toggle">
+            <button type="button" id="btn-detail-view-visual" class="btn-view-toggle active" title="Visualização em cards com fotos e aros (Estoque)">
+              <span>⊞</span> Vitrine de Peças
+            </button>
+            <button type="button" id="btn-detail-view-table" class="btn-view-toggle" title="Visualização em tabela detalhada">
+              <span>☰</span> Planilha de Itens
+            </button>
+          </div>
+          <span id="detail-items-count-badge" style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); background: #FAF5F0; padding: 0.25rem 0.6rem; border-radius: 999px; border: 1px solid #F5EAE0;">0 item(ns)</span>
+        </div>
+
+        <input type="text" id="detail-search-items" class="table-search-input" placeholder="Buscar peça neste lote..." style="max-width: 260px; font-size: 0.8rem; padding: 0.4rem 0.75rem;">
+      </div>
+
+      <!-- Painel Principal de Conteúdo -->
+      <div style="padding: 1rem 2rem 1.75rem;">
+        
+        <!-- VISÃO 1: Vitrine Visual de Peças (Estilo Estoque) -->
+        <div id="detail-visual-grid" class="admin-visual-grid" style="margin-top: 0.5rem;">
+          <!-- Cards de joias com fotos e aros injetados dinamicamente via JS -->
+        </div>
+
+        <!-- VISÃO 2: Tabela / Planilha Detalhada -->
+        <div id="detail-table-container" class="table-responsive" style="display: none; margin-top: 0.5rem;">
           <table class="admin-table">
             <thead>
               <tr>
+                <th style="width: 50px;">Foto</th>
                 <th>Tipo</th>
-                <th>Item</th>
-                <th style="text-align: center;">Qtd</th>
+                <th>Item / SKU</th>
+                <th>Grade de Aros / Detalhe</th>
+                <th style="text-align: center;">Qtd no Lote</th>
                 <th style="text-align: right;">Custo Unit.</th>
                 <th style="text-align: right;">Subtotal</th>
+                <th style="text-align: center;">Ações</th>
               </tr>
             </thead>
             <tbody id="detail-items-tbody">
@@ -662,20 +703,124 @@
           </table>
         </div>
 
-        <div style="background: #FAF8F5; border-radius: var(--radius-sm); padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-          <div>
-            <span style="font-size: 0.78rem; color: var(--text-muted); display: block;">Frete / Extras: <strong id="detail-batch-shipping">R$ 0,00</strong></span>
-            <span id="detail-batch-notes" style="font-size: 0.78rem; color: var(--text-secondary); font-style: italic;"></span>
+        <!-- Empty State caso lote não tenha itens -->
+        <div id="detail-empty-state" class="empty-state" style="display: none; padding: 3rem 1rem;">
+          <div class="empty-state-icon">📦</div>
+          <h4 class="empty-state-title" style="font-size: 1.05rem;">Nenhum item adicionado a este lote ainda</h4>
+          <p class="empty-state-desc" style="font-size: 0.82rem; max-width: 420px; margin: 0.35rem auto 1.25rem;">
+            Você pode vincular joias ou insumos diretamente usando o botão abaixo ou selecionando este lote ao cadastrar/editar um produto.
+          </p>
+          <button type="button" class="btn-primary btn-trigger-add-item" style="font-size: 0.82rem; padding: 0.55rem 1.15rem;">
+            + Incluir Primeira Peça no Lote
+          </button>
+        </div>
+
+        <!-- Rodapé Financeiro e Resumo do Lote -->
+        <div style="background: #FAF8F5; border: 1.5px solid #EFEAE3; border-radius: var(--radius-sm); padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+          <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.82rem;">
+            <div>
+              <span style="color: var(--text-muted); display: block; font-size: 0.72rem; text-transform: uppercase; font-weight: 700;">Total de Peças</span>
+              <strong id="detail-total-pieces-count" style="font-size: 1.1rem; color: var(--text-primary);">0 un</strong>
+            </div>
+            <div>
+              <span style="color: var(--text-muted); display: block; font-size: 0.72rem; text-transform: uppercase; font-weight: 700;">Frete / Custos Extras</span>
+              <strong id="detail-batch-shipping" style="font-size: 1.1rem; color: var(--text-secondary);">R$ 0,00</strong>
+            </div>
           </div>
           <div style="text-align: right;">
-            <span style="font-size: 0.78rem; color: var(--text-muted); display: block;">Total Investido no Lote:</span>
-            <strong id="detail-batch-total" style="font-size: 1.3rem; color: var(--brand-terracotta); font-family: monospace;">R$ 0,00</strong>
+            <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: var(--text-muted); display: block;">Total Investido no Lote:</span>
+            <strong id="detail-batch-total" style="font-size: 1.45rem; color: var(--brand-terracotta); font-family: monospace;">R$ 0,00</strong>
           </div>
         </div>
 
-        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
           <button type="button" class="btn-secondary" id="btn-close-details">Fechar</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- SUB-MODAL: INCLUIR ITEM / JOIA NO LOTE (COM GRADE DE AROS SE ANEL)     -->
+  <!-- ====================================================================== -->
+  <div class="modal-overlay" id="modal-add-item-to-batch" role="dialog" aria-hidden="true" style="z-index: 1050;">
+    <div class="modal-window" style="max-width: 620px; max-height: 90vh; overflow-y: auto;">
+      <button class="modal-close-btn" id="btn-close-add-item-modal" aria-label="Fechar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <div style="padding: 1.75rem 2rem;">
+        <div style="border-bottom: 1px solid var(--border-light); padding-bottom: 0.75rem; margin-bottom: 1.25rem;">
+          <h3 style="font-family: var(--font-serif); font-size: 1.3rem; color: var(--text-primary); margin: 0;">Incluir Item no Lote</h3>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0.25rem 0 0;" id="add-item-modal-subtitle">Selecione o produto e informe as quantidades recebidas nesta compra.</p>
+        </div>
+
+        <form id="form-add-batch-item">
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label" for="add-item-type">Tipo de Item</label>
+            <select id="add-item-type" class="form-select">
+              <option value="produto">Joia / Produto do Catálogo</option>
+              <option value="insumo">Insumo / Matéria-Prima</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label" for="add-item-select">Item a Incluir <span class="required" style="color: #DC2626;">*</span></label>
+            <select id="add-item-select" class="form-select" required>
+              <option value="">Selecione a peça...</option>
+            </select>
+          </div>
+
+          <!-- Preview da Peça Selecionada -->
+          <div id="add-item-preview-card" style="display: none; background: #FAF8F5; border: 1px solid #EFEAE3; border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 1rem; align-items: center; gap: 0.75rem;">
+            <img id="add-item-preview-img" src="assets/images/logo-simbolo.png" alt="Preview" style="width: 48px; height: 48px; border-radius: var(--radius-sm); object-fit: cover;">
+            <div style="overflow: hidden; flex: 1;">
+              <span id="add-item-preview-sku" style="font-family: monospace; font-size: 0.72rem; font-weight: 700; color: var(--brand-terracotta);">SKU</span>
+              <div id="add-item-preview-name" style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nome</div>
+              <span id="add-item-preview-category" style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Categoria</span>
+            </div>
+          </div>
+
+          <!-- Grade de Aros Dinâmica (Se categoria for Anel) -->
+          <div id="add-item-ring-sizes-box" style="display: none; background: #FAF8F5; border: 1.5px dashed var(--gold-primary); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <span style="font-size: 0.78rem; font-weight: 700; color: var(--brand-terracotta);">💍 Grade de Aros Recebidos neste Lote:</span>
+              <span id="add-item-ring-total-badge" style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); background: #FFFFFF; padding: 0.2rem 0.5rem; border-radius: 999px; border: 1px solid #EADBCE;">Total: 0 un</span>
+            </div>
+            <p style="font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 0.65rem;">Informe quantas peças vieram de cada aro. A quantidade total será calculada automaticamente.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 0.4rem;" id="add-item-ring-grid">
+              <!-- Aros 10 ao 30 gerados via JS -->
+            </div>
+          </div>
+
+          <div class="form-grid" style="gap: 0.75rem; margin-bottom: 1.25rem;">
+            <div class="form-group col-6">
+              <label class="form-label" for="add-item-qty">Quantidade Recebida <span class="required" style="color: #DC2626;">*</span></label>
+              <input type="number" step="any" min="0.01" id="add-item-qty" class="form-input" required value="1" style="font-size: 0.9rem; font-weight: 600; text-align: center;">
+            </div>
+
+            <div class="form-group col-6">
+              <label class="form-label" for="add-item-cost">Custo Unitário de Compra (R$) <span class="required" style="color: #DC2626;">*</span></label>
+              <input type="number" step="0.01" min="0" id="add-item-cost" class="form-input" required placeholder="0.00" style="font-size: 0.9rem; font-weight: 600; text-align: right;">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1.25rem;">
+            <label style="display: inline-flex; align-items: center; gap: 0.45rem; cursor: pointer; font-size: 0.8rem; color: var(--text-secondary);">
+              <input type="checkbox" id="add-item-sync-stock" checked>
+              <strong>Incrementar estoque desta joia no catálogo</strong> com as unidades deste lote
+            </label>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid var(--border-light); padding-top: 1rem;">
+            <button type="button" class="btn-secondary" id="btn-cancel-add-item">Cancelar</button>
+            <button type="submit" class="btn-primary" id="btn-save-batch-item">Adicionar ao Lote</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

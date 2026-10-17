@@ -1,0 +1,12 @@
+# Regras de Redirecionamento e URLs Limpas (Cloudflare Pages)
+/admin.html /admin 301
+/admin-lotes.html /admin-lotes 301
+/admin-pedidos.html /admin-pedidos 301
+/admin-clientes.html /admin-clientes 301
+/admin-insumos.html /admin-insumos 301
+/admin-produto.html /admin-produto 301
+/admin-editar-produto.html /admin-editar-produto 301
+/admin-licencas.html /admin-licencas 301
+/minha-conta.html /minha-conta 301
+/rastreio.html /rastreio 301
+/index.html / 301

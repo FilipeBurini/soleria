@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const urlParams = new URLSearchParams(window.location.search);
   const editId = urlParams.get('id');
   if (editId) {
-    window.location.replace(`admin-editar-produto.html?id=${encodeURIComponent(editId)}`);
+    window.location.replace(`admin-editar-produto?id=${encodeURIComponent(editId)}`);
     return;
   }
 
@@ -63,10 +63,97 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Insumos, Fornecedores e Lotes
   const prodVendorSelect = document.getElementById('prod-vendor');
   const prodBatchSelect = document.getElementById('prod-batch');
+  const batchEntryPanel = document.getElementById('batch-entry-panel');
+  const batchEntryQtyInput = document.getElementById('batch-entry-qty');
+  const batchEntryCostInput = document.getElementById('batch-entry-cost');
+  const batchEntryRingBox = document.getElementById('batch-entry-ring-box');
+  const batchEntryRingGrid = document.getElementById('batch-entry-ring-grid');
+  const batchRingTotalBadge = document.getElementById('batch-ring-total-badge');
   const supplySelect = document.getElementById('supply-select');
   const supplyQtyInput = document.getElementById('supply-qty');
   const btnAddSupply = document.getElementById('btn-add-supply');
   const linkedSuppliesTbody = document.getElementById('linked-supplies-tbody');
+
+  function isRingCategory(cat) {
+    if (!cat) return false;
+    const clean = cat.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return clean.includes('anel') || clean.includes('aneis');
+  }
+
+  function buildBatchRingGrid() {
+    if (!batchEntryRingGrid || batchEntryRingGrid.children.length > 0) return;
+    batchEntryRingGrid.innerHTML = '';
+    for (let s = 10; s <= 30; s++) {
+      const div = document.createElement('div');
+      div.style.cssText = 'display:flex; flex-direction:column; align-items:center; background:#FFFFFF; border:1px solid #E5E7EB; border-radius:var(--radius-sm); padding:0.25rem 0.15rem; transition:all 0.2s;';
+      div.innerHTML = `
+        <span style="font-size:0.65rem; font-weight:700; color:var(--text-muted); margin-bottom:0.1rem;">${s}</span>
+        <input type="number" min="0" step="1" class="batch-ring-size-input" data-size="${s}" placeholder="0" style="width:100%; border:none; font-size:0.78rem; text-align:center; font-weight:600; padding:0.1rem 0; background:transparent; outline:none;">
+      `;
+      const input = div.querySelector('input');
+      input.addEventListener('input', () => {
+        const val = parseInt(input.value, 10) || 0;
+        if (val > 0) {
+          div.style.borderColor = 'var(--gold-primary)';
+          div.style.background = '#FFFDF5';
+        } else {
+          div.style.borderColor = '#E5E7EB';
+          div.style.background = '#FFFFFF';
+        }
+        recalcBatchRingTotal();
+      });
+      batchEntryRingGrid.appendChild(div);
+    }
+  }
+
+  function recalcBatchRingTotal() {
+    if (!batchEntryRingGrid) return;
+    const inputs = batchEntryRingGrid.querySelectorAll('.batch-ring-size-input');
+    let total = 0;
+    inputs.forEach(inp => {
+      total += parseInt(inp.value, 10) || 0;
+    });
+    if (batchRingTotalBadge) batchRingTotalBadge.textContent = `Total: ${total} un`;
+    if (total > 0 && batchEntryQtyInput) {
+      batchEntryQtyInput.value = total;
+    }
+  }
+
+  function getBatchRingSizes() {
+    if (!batchEntryRingGrid) return {};
+    const inputs = batchEntryRingGrid.querySelectorAll('.batch-ring-size-input');
+    const sizes = {};
+    inputs.forEach(inp => {
+      const val = parseInt(inp.value, 10) || 0;
+      if (val > 0) sizes[inp.dataset.size] = val;
+    });
+    return sizes;
+  }
+
+  function updateBatchEntryPanelVisibility() {
+    if (!batchEntryPanel || !prodBatchSelect) return;
+    const hasBatch = Boolean(prodBatchSelect.value);
+    batchEntryPanel.style.display = hasBatch ? 'block' : 'none';
+
+    if (hasBatch) {
+      buildBatchRingGrid();
+      const isRing = isRingCategory(categoryInput ? categoryInput.value : '');
+      if (batchEntryRingBox) {
+        batchEntryRingBox.style.display = isRing ? 'block' : 'none';
+      }
+      if (!batchEntryCostInput.value || Number(batchEntryCostInput.value) <= 0) {
+        batchEntryCostInput.value = (costInput && costInput.value) ? costInput.value : '';
+      }
+    }
+  }
+
+  if (prodBatchSelect) {
+    prodBatchSelect.addEventListener('change', updateBatchEntryPanelVisibility);
+  }
+  if (categoryInput) {
+    categoryInput.addEventListener('input', updateBatchEntryPanelVisibility);
+    categoryInput.addEventListener('change', updateBatchEntryPanelVisibility);
+  }
 
   // Calculadora Financeira
   const calcProdCost = document.getElementById('calc-prod-cost');
@@ -1034,6 +1121,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
 
+      // 7.4.1 Vinculação automática no Lote de Compra (batch_items)
+      if (prodBatchSelect && prodBatchSelect.value && createdProduct.id) {
+        try {
+          const client = getDb();
+          const selectedBatchId = prodBatchSelect.value;
+          const batchSizes = isRing ? getBatchRingSizes() : {};
+          const hasBatchSizes = Object.keys(batchSizes).length > 0;
+          const bQty = hasBatchSizes
+            ? Object.values(batchSizes).reduce((acc, v) => acc + v, 0)
+            : (parseFloat(batchEntryQtyInput?.value) || parseInt(stockInput.value, 10) || 1);
+          const bCost = parseFloat(batchEntryCostInput?.value) || cost;
+          const bNotes = hasBatchSizes ? JSON.stringify({ sizes: batchSizes }) : null;
+
+          if (client) {
+            await client.from('batch_items').insert([{
+              batch_id: selectedBatchId,
+              product_id: createdProduct.id,
+              item_type: 'produto',
+              item_name: `[${sku}] ${name}`,
+              quantity: bQty,
+              unit_cost: bCost,
+              notes: bNotes
+            }]);
+
+            // Recalcula total_cost do lote
+            const { data: allBItems } = await client.from('batch_items').select('quantity, unit_cost').eq('batch_id', selectedBatchId);
+            const { data: bData } = await client.from('purchase_batches').select('shipping_cost').eq('id', selectedBatchId).maybeSingle();
+            const itemsSum = (allBItems || []).reduce((acc, it) => acc + ((Number(it.quantity) || 0) * (Number(it.unit_cost) || 0)), 0);
+            const shipping = Number(bData?.shipping_cost) || 0;
+            await client.from('purchase_batches').update({
+              total_cost: itemsSum + shipping,
+              updated_at: new Date().toISOString()
+            }).eq('id', selectedBatchId);
+          }
+        } catch (batchErr) {
+          console.warn('Aviso ao registrar item no lote:', batchErr);
+        }
+      }
+
       // 7.5 Feedback de sucesso
       showToast('Produto cadastrado com sucesso!', 'success', 3500);
 
@@ -1050,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         successModal.classList.add('active');
       } else {
         setTimeout(() => {
-          window.location.href = 'admin.html';
+          window.location.href = 'admin';
         }, 1200);
       }
 

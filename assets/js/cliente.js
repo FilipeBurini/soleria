@@ -360,7 +360,7 @@
   function logoutCliente() {
     localStorage.removeItem(CUSTOMER_SESSION_KEY);
     updateNavAccountUI();
-    if (window.location.pathname.endsWith('minha-conta.html')) {
+    if (window.location.pathname.endsWith('minha-conta')) {
       window.location.reload();
     }
   }

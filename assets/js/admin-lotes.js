@@ -92,12 +92,45 @@ document.addEventListener('DOMContentLoaded', async () => {
   const detailBatchVendor = document.getElementById('detail-batch-vendor');
   const detailBatchDate = document.getElementById('detail-batch-date');
   const detailBatchInvoice = document.getElementById('detail-batch-invoice');
-  const detailItemsTbody = document.getElementById('detail-items-tbody');
   const detailBatchShipping = document.getElementById('detail-batch-shipping');
   const detailBatchTotal = document.getElementById('detail-batch-total');
   const detailBatchNotes = document.getElementById('detail-batch-notes');
   const btnCloseDetailsModal = document.getElementById('btn-close-details-modal');
   const btnCloseDetails = document.getElementById('btn-close-details');
+  const btnDetailViewVisual = document.getElementById('btn-detail-view-visual');
+  const btnDetailViewTable = document.getElementById('btn-detail-view-table');
+  const detailVisualGrid = document.getElementById('detail-visual-grid');
+  const detailTableContainer = document.getElementById('detail-table-container');
+  const detailItemsTbody = document.getElementById('detail-items-tbody');
+  const detailEmptyState = document.getElementById('detail-empty-state');
+  const detailItemsCountBadge = document.getElementById('detail-items-count-badge');
+  const detailTotalPiecesCount = document.getElementById('detail-total-pieces-count');
+  const detailSearchItems = document.getElementById('detail-search-items');
+  const btnOpenAddItemModal = document.getElementById('btn-open-add-item-modal');
+
+  // Modal de inclusão de item no lote
+  const modalAddItemToBatch = document.getElementById('modal-add-item-to-batch');
+  const formAddBatchItem = document.getElementById('form-add-batch-item');
+  const addItemModalSubtitle = document.getElementById('add-item-modal-subtitle');
+  const addItemType = document.getElementById('add-item-type');
+  const addItemSelect = document.getElementById('add-item-select');
+  const addItemQty = document.getElementById('add-item-qty');
+  const addItemCost = document.getElementById('add-item-cost');
+  const addItemSyncStock = document.getElementById('add-item-sync-stock');
+  const addItemRingSizesBox = document.getElementById('add-item-ring-sizes-box');
+  const addItemRingGrid = document.getElementById('add-item-ring-grid');
+  const addItemRingTotalBadge = document.getElementById('add-item-ring-total-badge');
+  const addItemPreviewCard = document.getElementById('add-item-preview-card');
+  const addItemPreviewImg = document.getElementById('add-item-preview-img');
+  const addItemPreviewSku = document.getElementById('add-item-preview-sku');
+  const addItemPreviewName = document.getElementById('add-item-preview-name');
+  const addItemPreviewCategory = document.getElementById('add-item-preview-category');
+  const btnCloseAddItemModal = document.getElementById('btn-close-add-item-modal');
+  const btnCancelAddItem = document.getElementById('btn-cancel-add-item');
+  const btnSaveBatchItem = document.getElementById('btn-save-batch-item');
+
+  let currentDetailBatchId = null;
+  let activeDetailView = 'visual'; // 'visual' | 'table'
 
   // ==========================================================================
   // Controle de Abas
@@ -123,11 +156,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Carregamento Inicial de Dados
   // ==========================================================================
   async function loadAllData() {
-    await Promise.all([
-      fetchVendors(),
-      fetchProductsAndSupplies(),
-      fetchBatches()
-    ]);
+    await fetchVendors();
+    await fetchProductsAndSupplies();
+    await fetchBatches();
     updateKpis();
   }
 
@@ -165,7 +196,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function fetchProductsAndSupplies() {
     try {
       const [prodRes, suppRes] = await Promise.all([
-        client.from('products').select('id, name, sku, product_cost, stock').order('name'),
+        client.from('products').select('id, name, sku, category, product_cost, sale_price, stock, images, sizes, batch_id').order('name'),
         client.from('supplies').select('id, name, unit_cost, unit').order('name')
       ]);
 
@@ -197,7 +228,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         allBatches = [];
       } else {
-        allBatches = data || [];
+        const rawBatches = data || [];
+
+        // Auto-sincronização de peças vinculadas via catálogo que ainda não tinham batch_items gerado
+        if (rawBatches.length > 0 && allProducts.length > 0) {
+          for (const b of rawBatches) {
+            b.items = Array.isArray(b.items) ? b.items : [];
+            const linkedProds = allProducts.filter(p => p.batch_id === b.id);
+            for (const p of linkedProds) {
+              const alreadyInBatch = b.items.some(it => it.product_id === p.id);
+              if (!alreadyInBatch) {
+                const ringNotes = p.sizes && Object.keys(p.sizes).length > 0 ? JSON.stringify({ sizes: p.sizes }) : null;
+                const newItemPayload = {
+                  batch_id: b.id,
+                  product_id: p.id,
+                  item_type: 'produto',
+                  item_name: `[${p.sku || 'SEM-SKU'}] ${p.name || 'Joia'}`,
+                  quantity: Number(p.stock) || 1,
+                  unit_cost: Number(p.product_cost) || 0,
+                  notes: ringNotes
+                };
+                try {
+                  const { data: insertedItem } = await client.from('batch_items').insert([newItemPayload]).select().single();
+                  if (insertedItem) {
+                    b.items.push(insertedItem);
+                  } else {
+                    b.items.push(newItemPayload);
+                  }
+                } catch (e) {
+                  b.items.push(newItemPayload);
+                }
+              }
+            }
+            // Recalcula total_cost do lote em memória
+            const itemsSum = b.items.reduce((acc, it) => acc + ((Number(it.quantity) || 0) * (Number(it.unit_cost) || 0)), 0);
+            const shipping = Number(b.shipping_cost) || 0;
+            b.total_cost = itemsSum + shipping;
+          }
+        }
+
+        allBatches = rawBatches;
       }
     } catch (err) {
       console.warn('Falha de conexão com lotes:', err);
@@ -590,16 +660,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     modalBatch.classList.remove('active');
   }
 
+  function renderBatchItemsContainerPlaceholder() {
+    batchItemsContainer.innerHTML = `
+      <div id="batch-items-empty-hint" style="text-align: center; color: var(--text-muted); font-size: 0.82rem; padding: 1.5rem 1rem; font-style: italic; background: #FAF8F5; border-radius: var(--radius-sm); border: 1px dashed #E5E7EB;">
+        Nenhum item adicionado ainda. Você pode salvar este lote sem itens agora e vinculá-los depois pelo catálogo ou pelos detalhes do lote!
+      </div>
+    `;
+  }
+
   document.getElementById('btn-open-new-batch').addEventListener('click', () => {
     formBatch.reset();
     batchIdInput.value = '';
     batchDateInput.value = new Date().toISOString().split('T')[0];
-    batchItemsContainer.innerHTML = '';
     generateNextBatchCode();
     modalBatchTitle.textContent = 'Entrada de Lote de Compra';
     openBatchModal();
-    // Adiciona uma linha em branco por padrão
-    addBatchItemRow();
+    renderBatchItemsContainerPlaceholder();
     recalcBatchTotal();
   });
 
@@ -623,6 +699,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Adiciona Linha de Item no Lote
   function addBatchItemRow(itemData = null) {
+    const hint = document.getElementById('batch-items-empty-hint');
+    if (hint) hint.remove();
+
     const row = document.createElement('div');
     row.className = 'item-row';
 
@@ -777,11 +856,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
 
-    if (items.length === 0) {
-      showToast('Adicione pelo menos um item ao lote com quantidade maior que zero.', 'error');
-      return;
-    }
-
     const shipping = parseFloat(batchShippingInput.value) || 0;
     const itemsTotal = items.reduce((acc, it) => acc + (it.quantity * it.unit_cost), 0);
     const totalCost = itemsTotal + shipping;
@@ -811,54 +885,56 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (batchErr) throw batchErr;
 
-      // 2. Insere os Itens do Lote
-      const batchItemsPayload = items.map(it => ({
-        batch_id: createdBatch.id,
-        item_type: it.item_type,
-        product_id: it.product_id,
-        supply_id: it.supply_id,
-        item_name: it.item_name,
-        quantity: it.quantity,
-        unit_cost: it.unit_cost
-      }));
+      // 2. Insere os Itens do Lote (se houver)
+      if (items.length > 0) {
+        const batchItemsPayload = items.map(it => ({
+          batch_id: createdBatch.id,
+          item_type: it.item_type,
+          product_id: it.product_id,
+          supply_id: it.supply_id,
+          item_name: it.item_name,
+          quantity: it.quantity,
+          unit_cost: it.unit_cost
+        }));
 
-      const { error: itemsErr } = await client
-        .from('batch_items')
-        .insert(batchItemsPayload);
+        const { error: itemsErr } = await client
+          .from('batch_items')
+          .insert(batchItemsPayload);
 
-      if (itemsErr) {
-        console.warn('Aviso ao inserir itens do lote:', itemsErr);
-      }
+        if (itemsErr) {
+          console.warn('Aviso ao inserir itens do lote:', itemsErr);
+        }
 
-      // 3. Atualiza o fornecedor e lote de origem nos produtos e insumos vinculados
-      for (const it of items) {
-        if (it.product_id) {
-          try {
-            await client.from('products').update({
-              vendor_id: vendorId,
-              batch_id: createdBatch.id
-            }).eq('id', it.product_id);
-          } catch (e) {}
-
-          // Se marcou para incrementar o estoque das peças
-          if (batchUpdateStock.checked) {
+        // 3. Atualiza o fornecedor e lote de origem nos produtos e insumos vinculados
+        for (const it of items) {
+          if (it.product_id) {
             try {
-              const currentProd = allProducts.find(p => p.id === it.product_id);
-              if (currentProd) {
-                const newStock = (parseInt(currentProd.stock, 10) || 0) + parseInt(it.quantity, 10);
-                await client.from('products').update({ stock: newStock }).eq('id', it.product_id);
+              await client.from('products').update({
+                vendor_id: vendorId,
+                batch_id: createdBatch.id
+              }).eq('id', it.product_id);
+            } catch (e) {}
+
+            // Se marcou para incrementar o estoque das peças
+            if (batchUpdateStock.checked) {
+              try {
+                const currentProd = allProducts.find(p => p.id === it.product_id);
+                if (currentProd) {
+                  const newStock = (parseInt(currentProd.stock, 10) || 0) + parseInt(it.quantity, 10);
+                  await client.from('products').update({ stock: newStock }).eq('id', it.product_id);
+                }
+              } catch (stockErr) {
+                console.warn('Aviso ao atualizar estoque:', stockErr);
               }
-            } catch (stockErr) {
-              console.warn('Aviso ao atualizar estoque:', stockErr);
             }
+          } else if (it.supply_id) {
+            try {
+              await client.from('supplies').update({
+                vendor_id: vendorId,
+                batch_id: createdBatch.id
+              }).eq('id', it.supply_id);
+            } catch (e) {}
           }
-        } else if (it.supply_id) {
-          try {
-            await client.from('supplies').update({
-              vendor_id: vendorId,
-              batch_id: createdBatch.id
-            }).eq('id', it.supply_id);
-          } catch (e) {}
         }
       }
 
@@ -897,42 +973,617 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ==========================================================================
-  // MODAL: VISUALIZAR DETALHES DO LOTE
+  // MODAL: VISUALIZAR DETALHES DO LOTE (ESTILO ESTOQUE)
   // ==========================================================================
   function openBatchDetailsModal(id) {
     const b = allBatches.find(x => x.id === id);
     if (!b) return;
 
+    currentDetailBatchId = id;
+
     detailBatchCode.textContent = b.batch_code;
     detailBatchStatus.textContent = (b.status || 'recebido').toUpperCase();
-    detailBatchVendor.textContent = `Fornecedor: ${b.vendor?.trade_name || b.vendor?.name || 'Não informado'}`;
-    detailBatchDate.textContent = `Data: ${b.purchase_date ? new Date(b.purchase_date + 'T12:00:00Z').toLocaleDateString('pt-BR') : '—'}`;
-    detailBatchInvoice.textContent = `NF / Recibo: ${b.invoice_number || 'Não informado'}`;
+    detailBatchVendor.innerHTML = `🏢 Fornecedor: <strong>${b.vendor?.trade_name || b.vendor?.name || 'Não informado'}</strong>`;
+    detailBatchDate.innerHTML = `📅 Data: <strong>${b.purchase_date ? new Date(b.purchase_date + 'T12:00:00Z').toLocaleDateString('pt-BR') : '—'}</strong>`;
+    detailBatchInvoice.innerHTML = `📄 NF: <strong>${b.invoice_number || 'Não informado'}</strong>`;
     detailBatchShipping.textContent = formatBRL(b.shipping_cost || 0);
     detailBatchTotal.textContent = formatBRL(b.total_cost || 0);
     detailBatchNotes.textContent = b.notes ? `Obs: "${b.notes}"` : '';
 
-    detailItemsTbody.innerHTML = '';
-    const items = Array.isArray(b.items) ? b.items : [];
+    if (detailSearchItems) detailSearchItems.value = '';
 
-    if (items.length === 0) {
-      detailItemsTbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhum item listado neste lote.</td></tr>`;
+    renderBatchDetailsContent(b);
+    modalBatchDetails.classList.add('active');
+  }
+
+  function renderBatchDetailsContent(b) {
+    if (!b) return;
+
+    const query = (detailSearchItems?.value || '').trim().toLowerCase();
+    const rawItems = Array.isArray(b.items) ? b.items : [];
+
+    const items = rawItems.filter(it => {
+      if (!query) return true;
+      const nameMatch = it.item_name && it.item_name.toLowerCase().includes(query);
+      const prod = allProducts.find(p => p.id === it.product_id);
+      const skuMatch = prod?.sku && prod.sku.toLowerCase().includes(query);
+      return nameMatch || skuMatch;
+    });
+
+    const totalPieces = rawItems.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0);
+    if (detailItemsCountBadge) detailItemsCountBadge.textContent = `${rawItems.length} item(ns)`;
+    if (detailTotalPiecesCount) detailTotalPiecesCount.textContent = `${totalPieces} un`;
+
+    if (rawItems.length === 0) {
+      if (detailEmptyState) detailEmptyState.style.display = 'block';
+      if (detailVisualGrid) detailVisualGrid.style.display = 'none';
+      if (detailTableContainer) detailTableContainer.style.display = 'none';
+      return;
+    }
+
+    if (detailEmptyState) detailEmptyState.style.display = 'none';
+
+    // Aplica visibilidade baseada no alternador
+    if (activeDetailView === 'table') {
+      if (detailVisualGrid) detailVisualGrid.style.display = 'none';
+      if (detailTableContainer) detailTableContainer.style.display = 'block';
     } else {
+      if (detailVisualGrid) detailVisualGrid.style.display = 'grid';
+      if (detailTableContainer) detailTableContainer.style.display = 'none';
+    }
+
+    // 1. Renderiza Vitrine Visual (Cards no Estilo Estoque)
+    if (detailVisualGrid) {
+      detailVisualGrid.innerHTML = '';
       items.forEach(it => {
-        const sub = (it.quantity || 1) * (it.unit_cost || 0);
+        const prod = allProducts.find(p => p.id === it.product_id);
+        const isSupply = it.item_type === 'insumo';
+
+        // Imagem da joia
+        let imgUrl = 'assets/images/logo-simbolo.png';
+        if (prod && prod.images) {
+          let imgs = prod.images;
+          if (typeof imgs === 'string') {
+            try { imgs = JSON.parse(imgs); } catch(e) { imgs = []; }
+          }
+          if (Array.isArray(imgs) && imgs.length > 0) {
+            imgUrl = imgs[0];
+          }
+        }
+
+        // Aros do Lote
+        let ringChipsHtml = '';
+        let isRing = false;
+
+        if (it.notes) {
+          try {
+            const parsed = JSON.parse(it.notes);
+            if (parsed && parsed.sizes && typeof parsed.sizes === 'object') {
+              isRing = true;
+              const entries = Object.entries(parsed.sizes).filter(([_, q]) => Number(q) > 0).sort((a,b) => Number(a[0]) - Number(b[0]));
+              if (entries.length > 0) {
+                ringChipsHtml = entries.map(([aro, qty]) => `
+                  <span class="admin-aro-chip" style="cursor: default; font-size: 0.72rem; padding: 0.2rem 0.5rem;" title="${qty} un deste aro neste lote">
+                    Aro ${aro} <strong>(${qty})</strong>
+                  </span>
+                `).join('');
+              }
+            }
+          } catch(e) {
+            if (typeof it.notes === 'string' && it.notes.includes('Aro')) {
+              isRing = true;
+              ringChipsHtml = `<span style="font-size: 0.74rem; color: var(--text-secondary);">${it.notes}</span>`;
+            }
+          }
+        }
+
+        if (!ringChipsHtml && prod && prod.sizes) {
+          let pSizes = prod.sizes;
+          if (typeof pSizes === 'string') {
+            try { pSizes = JSON.parse(pSizes); } catch(e) { pSizes = {}; }
+          }
+          const entries = Object.entries(pSizes).filter(([_, q]) => Number(q) > 0).sort((a,b) => Number(a[0]) - Number(b[0]));
+          if (entries.length > 0) {
+            isRing = true;
+            ringChipsHtml = entries.map(([aro, qty]) => `
+              <span class="admin-aro-chip" style="cursor: default; font-size: 0.72rem; padding: 0.2rem 0.5rem;" title="${qty} un deste aro">
+                Aro ${aro} <strong>(${qty})</strong>
+              </span>
+            `).join('');
+          }
+        }
+
+        const subtotal = (Number(it.quantity) || 1) * (Number(it.unit_cost) || 0);
+
+        const card = document.createElement('div');
+        card.className = 'admin-visual-card';
+        card.innerHTML = `
+          <div class="admin-visual-top">
+            <img src="${imgUrl}" alt="${it.item_name}" class="admin-visual-img" loading="lazy" onerror="this.src='assets/images/logo-simbolo.png'">
+            <div class="admin-visual-meta">
+              <span class="admin-visual-sku">${prod?.sku || (isSupply ? 'INSUMO' : 'JOIA')}</span>
+              <div class="admin-visual-name" title="${it.item_name}">${it.item_name}</div>
+              <span class="admin-visual-price" style="font-size: 0.76rem; color: var(--text-muted);">
+                ${isSupply ? 'Insumo de produção' : (prod?.category || 'Semijoia')}
+              </span>
+            </div>
+          </div>
+
+          <div class="admin-visual-body">
+            <div class="admin-visual-stock-row">
+              <span style="font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em;">
+                Qtd Recebida no Lote
+              </span>
+              <span class="admin-visual-stock-badge has-stock" style="background: #FAF5F0; color: var(--brand-terracotta); border: 1px solid #F5EAE0;">
+                ${it.quantity} un
+              </span>
+            </div>
+
+            ${isRing && ringChipsHtml ? `
+              <div>
+                <div class="admin-visual-actions-title" style="font-size: 0.74rem; font-weight: 700; color: var(--brand-terracotta); margin-bottom: 0.35rem;">
+                  💍 Aros Recebidos neste Lote:
+                </div>
+                <div class="admin-visual-aros-list" style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+                  ${ringChipsHtml}
+                </div>
+              </div>
+            ` : ''}
+
+            <div style="background: #FAF8F5; border: 1px solid #EFEAE3; border-radius: var(--radius-sm); padding: 0.5rem 0.75rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+              <span style="color: var(--text-muted);">Custo unitário:</span>
+              <strong style="color: var(--text-primary); font-family: monospace;">${formatBRL(it.unit_cost)}</strong>
+            </div>
+          </div>
+
+          <div class="admin-visual-footer" style="padding: 0.85rem 1rem; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; background: #FCFBF9;">
+            <div>
+              <span style="font-size: 0.7rem; color: var(--text-muted); display: block; text-transform: uppercase; font-weight: 700;">Subtotal</span>
+              <strong style="font-size: 1.05rem; color: var(--brand-terracotta); font-family: monospace;">${formatBRL(subtotal)}</strong>
+            </div>
+            <div style="display: flex; gap: 0.4rem; align-items: center;">
+              ${prod ? `
+                <a href="admin-editar-produto?id=${prod.id}" target="_blank" class="btn-secondary-action" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Editar produto no catálogo">
+                  Editar
+                </a>
+              ` : ''}
+              <button type="button" class="btn-secondary-action btn-del-item-batch" data-item-id="${it.id}" style="font-size: 0.72rem; padding: 0.35rem 0.6rem; color: #DC2626; border-color: #FCA5A5;" title="Remover este item do lote">
+                &times;
+              </button>
+            </div>
+          </div>
+        `;
+        detailVisualGrid.appendChild(card);
+      });
+    }
+
+    // 2. Renderiza Planilha Detalhada
+    if (detailItemsTbody) {
+      detailItemsTbody.innerHTML = '';
+      items.forEach(it => {
+        const prod = allProducts.find(p => p.id === it.product_id);
+        const isSupply = it.item_type === 'insumo';
+
+        let imgUrl = 'assets/images/logo-simbolo.png';
+        if (prod && prod.images) {
+          let imgs = prod.images;
+          if (typeof imgs === 'string') {
+            try { imgs = JSON.parse(imgs); } catch(e) { imgs = []; }
+          }
+          if (Array.isArray(imgs) && imgs.length > 0) imgUrl = imgs[0];
+        }
+
+        let ringSummary = '—';
+        if (it.notes) {
+          try {
+            const parsed = JSON.parse(it.notes);
+            if (parsed && parsed.sizes) {
+              ringSummary = Object.entries(parsed.sizes).filter(([_, q]) => Number(q) > 0).map(([a, q]) => `Aro ${a}(${q})`).join(', ') || '—';
+            }
+          } catch(e) {
+            ringSummary = it.notes;
+          }
+        }
+
+        const subtotal = (Number(it.quantity) || 1) * (Number(it.unit_cost) || 0);
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td><span class="badge-category">${it.item_type === 'produto' ? 'Joia' : 'Insumo'}</span></td>
-          <td style="font-weight: 500;">${it.item_name}</td>
-          <td style="text-align: center;">${it.quantity}</td>
-          <td style="text-align: right;">${formatBRL(it.unit_cost)}</td>
-          <td style="text-align: right; font-weight: 600;">${formatBRL(sub)}</td>
+          <td>
+            <img src="${imgUrl}" alt="${it.item_name}" style="width: 38px; height: 38px; border-radius: var(--radius-sm); object-fit: cover;" onerror="this.src='assets/images/logo-simbolo.png'">
+          </td>
+          <td><span class="badge-category">${isSupply ? 'Insumo' : 'Joia'}</span></td>
+          <td>
+            <div style="font-weight: 600; font-size: 0.86rem; color: var(--text-primary);">${it.item_name}</div>
+            ${prod?.sku ? `<span style="font-family: monospace; font-size: 0.72rem; color: var(--brand-terracotta);">SKU: ${prod.sku}</span>` : ''}
+          </td>
+          <td style="font-size: 0.78rem; color: var(--text-secondary); max-width: 200px;">${ringSummary}</td>
+          <td style="text-align: center; font-weight: 700;">${it.quantity}</td>
+          <td style="text-align: right; font-family: monospace;">${formatBRL(it.unit_cost)}</td>
+          <td style="text-align: right; font-weight: 700; color: var(--brand-terracotta); font-family: monospace;">${formatBRL(subtotal)}</td>
+          <td style="text-align: center;">
+            <div style="display: inline-flex; gap: 0.35rem;">
+              ${prod ? `
+                <a href="admin-editar-produto?id=${prod.id}" target="_blank" class="btn-secondary-action" style="font-size: 0.72rem; padding: 0.3rem 0.55rem;" title="Editar">
+                  Editar
+                </a>
+              ` : ''}
+              <button type="button" class="btn-secondary-action btn-del-item-batch" data-item-id="${it.id}" style="font-size: 0.72rem; padding: 0.3rem 0.55rem; color: #DC2626; border-color: #FCA5A5;" title="Remover item">
+                Excluir
+              </button>
+            </div>
+          </td>
         `;
         detailItemsTbody.appendChild(tr);
       });
     }
 
-    modalBatchDetails.classList.add('active');
+    // Registra listeners de remoção de item
+    document.querySelectorAll('.btn-del-item-batch').forEach(btn => {
+      btn.addEventListener('click', () => deleteBatchItem(btn.dataset.itemId, b.id));
+    });
+  }
+
+  // Alternador de Visualização do Lote (Vitrine vs Planilha)
+  if (btnDetailViewVisual && btnDetailViewTable) {
+    btnDetailViewVisual.addEventListener('click', () => {
+      activeDetailView = 'visual';
+      btnDetailViewVisual.classList.add('active');
+      btnDetailViewTable.classList.remove('active');
+      const b = allBatches.find(x => x.id === currentDetailBatchId);
+      if (b) renderBatchDetailsContent(b);
+    });
+
+    btnDetailViewTable.addEventListener('click', () => {
+      activeDetailView = 'table';
+      btnDetailViewTable.classList.add('active');
+      btnDetailViewVisual.classList.remove('active');
+      const b = allBatches.find(x => x.id === currentDetailBatchId);
+      if (b) renderBatchDetailsContent(b);
+    });
+  }
+
+  // Filtro de busca de itens dentro do modal
+  if (detailSearchItems) {
+    detailSearchItems.addEventListener('input', () => {
+      const b = allBatches.find(x => x.id === currentDetailBatchId);
+      if (b) renderBatchDetailsContent(b);
+    });
+  }
+
+  // ==========================================================================
+  // EXCLUSÃO DE ITEM DO LOTE
+  // ==========================================================================
+  async function deleteBatchItem(itemId, batchId) {
+    if (!confirm('Deseja realmente remover este item deste lote de compra?')) return;
+
+    try {
+      const { error } = await client.from('batch_items').delete().eq('id', itemId);
+      if (error) throw error;
+
+      // Recalcula total_cost do lote
+      const { data: bItems } = await client.from('batch_items').select('quantity, unit_cost').eq('batch_id', batchId);
+      const { data: bData } = await client.from('purchase_batches').select('shipping_cost').eq('id', batchId).maybeSingle();
+      const itemsSum = (bItems || []).reduce((acc, it) => acc + ((Number(it.quantity) || 0) * (Number(it.unit_cost) || 0)), 0);
+      const shipping = Number(bData?.shipping_cost) || 0;
+      const newTotal = itemsSum + shipping;
+
+      await client.from('purchase_batches').update({
+        total_cost: newTotal,
+        updated_at: new Date().toISOString()
+      }).eq('id', batchId);
+
+      // Atualiza estado local
+      const b = allBatches.find(x => x.id === batchId);
+      if (b) {
+        b.items = (b.items || []).filter(x => x.id !== itemId);
+        b.total_cost = newTotal;
+        detailBatchTotal.textContent = formatBRL(newTotal);
+        renderBatchDetailsContent(b);
+      }
+
+      renderBatchesTable();
+      updateKpis();
+      showToast('Item removido do lote com sucesso.', 'success');
+    } catch (e) {
+      console.error('Erro ao remover item:', e);
+      showToast('Erro ao remover item: ' + e.message, 'error');
+    }
+  }
+
+  // ==========================================================================
+  // SUB-MODAL: INCLUIR ITEM NO LOTE ATUAL (COM GRADE DE AROS SE ANEL)
+  // ==========================================================================
+  function openAddItemModal() {
+    if (!currentDetailBatchId) return;
+    const b = allBatches.find(x => x.id === currentDetailBatchId);
+    if (!b) return;
+
+    if (addItemModalSubtitle) {
+      addItemModalSubtitle.textContent = `Vinculando item ao lote ${b.batch_code} (${b.vendor?.trade_name || b.vendor?.name || 'Fornecedor'}).`;
+    }
+
+    formAddBatchItem.reset();
+    populateAddItemSelect();
+    if (addItemPreviewCard) addItemPreviewCard.style.display = 'none';
+    if (addItemRingSizesBox) addItemRingSizesBox.style.display = 'none';
+
+    modalAddItemToBatch.classList.add('active');
+  }
+
+  function closeAddItemModal() {
+    modalAddItemToBatch.classList.remove('active');
+  }
+
+  if (btnOpenAddItemModal) btnOpenAddItemModal.addEventListener('click', openAddItemModal);
+  document.querySelectorAll('.btn-trigger-add-item').forEach(btn => btn.addEventListener('click', openAddItemModal));
+  if (btnCloseAddItemModal) btnCloseAddItemModal.addEventListener('click', closeAddItemModal);
+  if (btnCancelAddItem) btnCancelAddItem.addEventListener('click', closeAddItemModal);
+  if (modalAddItemToBatch) {
+    modalAddItemToBatch.addEventListener('click', (e) => {
+      if (e.target === modalAddItemToBatch) closeAddItemModal();
+    });
+  }
+
+  function populateAddItemSelect() {
+    const type = addItemType.value;
+    addItemSelect.innerHTML = '<option value="">Selecione a peça...</option>';
+
+    if (type === 'produto') {
+      allProducts.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.sku ? `[${p.sku}] ` : ''}${p.name}`;
+        opt.dataset.cost = p.product_cost || 0;
+        opt.dataset.category = p.category || '';
+        opt.dataset.sku = p.sku || '';
+        opt.dataset.name = p.name || '';
+        addItemSelect.appendChild(opt);
+      });
+    } else {
+      allSupplies.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = `${s.name} (${s.unit || 'un'})`;
+        opt.dataset.cost = s.unit_cost || 0;
+        addItemSelect.appendChild(opt);
+      });
+    }
+  }
+
+  if (addItemType) {
+    addItemType.addEventListener('change', () => {
+      populateAddItemSelect();
+      if (addItemPreviewCard) addItemPreviewCard.style.display = 'none';
+      if (addItemRingSizesBox) addItemRingSizesBox.style.display = 'none';
+    });
+  }
+
+  if (addItemSelect) {
+    addItemSelect.addEventListener('change', () => {
+      const selectedId = addItemSelect.value;
+      if (!selectedId) {
+        if (addItemPreviewCard) addItemPreviewCard.style.display = 'none';
+        if (addItemRingSizesBox) addItemRingSizesBox.style.display = 'none';
+        return;
+      }
+
+      const type = addItemType.value;
+      if (type === 'produto') {
+        const prod = allProducts.find(p => p.id === selectedId);
+        if (prod) {
+          // Preenche custo
+          addItemCost.value = prod.product_cost ? Number(prod.product_cost).toFixed(2) : '';
+
+          // Atualiza card de preview
+          if (addItemPreviewCard) {
+            addItemPreviewCard.style.display = 'flex';
+            if (addItemPreviewSku) addItemPreviewSku.textContent = prod.sku || 'SEM SKU';
+            if (addItemPreviewName) addItemPreviewName.textContent = prod.name;
+            if (addItemPreviewCategory) addItemPreviewCategory.textContent = prod.category || 'Semijoia';
+
+            let imgUrl = 'assets/images/logo-simbolo.png';
+            if (prod.images) {
+              let imgs = prod.images;
+              if (typeof imgs === 'string') {
+                try { imgs = JSON.parse(imgs); } catch(e) { imgs = []; }
+              }
+              if (Array.isArray(imgs) && imgs.length > 0) imgUrl = imgs[0];
+            }
+            if (addItemPreviewImg) addItemPreviewImg.src = imgUrl;
+          }
+
+          // Verifica se categoria é Anel
+          const cat = (prod.category || '').toLowerCase();
+          const isRing = cat.includes('an') || (prod.sizes && Object.keys(prod.sizes).length > 0);
+
+          if (isRing && addItemRingSizesBox && addItemRingGrid) {
+            addItemRingSizesBox.style.display = 'block';
+            addItemRingGrid.innerHTML = '';
+
+            for (let s = 10; s <= 30; s++) {
+              const div = document.createElement('div');
+              div.style.display = 'flex';
+              div.style.flexDirection = 'column';
+              div.style.alignItems = 'center';
+              div.style.background = '#FFFFFF';
+              div.style.border = '1px solid #E5E7EB';
+              div.style.borderRadius = 'var(--radius-sm)';
+              div.style.padding = '0.3rem 0.2rem';
+
+              div.innerHTML = `
+                <span style="font-size: 0.68rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.15rem;">${s}</span>
+                <input type="number" min="0" step="1" class="add-item-ring-input" data-size="${s}" placeholder="0" style="width: 100%; border: none; font-size: 0.8rem; text-align: center; font-weight: 600; padding: 0.15rem 0; background: transparent;">
+              `;
+              addItemRingGrid.appendChild(div);
+            }
+
+            // Listener para recalcular total a partir dos aros
+            addItemRingGrid.querySelectorAll('.add-item-ring-input').forEach(input => {
+              input.addEventListener('input', () => {
+                let sum = 0;
+                addItemRingGrid.querySelectorAll('.add-item-ring-input').forEach(inp => {
+                  const val = parseInt(inp.value, 10);
+                  if (!isNaN(val) && val > 0) sum += val;
+                });
+                addItemQty.value = sum > 0 ? sum : 1;
+                if (addItemRingTotalBadge) addItemRingTotalBadge.textContent = `Total: ${sum} un`;
+              });
+            });
+          } else {
+            if (addItemRingSizesBox) addItemRingSizesBox.style.display = 'none';
+          }
+        }
+      } else {
+        const sup = allSupplies.find(s => s.id === selectedId);
+        if (sup) {
+          addItemCost.value = sup.unit_cost ? Number(sup.unit_cost).toFixed(2) : '';
+        }
+        if (addItemPreviewCard) addItemPreviewCard.style.display = 'none';
+        if (addItemRingSizesBox) addItemRingSizesBox.style.display = 'none';
+      }
+    });
+  }
+
+  // Submissão do formulário de inclusão de item no lote
+  if (formAddBatchItem) {
+    formAddBatchItem.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      if (!currentDetailBatchId) return;
+      const b = allBatches.find(x => x.id === currentDetailBatchId);
+      if (!b) return;
+
+      const selectedId = addItemSelect.value;
+      const type = addItemType.value;
+      const qty = parseFloat(addItemQty.value) || 1;
+      const cost = parseFloat(addItemCost.value) || 0;
+
+      if (!selectedId) {
+        showToast('Selecione o item a incluir.', 'error');
+        return;
+      }
+      if (qty <= 0) {
+        showToast('Informe uma quantidade maior que zero.', 'error');
+        return;
+      }
+
+      btnSaveBatchItem.disabled = true;
+      btnSaveBatchItem.textContent = 'Adicionando...';
+
+      try {
+        let selectedName = 'Item sem nome';
+        let ringNotes = null;
+        let ringSizesObj = {};
+
+        if (type === 'produto') {
+          const prod = allProducts.find(p => p.id === selectedId);
+          selectedName = prod ? `[${prod.sku || 'SEM-SKU'}] ${prod.name}` : 'Joia';
+
+          // Coleta aros se houver
+          if (addItemRingSizesBox && addItemRingSizesBox.style.display !== 'none') {
+            addItemRingGrid.querySelectorAll('.add-item-ring-input').forEach(inp => {
+              const val = parseInt(inp.value, 10);
+              const aro = inp.dataset.size;
+              if (!isNaN(val) && val > 0) {
+                ringSizesObj[aro] = val;
+              }
+            });
+            if (Object.keys(ringSizesObj).length > 0) {
+              ringNotes = JSON.stringify({ sizes: ringSizesObj });
+            }
+          }
+        } else {
+          const sup = allSupplies.find(s => s.id === selectedId);
+          selectedName = sup ? `${sup.name} (${sup.unit || 'un'})` : 'Insumo';
+        }
+
+        const newBatchItemPayload = {
+          batch_id: b.id,
+          item_type: type,
+          product_id: type === 'produto' ? selectedId : null,
+          supply_id: type === 'insumo' ? selectedId : null,
+          item_name: selectedName,
+          quantity: qty,
+          unit_cost: cost,
+          notes: ringNotes
+        };
+
+        const { data: createdItem, error: itemErr } = await client
+          .from('batch_items')
+          .insert([newBatchItemPayload])
+          .select()
+          .single();
+
+        if (itemErr) throw itemErr;
+
+        // Se marcou para incrementar estoque
+        if (addItemSyncStock && addItemSyncStock.checked && type === 'produto') {
+          try {
+            const currentProd = allProducts.find(p => p.id === selectedId);
+            if (currentProd) {
+              const newStock = (parseInt(currentProd.stock, 10) || 0) + parseInt(qty, 10);
+              const updatePayload = {
+                stock: newStock,
+                batch_id: b.id,
+                vendor_id: b.vendor_id || currentProd.vendor_id
+              };
+
+              // Mescla aros se configurados
+              if (Object.keys(ringSizesObj).length > 0) {
+                let currentSizes = currentProd.sizes || {};
+                if (typeof currentSizes === 'string') {
+                  try { currentSizes = JSON.parse(currentSizes); } catch(e) { currentSizes = {}; }
+                }
+                const mergedSizes = { ...currentSizes };
+                Object.entries(ringSizesObj).forEach(([aro, q]) => {
+                  mergedSizes[aro] = (parseInt(mergedSizes[aro], 10) || 0) + parseInt(q, 10);
+                });
+                updatePayload.sizes = mergedSizes;
+                currentProd.sizes = mergedSizes;
+              }
+
+              currentProd.stock = newStock;
+              await client.from('products').update(updatePayload).eq('id', selectedId);
+            }
+          } catch(stockErr) {
+            console.warn('Aviso ao sincronizar estoque:', stockErr);
+          }
+        }
+
+        // Recalcula total_cost do lote
+        const { data: bItems } = await client.from('batch_items').select('quantity, unit_cost').eq('batch_id', b.id);
+        const { data: bData } = await client.from('purchase_batches').select('shipping_cost').eq('id', b.id).maybeSingle();
+        const itemsSum = (bItems || []).reduce((acc, it) => acc + ((Number(it.quantity) || 0) * (Number(it.unit_cost) || 0)), 0);
+        const shipping = Number(bData?.shipping_cost) || 0;
+        const newTotal = itemsSum + shipping;
+
+        await client.from('purchase_batches').update({
+          total_cost: newTotal,
+          updated_at: new Date().toISOString()
+        }).eq('id', b.id);
+
+        // Atualiza estado local
+        b.items = b.items || [];
+        b.items.push(createdItem || newBatchItemPayload);
+        b.total_cost = newTotal;
+        detailBatchTotal.textContent = formatBRL(newTotal);
+
+        closeAddItemModal();
+        renderBatchDetailsContent(b);
+        renderBatchesTable();
+        updateKpis();
+
+        showToast(`Item "${selectedName}" adicionado ao lote com sucesso!`, 'success');
+
+      } catch (err) {
+        console.error('Erro ao adicionar item ao lote:', err);
+        showToast('Erro ao adicionar item: ' + err.message, 'error');
+      } finally {
+        btnSaveBatchItem.disabled = false;
+        btnSaveBatchItem.textContent = 'Adicionar ao Lote';
+      }
+    });
   }
 
   function closeDetailsModal() {

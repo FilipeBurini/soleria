@@ -390,7 +390,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div>
               <div class="admin-visual-actions-title">💍 Aros do Anel:</div>
               <span style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">
-                Grade não configurada. <a href="admin-editar-produto.html?id=${item.id}" style="color: var(--brand-terracotta);">Configurar &rarr;</a>
+                Grade não configurada. <a href="admin-editar-produto?id=${item.id}" style="color: var(--brand-terracotta);">Configurar &rarr;</a>
               </span>
             </div>
           `;
@@ -431,10 +431,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             Lucro unit: <strong style="color: #216E39;">${formatBRL(item.unitProfit)}</strong>
           </span>
           <div style="display: flex; gap: 0.4rem; align-items: center;">
-            <a href="admin-pedidos.html?novo=true" class="btn-primary" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Registrar venda formal vinculada a pedido">
+            <a href="admin-pedidos?novo=true" class="btn-primary" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Registrar venda formal vinculada a pedido">
               + Vender
             </a>
-            <a href="admin-editar-produto.html?id=${item.id}" class="btn-secondary-action" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Editar produto">
+            <a href="admin-editar-produto?id=${item.id}" class="btn-secondary-action" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Editar produto">
               Editar
             </a>
           </div>
@@ -477,7 +477,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <td style="text-align: center;">${statusBadge}</td>
         <td style="text-align: center;">
           ${item.id ? `
-            <a href="admin-editar-produto.html?id=${item.id}" class="btn-secondary-action" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Editar produto e insumos">
+            <a href="admin-editar-produto?id=${item.id}" class="btn-secondary-action" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Editar produto e insumos">
               Editar
             </a>
           ` : `
@@ -605,7 +605,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (btnTabInventory) btnTabInventory.classList.remove('active');
       if (navItemDashboard) navItemDashboard.classList.add('active');
       if (navItemEstoque) navItemEstoque.classList.remove('active');
-      window.history.replaceState(null, '', 'admin.html');
+      window.history.replaceState(null, '', 'admin');
     }
   }
 
@@ -886,7 +886,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                   💬 Cobrar WhatsApp
                 </a>
               ` : ''}
-              <a href="admin-pedidos.html?pedido=${o.order_number}" class="btn-secondary-action" style="padding: 0.25rem 0.55rem; font-size: 0.72rem;" title="Abrir pedido para dar baixa no restante">
+              <a href="admin-pedidos?pedido=${o.order_number}" class="btn-secondary-action" style="padding: 0.25rem 0.55rem; font-size: 0.72rem;" title="Abrir pedido para dar baixa no restante">
                 Dar Baixa &rarr;
               </a>
             </div>
@@ -942,7 +942,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <strong style="font-size: 0.92rem; color: var(--text-primary); font-variant-numeric: tabular-nums;">
               ${formatBRL(o.total_amount)}
             </strong>
-            <a href="admin-pedidos.html?pedido=${o.order_number}" class="btn-secondary-action" style="padding: 0.35rem 0.65rem; font-size: 0.74rem;" title="Abrir gestão deste pedido">
+            <a href="admin-pedidos?pedido=${o.order_number}" class="btn-secondary-action" style="padding: 0.35rem 0.65rem; font-size: 0.74rem;" title="Abrir gestão deste pedido">
               Gerenciar &rarr;
             </a>
           </div>
@@ -993,7 +993,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           </div>
           <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
             ${badgeHtml}
-            <a href="admin-editar-produto.html?id=${p.id}" class="btn-secondary-action" style="padding: 0.3rem 0.55rem; font-size: 0.72rem;" title="Editar estoque e insumos desta joia">
+            <a href="admin-editar-produto?id=${p.id}" class="btn-secondary-action" style="padding: 0.3rem 0.55rem; font-size: 0.72rem;" title="Editar estoque e insumos desta joia">
               Editar &rarr;
             </a>
           </div>

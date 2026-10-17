@@ -158,16 +158,16 @@ async function getCurrentUser() {
 async function requireAuth() {
   if (!isSupabaseConfigured()) {
     console.warn('Supabase não configurado. Redirecionando para login admin.');
-    if (!window.location.pathname.endsWith('admin.html')) {
-      window.location.href = 'admin.html';
+    if (!window.location.pathname.endsWith('admin')) {
+      window.location.href = 'admin';
     }
     return null;
   }
 
   const user = await getCurrentUser();
   if (!user) {
-    if (!window.location.pathname.endsWith('admin.html')) {
-      window.location.href = 'admin.html';
+    if (!window.location.pathname.endsWith('admin')) {
+      window.location.href = 'admin';
     }
     return null;
   }
@@ -185,7 +185,7 @@ async function logoutAdmin() {
       console.error('Erro ao deslogar:', e);
     }
   }
-  window.location.href = 'admin.html';
+  window.location.href = 'admin';
 }
 
 /**

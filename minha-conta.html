@@ -174,7 +174,7 @@
   <header class="site-header">
     <div class="container header-top">
       <div class="header-brand">
-        <a href="index.html" class="header-brand-link" title="Soléria — Joias que contam sua luz">
+        <a href="/" class="header-brand-link" title="Soléria — Joias que contam sua luz">
           <img src="assets/images/logo-simbolo.png" alt="Símbolo Soléria" class="header-brand-symbol">
           <div>
             <span class="brand-title">Soléria</span>
@@ -184,9 +184,9 @@
       </div>
 
       <nav class="header-nav">
-        <a href="index.html#colecoes" class="nav-link">Coleções</a>
-        <a href="rastreio.html" class="nav-link">Acompanhar Pedido</a>
-        <a href="minha-conta.html" class="nav-link active" id="nav-customer-account">Minha Conta</a>
+        <a href="/#colecoes" class="nav-link">Coleções</a>
+        <a href="rastreio" class="nav-link">Acompanhar Pedido</a>
+        <a href="minha-conta" class="nav-link active" id="nav-customer-account">Minha Conta</a>
         <button type="button" class="header-cart-btn" id="btn-open-cart" title="Ver Sacola de Compras">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
@@ -332,7 +332,7 @@
           </div>
 
           <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <a href="index.html#colecoes" class="btn-secondary" style="font-size: 0.8rem; padding: 0.45rem 0.85rem;">
+            <a href="/#colecoes" class="btn-secondary" style="font-size: 0.8rem; padding: 0.45rem 0.85rem;">
               Ver Catálogo
             </a>
             <button type="button" id="btn-customer-logout" class="btn-secondary-action" style="font-size: 0.8rem; padding: 0.45rem 0.85rem; color: #DC2626; border-color: #FECACA;">
@@ -377,7 +377,7 @@
             <p style="font-size: 0.82rem; color: var(--text-secondary); max-width: 400px; margin: 0.5rem auto 1.5rem;">
               Quando você fizer um pedido em nossa loja, todas as suas joias e aros ficarão organizados aqui para consulta.
             </p>
-            <a href="index.html#colecoes" class="btn-primary" style="display: inline-flex;">Explorar Coleções</a>
+            <a href="/#colecoes" class="btn-primary" style="display: inline-flex;">Explorar Coleções</a>
           </div>
 
           <div id="pieces-list-container">
@@ -393,7 +393,7 @@
             <p style="font-size: 0.82rem; color: var(--text-secondary); max-width: 400px; margin: 0.5rem auto 1.5rem;">
               Seus pedidos realizados com este CPF ou telefone aparecerão aqui com status em tempo real.
             </p>
-            <a href="index.html#colecoes" class="btn-primary" style="display: inline-flex;">Iniciar Pedido</a>
+            <a href="/#colecoes" class="btn-primary" style="display: inline-flex;">Iniciar Pedido</a>
           </div>
 
           <div id="orders-list-container">
@@ -1096,7 +1096,7 @@
                         Pagar com PIX
                       </button>
                     ` : ''}
-                    <a href="rastreio.html?pedido=${encodeURIComponent(o.order_number)}" class="btn-secondary" style="font-size: 0.78rem; padding: 0.4rem 0.75rem; text-decoration: none;">
+                    <a href="rastreio?pedido=${encodeURIComponent(o.order_number)}" class="btn-secondary" style="font-size: 0.78rem; padding: 0.4rem 0.75rem; text-decoration: none;">
                       Ver Detalhes no Rastreio &rarr;
                     </a>
                   </div>

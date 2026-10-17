@@ -59,10 +59,117 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Insumos, Fornecedor e Lote
   const prodVendorSelect = document.getElementById('prod-vendor');
   const prodBatchSelect = document.getElementById('prod-batch');
+  const batchEntryPanel = document.getElementById('batch-entry-panel');
+  const batchEntryQtyInput = document.getElementById('batch-entry-qty');
+  const batchEntryCostInput = document.getElementById('batch-entry-cost');
+  const batchEntryRingBox = document.getElementById('batch-entry-ring-box');
+  const batchEntryRingGrid = document.getElementById('batch-entry-ring-grid');
+  const batchRingTotalBadge = document.getElementById('batch-ring-total-badge');
   const supplySelect = document.getElementById('supply-select');
   const supplyQtyInput = document.getElementById('supply-qty');
   const btnAddSupply = document.getElementById('btn-add-supply');
   const linkedSuppliesTbody = document.getElementById('linked-supplies-tbody');
+
+  function isRingCategory(cat) {
+    if (!cat) return false;
+    const clean = cat.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return clean.includes('anel') || clean.includes('aneis');
+  }
+
+  function buildBatchRingGrid() {
+    if (!batchEntryRingGrid || batchEntryRingGrid.children.length > 0) return;
+    batchEntryRingGrid.innerHTML = '';
+    for (let s = 10; s <= 30; s++) {
+      const div = document.createElement('div');
+      div.style.cssText = 'display:flex; flex-direction:column; align-items:center; background:#FFFFFF; border:1px solid #E5E7EB; border-radius:var(--radius-sm); padding:0.25rem 0.15rem; transition:all 0.2s;';
+      div.innerHTML = `
+        <span style="font-size:0.65rem; font-weight:700; color:var(--text-muted); margin-bottom:0.1rem;">${s}</span>
+        <input type="number" min="0" step="1" class="batch-ring-size-input" data-size="${s}" placeholder="0" style="width:100%; border:none; font-size:0.78rem; text-align:center; font-weight:600; padding:0.1rem 0; background:transparent; outline:none;">
+      `;
+      const input = div.querySelector('input');
+      input.addEventListener('input', () => {
+        const val = parseInt(input.value, 10) || 0;
+        if (val > 0) {
+          div.style.borderColor = 'var(--gold-primary)';
+          div.style.background = '#FFFDF5';
+        } else {
+          div.style.borderColor = '#E5E7EB';
+          div.style.background = '#FFFFFF';
+        }
+        recalcBatchRingTotal();
+      });
+      batchEntryRingGrid.appendChild(div);
+    }
+  }
+
+  function recalcBatchRingTotal() {
+    if (!batchEntryRingGrid) return;
+    const inputs = batchEntryRingGrid.querySelectorAll('.batch-ring-size-input');
+    let total = 0;
+    inputs.forEach(inp => {
+      total += parseInt(inp.value, 10) || 0;
+    });
+    if (batchRingTotalBadge) batchRingTotalBadge.textContent = `Total: ${total} un`;
+    if (total > 0 && batchEntryQtyInput) {
+      batchEntryQtyInput.value = total;
+    }
+  }
+
+  function getBatchRingSizes() {
+    if (!batchEntryRingGrid) return {};
+    const inputs = batchEntryRingGrid.querySelectorAll('.batch-ring-size-input');
+    const sizes = {};
+    inputs.forEach(inp => {
+      const val = parseInt(inp.value, 10) || 0;
+      if (val > 0) sizes[inp.dataset.size] = val;
+    });
+    return sizes;
+  }
+
+  function setBatchRingSizes(sizesObj) {
+    buildBatchRingGrid();
+    if (!batchEntryRingGrid) return;
+    const inputs = batchEntryRingGrid.querySelectorAll('.batch-ring-size-input');
+    inputs.forEach(inp => {
+      const s = inp.dataset.size;
+      const val = (sizesObj && sizesObj[s] !== undefined && sizesObj[s] !== null) ? parseInt(sizesObj[s], 10) : 0;
+      inp.value = val > 0 ? val : '';
+      const parent = inp.parentElement;
+      if (val > 0) {
+        parent.style.borderColor = 'var(--gold-primary)';
+        parent.style.background = '#FFFDF5';
+      } else {
+        parent.style.borderColor = '#E5E7EB';
+        parent.style.background = '#FFFFFF';
+      }
+    });
+    recalcBatchRingTotal();
+  }
+
+  function updateBatchEntryPanelVisibility() {
+    if (!batchEntryPanel || !prodBatchSelect) return;
+    const hasBatch = Boolean(prodBatchSelect.value);
+    batchEntryPanel.style.display = hasBatch ? 'block' : 'none';
+
+    if (hasBatch) {
+      buildBatchRingGrid();
+      const isRing = isRingCategory(categoryInput ? categoryInput.value : '');
+      if (batchEntryRingBox) {
+        batchEntryRingBox.style.display = isRing ? 'block' : 'none';
+      }
+      if (!batchEntryCostInput.value || Number(batchEntryCostInput.value) <= 0) {
+        batchEntryCostInput.value = (costInput && costInput.value) ? costInput.value : '';
+      }
+    }
+  }
+
+  if (prodBatchSelect) {
+    prodBatchSelect.addEventListener('change', updateBatchEntryPanelVisibility);
+  }
+  if (categoryInput) {
+    categoryInput.addEventListener('input', updateBatchEntryPanelVisibility);
+    categoryInput.addEventListener('change', updateBatchEntryPanelVisibility);
+  }
 
   // Engenharia Financeira
   const calcProdCost = document.getElementById('calc-prod-cost');
@@ -257,6 +364,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (prodBatchSelect && (prod.batch_id || prod.batch)) {
       prodBatchSelect.value = prod.batch_id || prod.batch || '';
+      updateBatchEntryPanelVisibility();
+      loadBatchItemDetails(prod.id || productId, prod.batch_id || prod.batch);
+    } else {
+      updateBatchEntryPanelVisibility();
     }
 
     if (badgeProdSku && prod.sku) {
@@ -320,6 +431,37 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
     syncSlotsFromImages(loadedImages);
+  }
+
+  async function loadBatchItemDetails(prodId, batchId) {
+    if (!prodId || !batchId) return;
+    try {
+      const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
+      if (!client) return;
+      const { data } = await client
+        .from('batch_items')
+        .select('*')
+        .eq('batch_id', batchId)
+        .eq('product_id', prodId)
+        .maybeSingle();
+
+      if (data) {
+        if (batchEntryQtyInput && data.quantity) batchEntryQtyInput.value = data.quantity;
+        if (batchEntryCostInput && Number(data.unit_cost) > 0) batchEntryCostInput.value = Number(data.unit_cost).toFixed(2);
+        if (data.notes) {
+          try {
+            const parsed = typeof data.notes === 'string' ? JSON.parse(data.notes) : data.notes;
+            if (parsed && parsed.sizes) {
+              setBatchRingSizes(parsed.sizes);
+            }
+          } catch (e) {
+            console.warn('Erro ao decodificar aros do lote:', e);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Aviso ao carregar dados do lote:', e);
+    }
   }
 
   // ==========================================================================
@@ -857,10 +999,69 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.warn('Aviso ao sincronizar insumos:', suppErr);
       }
 
-      showToast('Produto e insumos atualizados com sucesso!', 'success', 3000);
+      // Sincronização automática do Lote de Entrada (batch_items)
+      try {
+        const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
+        const selectedBatchId = (prodBatchSelect && prodBatchSelect.value) ? prodBatchSelect.value : null;
+
+        if (client) {
+          if (selectedBatchId) {
+            const batchSizes = isRing ? getBatchRingSizes() : {};
+            const hasBatchSizes = Object.keys(batchSizes).length > 0;
+            const bQty = hasBatchSizes
+              ? Object.values(batchSizes).reduce((acc, v) => acc + v, 0)
+              : (parseFloat(batchEntryQtyInput?.value) || 1);
+            const bCost = parseFloat(batchEntryCostInput?.value) || parseFloat(costInput.value) || 0;
+            const bNotes = hasBatchSizes ? JSON.stringify({ sizes: batchSizes }) : null;
+
+            // Busca se já existe registro deste produto neste lote
+            const { data: existingItems } = await client
+              .from('batch_items')
+              .select('id')
+              .eq('batch_id', selectedBatchId)
+              .eq('product_id', targetId);
+
+            if (existingItems && existingItems.length > 0) {
+              await client.from('batch_items').update({
+                item_name: `[${currentSku}] ${nameInput.value.trim()}`,
+                quantity: bQty,
+                unit_cost: bCost,
+                notes: bNotes
+              }).eq('id', existingItems[0].id);
+            } else {
+              await client.from('batch_items').insert([{
+                batch_id: selectedBatchId,
+                product_id: targetId,
+                item_type: 'produto',
+                item_name: `[${currentSku}] ${nameInput.value.trim()}`,
+                quantity: bQty,
+                unit_cost: bCost,
+                notes: bNotes
+              }]);
+            }
+
+            // Recalcula total_cost do lote
+            const { data: allBItems } = await client.from('batch_items').select('quantity, unit_cost').eq('batch_id', selectedBatchId);
+            const { data: bData } = await client.from('purchase_batches').select('shipping_cost').eq('id', selectedBatchId).maybeSingle();
+            const itemsSum = (allBItems || []).reduce((acc, it) => acc + ((Number(it.quantity) || 0) * (Number(it.unit_cost) || 0)), 0);
+            const shipping = Number(bData?.shipping_cost) || 0;
+            await client.from('purchase_batches').update({
+              total_cost: itemsSum + shipping,
+              updated_at: new Date().toISOString()
+            }).eq('id', selectedBatchId);
+          } else {
+            // Se desvinculou do lote, desvincula de batch_items
+            await client.from('batch_items').delete().eq('product_id', targetId);
+          }
+        }
+      } catch (batchErr) {
+        console.warn('Aviso ao sincronizar lote:', batchErr);
+      }
+
+      showToast('Produto, estoque e lote atualizados com sucesso!', 'success', 3000);
 
       setTimeout(() => {
-        window.location.href = 'admin.html';
+        window.location.href = 'admin';
       }, 1200);
 
     } catch (saveErr) {
