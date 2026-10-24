@@ -18,7 +18,7 @@ const MASTER_CONFIG = {
 };
 
 // Carga instantânea síncrona (0ms) a partir de cache de sessão do domínio atual
-const currentHost = window.location.hostname;
+const currentHost = (typeof window !== 'undefined' ? window.location.hostname.toLowerCase().replace(/^www\./, '') : '');
 try {
   const cachedStr = sessionStorage.getItem('soleria_cfg_' + currentHost);
   if (cachedStr) {
@@ -34,12 +34,14 @@ try {
 
 window.TENANT_PROMISE = (async function initTenant() {
   try {
-    // 1. Identifica a loja pelo domínio atual ou pela meta tag
-    const currentDomain = window.location.hostname;
+    // 1. Identifica a loja pelo domínio atual (normalizado sem www) ou pela meta tag
+    const rawHost = window.location.hostname.toLowerCase();
+    const cleanDomain = rawHost.replace(/^www\./, '');
+    const currentDomain = cleanDomain;
     const metaLicenseKey = document.querySelector('meta[name="tenant-license-key"]')?.getAttribute('content');
 
     // Se estiver rodando localmente (localhost ou 127.0.0.1) e não tiver meta tag, usa modo padrão
-    if ((currentDomain === 'localhost' || currentDomain === '127.0.0.1') && !metaLicenseKey) {
+    if ((cleanDomain === 'localhost' || cleanDomain === '127.0.0.1') && !metaLicenseKey) {
       console.log('⚡ Modo Desenvolvimento Local ativo.');
       return;
     }
@@ -47,7 +49,7 @@ window.TENANT_PROMISE = (async function initTenant() {
     // 2. Consulta o Supabase Master para obter a configuração desta loja
     let queryParam = metaLicenseKey 
       ? `license_key=eq.${encodeURIComponent(metaLicenseKey)}`
-      : `domain=ilike.*${encodeURIComponent(currentDomain)}*`;
+      : `domain=ilike.*${encodeURIComponent(cleanDomain)}*`;
 
     const res = await fetch(`${MASTER_CONFIG.supabaseUrl}/rest/v1/licenses?${queryParam}&select=*`, {
       headers: {

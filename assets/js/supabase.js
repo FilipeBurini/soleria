@@ -321,9 +321,14 @@ async function uploadImageToStorage(file, folderName = '', bucket = 'Fotos Produ
   return publicData.publicUrl;
 }
 
-// Banner discreto caso as credenciais ainda não tenham sido configuradas
-document.addEventListener('DOMContentLoaded', () => {
-  if (!isSupabaseConfigured()) {
+// Banner discreto apenas em modo de desenvolvimento se as credenciais não forem configuradas
+document.addEventListener('DOMContentLoaded', async () => {
+  if (typeof window !== 'undefined' && window.TENANT_PROMISE) {
+    try { await window.TENANT_PROMISE; } catch (e) {}
+  }
+
+  const isMasterDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  if (!isSupabaseConfigured() && isMasterDev) {
     const notice = document.createElement('div');
     notice.style.cssText = `
       background-color: #FFF9ED;
