@@ -81,10 +81,14 @@ function getSupabaseClient() {
 }
 
 try {
-  const _client = getSupabaseClient();
-  if (_client && typeof window !== 'undefined') window.db = _client;
-} catch (err) {
-  console.error('Erro ao inicializar Supabase:', err);
+  if (typeof window !== 'undefined') {
+    Object.defineProperty(window, 'db', {
+      get: () => getSupabaseClient(),
+      configurable: true
+    });
+  }
+} catch (e) {
+  window.db = getSupabaseClient();
 }
 
 /**
