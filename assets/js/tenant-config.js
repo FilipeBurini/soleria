@@ -46,8 +46,29 @@ window.TENANT_PROMISE = (async function initTenant() {
     const tenant = data && data[0];
 
     // 3. Se a loja não for encontrada
+    const isMasterHost = ['localhost', '127.0.0.1', 'soleria.carlamota.com.br'].includes(currentDomain);
     if (!tenant) {
-      console.warn('Licença não configurada para este domínio:', currentDomain);
+      if (!isMasterHost) {
+        function showNotConfigured() {
+          document.body.innerHTML = `
+            <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #141312; color: #FAF8F5; font-family: system-ui, -apple-system, sans-serif; padding: 1.5rem; text-align: center;">
+              <div style="max-width: 480px; width: 100%; background: #1E1C1A; border: 1.5px solid #AB5332; border-radius: 12px; padding: 2.5rem 2rem;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">⚙️</div>
+                <h2 style="font-size: 1.3rem; margin-bottom: 0.5rem; font-weight: 700;">Loja em Implantação</h2>
+                <p style="font-size: 0.88rem; color: #B5B0A6; line-height: 1.6;">
+                  O domínio <strong>${currentDomain}</strong> está apontado corretamente, mas os parâmetros da loja ainda não foram cadastrados no sistema Master.
+                </p>
+              </div>
+            </div>
+          `;
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', showNotConfigured);
+        } else {
+          showNotConfigured();
+        }
+        throw new Error('Domínio sem parâmetros configurados.');
+      }
       return;
     }
 

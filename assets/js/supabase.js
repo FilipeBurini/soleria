@@ -19,13 +19,21 @@ let db = null;
 let _cachedUrl = null;
 
 function getSupabaseClient() {
+  const isMasterHost = (typeof window !== 'undefined') && 
+    ['localhost', '127.0.0.1', 'soleria.carlamota.com.br'].includes(window.location.hostname);
+
+  // Se for domínio de cliente parceira, SÓ conecta no banco DELA. Nunca usa o da Soléria como fallback.
   const targetUrl = (typeof window !== 'undefined' && window.TENANT_SUPABASE_URL)
     ? window.TENANT_SUPABASE_URL
-    : 'https://kgmkvskdhoficppjskgy.supabase.co';
+    : (isMasterHost ? 'https://kgmkvskdhoficppjskgy.supabase.co' : null);
 
   const targetKey = (typeof window !== 'undefined' && window.TENANT_SUPABASE_ANON_KEY)
     ? window.TENANT_SUPABASE_ANON_KEY
-    : 'sb_publishable_P-XdBQaYxckZYoussxYHFA_ZW_ZSgmq';
+    : (isMasterHost ? 'sb_publishable_P-XdBQaYxckZYoussxYHFA_ZW_ZSgmq' : null);
+
+  if (!targetUrl || !targetKey) {
+    return null;
+  }
 
   if (db && _cachedUrl === targetUrl) {
     if (typeof window !== 'undefined') window.db = db;
