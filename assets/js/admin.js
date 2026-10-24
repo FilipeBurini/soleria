@@ -147,9 +147,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+
+      if (window.TENANT_PROMISE) {
+        try { await window.TENANT_PROMISE; } catch (err) {}
+      }
       
-      if (!isSupabaseConfigured()) {
-        showToast('Configure a URL e chave do Supabase em assets/js/supabase.js antes de logar.', 'error', 5000);
+      const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : (window.db || db));
+      if (!isSupabaseConfigured() || !client) {
+        showToast('As credenciais do banco desta loja ainda não foram carregadas. Recarregue a página.', 'error', 5000);
         return;
       }
 
@@ -160,7 +165,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       loginSubmitBtn.textContent = 'Autenticando...';
 
       try {
-        const { data, error } = await db.auth.signInWithPassword({
+        const { data, error } = await client.auth.signInWithPassword({
           email,
           password
         });
