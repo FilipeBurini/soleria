@@ -118,26 +118,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     return { total, paid, due, isPartial, isPaid, isPending };
   }
 
+  /**
+   * Helper rigoroso para identificar se o pedido foi cancelado
+   */
+  function isOrderCancelled(order) {
+    if (!order) return false;
+    const st = (order.status || '').toLowerCase().trim();
+    const paySt = (order.payment_status || '').toLowerCase().trim();
+    const notes = (order.admin_notes || '').toLowerCase();
+
+    return st === 'cancelado' ||
+           st === 'cancelada' ||
+           st === 'canceled' ||
+           st.includes('cancel') ||
+           paySt === 'cancelado' ||
+           paySt === 'canceled' ||
+           order.stock_restored === true ||
+           notes.includes('[cancelado]');
+  }
+
   // ==========================================================================
   // Fluxo de Autenticação
   // ==========================================================================
 
   async function checkAuthAndInit() {
-    if (!isSupabaseConfigured()) {
-      authSection.style.display = 'flex';
-      adminApp.style.display = 'none';
-      return;
-    }
+    try {
+      if (!isSupabaseConfigured()) {
+        authSection.style.display = 'flex';
+        adminApp.style.display = 'none';
+        return;
+      }
 
-    const user = await getCurrentUser();
-    if (user) {
-      // Usuário autenticado
-      authSection.style.display = 'none';
-      adminApp.style.display = 'block';
-      adminUserEmail.textContent = user.email || 'Operador Autenticado';
-      loadAllData();
-    } else {
-      // Não autenticado: mostra formulário de login
+      const user = await getCurrentUser();
+      if (user) {
+        // Usuário autenticado
+        authSection.style.display = 'none';
+        adminApp.style.display = 'block';
+        adminUserEmail.textContent = user.email || 'Operador Autenticado';
+        loadAllData();
+      } else {
+        // Não autenticado: mostra formulário de login
+        authSection.style.display = 'flex';
+        adminApp.style.display = 'none';
+      }
+    } catch (e) {
+      console.warn('Aviso ao checar autenticação:', e);
       authSection.style.display = 'flex';
       adminApp.style.display = 'none';
     }
@@ -237,24 +262,71 @@ document.addEventListener('DOMContentLoaded', async () => {
     tableEmptyMsg.style.display = 'none';
 
     try {
-      // 1. Busca os produtos diretamente da tabela products para garantir acesso a imagens e tamanhos
-      const { data: productsData, error: prodErr } = await db
-        .from('products')
-        .select('*')
-        .order('name');
-
-      if (prodErr) {
-        console.warn('Erro ao consultar tabela products:', prodErr);
+      if (window.TENANT_PROMISE) {
+        try { await window.TENANT_PROMISE; } catch (e) {}
       }
 
-      // 2. Tenta buscar da view products_financials para obter custos precisos de insumos
+      const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : (window.db || db)) ||
+                     (window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
+
+      let productsData = null;
+      let prodErr = null;
+
+      // 1. Busca os produtos diretamente da tabela products
+      if (client && isSupabaseConfigured()) {
+        try {
+          const res = await client
+            .from('products')
+            .select('*')
+            .order('name');
+
+          if (res.error) {
+            prodErr = res.error;
+            console.warn('Aviso ao consultar tabela products no Supabase:', res.error);
+          } else if (res.data) {
+            productsData = res.data;
+          }
+        } catch (fetchErr) {
+          prodErr = fetchErr;
+          console.warn('Erro de rede ao consultar products:', fetchErr);
+        }
+      }
+
+      // 2. Tenta buscar da view products_financials de forma totalmente isolada (sem travar a página)
       const financialsMap = new Map();
-      const { data: finData } = await db.from('products_financials').select('*');
-      if (finData && Array.isArray(finData)) {
-        finData.forEach(row => {
-          const id = row.id || row.product_id;
-          if (id) financialsMap.set(id, row);
-        });
+      if (client && isSupabaseConfigured()) {
+        try {
+          const { data: finData, error: finErr } = await client.from('products_financials').select('*');
+          if (!finErr && finData && Array.isArray(finData)) {
+            finData.forEach(row => {
+              const id = row.id || row.product_id;
+              if (id) financialsMap.set(id, row);
+            });
+          }
+        } catch (viewErr) {
+          console.info('View products_financials não disponível (usando dados de products):', viewErr);
+        }
+      }
+
+      // Se obteve dados do banco, salva em cache local
+      if (productsData && Array.isArray(productsData) && productsData.length > 0) {
+        try {
+          localStorage.setItem('soleria_cached_products', JSON.stringify(productsData));
+        } catch (e) {}
+      } else {
+        // Tenta recuperar do cache local se a consulta retornou vazia ou com falha
+        try {
+          const cached = localStorage.getItem('soleria_cached_products');
+          if (cached) {
+            productsData = JSON.parse(cached);
+          }
+        } catch (e) {}
+      }
+
+      // Notifica erro apenas se falhou de forma fatal e não há dados em memória
+      if (prodErr && (!productsData || productsData.length === 0)) {
+        console.error('Falha de banco de dados ao buscar catálogo:', prodErr);
+        showToast('Falha na comunicação com o banco de dados.', 'error');
       }
 
       const productsList = productsData || [];
@@ -301,7 +373,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       renderAllViews();
     } catch (err) {
       console.error('Erro geral ao processar dados:', err);
-      showToast('Falha na comunicação com o banco de dados.', 'error');
+      if (!rawFinancialsData || rawFinancialsData.length === 0) {
+        showToast('Falha na comunicação com o banco de dados.', 'error');
+      }
     } finally {
       tableSpinner.style.display = 'none';
     }
@@ -650,6 +724,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function loadOrdersAndCustomers() {
     try {
+      if (window.TENANT_PROMISE) {
+        try { await window.TENANT_PROMISE; } catch (e) {}
+      }
+
       const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db) ||
                      (window.supabase && typeof window.supabase.createClient === 'function' && typeof SUPABASE_URL !== 'undefined' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
 
@@ -674,6 +752,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         rawOrdersData = getFallbackOrders();
         rawCustomersData = getFallbackCustomers();
       }
+
+      // Mesclagem com pedidos do LocalStorage: garante que alterações recentes (cancelamentos, baixas parciais) prevaleçam
+      try {
+        const local = JSON.parse(localStorage.getItem('soleria_local_orders') || '[]');
+        if (local && Array.isArray(local) && local.length > 0) {
+          local.forEach(loc => {
+            const idx = rawOrdersData.findIndex(o => o.order_number === loc.order_number);
+            if (idx !== -1) {
+              rawOrdersData[idx] = { ...rawOrdersData[idx], ...loc };
+            } else {
+              rawOrdersData.push(loc);
+            }
+          });
+        }
+      } catch (e) {}
     } catch (e) {
       console.warn('Erro ao carregar dados complementares para o Dashboard 360:', e);
       rawOrdersData = getFallbackOrders();
@@ -683,11 +776,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function getFallbackOrders() {
     try {
-      const raw = localStorage.getItem('soleria_orders') ||
-                  localStorage.getItem('soleria_orders_db_v1') || 
-                  localStorage.getItem('soleria_orders_v1') ||
-                  localStorage.getItem('soleria_local_orders');
-      return raw ? JSON.parse(raw) : [];
+      const mergedMap = new Map();
+      const keys = ['soleria_local_orders', 'soleria_orders', 'soleria_orders_db_v1', 'soleria_orders_v1'];
+      keys.forEach(k => {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          try {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list)) {
+              list.forEach(o => {
+                if (o && o.order_number && !mergedMap.has(o.order_number)) {
+                  mergedMap.set(o.order_number, o);
+                }
+              });
+            }
+          } catch (e) {}
+        }
+      });
+      return Array.from(mergedMap.values());
     } catch (e) {
       return [];
     }
@@ -708,28 +814,57 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ==========================================================================
 
   function renderDashboard360() {
-    // 1. Processamento Financeiro e Vendas
+    // 1. Processamento Financeiro e Vendas Preciso (Considera Baixas Parciais e Ignora Cancelados)
     const completedStatuses = ['confirmado', 'preparacao', 'enviado', 'entregue'];
-    const pendingStatuses = ['recebido', 'aguardando_pagamento', 'pendente'];
 
-    const completedOrders = rawOrdersData.filter(o => completedStatuses.includes((o.status || '').toLowerCase()));
-    const pendingOrders = rawOrdersData.filter(o => pendingStatuses.includes((o.status || '').toLowerCase()));
-
-    const totalFaturamento = completedOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
-    const totalPendente = pendingOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+    let totalFaturamentoRealizado = 0;
+    let totalPendenteReceber = 0;
+    let totalVendasConfirmadas = 0;
+    let monthRevenue = 0;
+    let monthOrdersCount = 0;
 
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
-    const monthOrders = completedOrders.filter(o => {
-      if (!o.created_at) return false;
-      const d = new Date(o.created_at);
-      return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+    rawOrdersData.forEach(o => {
+      // Pedidos cancelados NUNCA entram no faturamento, nem no pendente, nem nas vendas confirmadas!
+      if (isOrderCancelled(o)) return;
+
+      const pay = getOrderPaymentInfo(o);
+      const st = (o.status || '').toLowerCase().trim();
+
+      // Faturamento Realizado = dinheiro que efetivamente já entrou no caixa (quitados 100% + entradas parciais recebidas)
+      if (pay.paid > 0) {
+        totalFaturamentoRealizado += pay.paid;
+      }
+
+      // Saldo que ainda falta receber dos pedidos ativos
+      if (pay.due > 0) {
+        totalPendenteReceber += pay.due;
+      }
+
+      // Considera venda confirmada se quitado, em andamento ou se houve entrada paga
+      const isConfirmed = pay.isPaid || pay.isPartial || completedStatuses.includes(st);
+      if (isConfirmed) {
+        totalVendasConfirmadas++;
+      }
+
+      // Vendas do mês atual (valores recebidos em pedidos deste mês)
+      if (o.created_at) {
+        const d = new Date(o.created_at);
+        if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+          if (pay.paid > 0) {
+            monthRevenue += pay.paid;
+          }
+          if (isConfirmed) {
+            monthOrdersCount++;
+          }
+        }
+      }
     });
 
-    const monthRevenue = monthOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
-    const avgTicket = completedOrders.length > 0 ? (totalFaturamento / completedOrders.length) : 0;
+    const avgTicket = totalVendasConfirmadas > 0 ? (totalFaturamentoRealizado / totalVendasConfirmadas) : 0;
 
     // Capital investido e estoque de peças
     let totalInvested = 0;
@@ -760,7 +895,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Clientes identificados a partir dos pedidos
     const buyersSet = new Set();
     (rawOrdersData || []).forEach(o => {
-      const isCancelled = (o.status || '').toLowerCase() === 'cancelado';
+      const isCancelled = isOrderCancelled(o);
       const cleanCpf = o.customer_cpf ? String(o.customer_cpf).replace(/\D/g, '') : '';
       const cleanPhone = o.customer_phone ? String(o.customer_phone).replace(/\D/g, '') : '';
       const key = cleanCpf || cleanPhone || (o.customer_name ? o.customer_name.trim().toLowerCase() : '');
@@ -788,17 +923,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const conversionRate = Math.min(100, Math.max(0, Math.round(rawRate)));
 
     // Atualiza KPIs Topo
-    if (dashKpiFaturamento) dashKpiFaturamento.textContent = formatBRL(totalFaturamento);
-    if (dashKpiFaturamentoSub) dashKpiFaturamentoSub.textContent = `${completedOrders.length} vendas confirmadas • ${formatBRL(totalPendente)} pendente`;
+    if (dashKpiFaturamento) dashKpiFaturamento.textContent = formatBRL(totalFaturamentoRealizado);
+    if (dashKpiFaturamentoSub) dashKpiFaturamentoSub.textContent = `${totalVendasConfirmadas} vendas confirmadas • ${formatBRL(totalPendenteReceber)} pendente`;
     if (dashKpiVendasMes) dashKpiVendasMes.textContent = formatBRL(monthRevenue);
-    if (dashKpiVendasMesCount) dashKpiVendasMesCount.textContent = `${monthOrders.length} pedido(s) no mês atual`;
+    if (dashKpiVendasMesCount) dashKpiVendasMesCount.textContent = `${monthOrdersCount} pedido(s) no mês atual`;
     if (dashKpiTicketMedio) dashKpiTicketMedio.textContent = formatBRL(avgTicket);
     if (dashKpiCapitalEstoque) dashKpiCapitalEstoque.textContent = formatBRL(totalInvested);
     if (dashKpiPecasCount) dashKpiPecasCount.textContent = `${totalStockPieces} peças físicas em acervo`;
     if (dashKpiClientesTotal) dashKpiClientesTotal.textContent = String(totalCustomers);
     if (dashKpiClientesSub) dashKpiClientesSub.textContent = `${buyersCount} compradora(s) ativas (${conversionRate}% conversão)`;
 
-    // 2. Pipeline Operacional de Pedidos
+    // 2. Pipeline Operacional de Pedidos (Estritamente sem cancelados)
     const statusGroups = {
       recebido: { count: 0, total: 0 },
       prep: { count: 0, total: 0 },
@@ -807,20 +942,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     rawOrdersData.forEach(o => {
-      const st = (o.status || '').toLowerCase();
-      const val = Number(o.total_amount) || 0;
+      // Ignora pedidos cancelados de qualquer status do pipeline
+      if (isOrderCancelled(o)) return;
+
+      const st = (o.status || '').toLowerCase().trim();
+      const pay = getOrderPaymentInfo(o);
+
       if (st === 'recebido' || st === 'aguardando_pagamento' || st === 'pendente') {
+        // Pedido aguardando PIX / pagamento: soma apenas o saldo que ainda falta pagar
         statusGroups.recebido.count++;
-        statusGroups.recebido.total += val;
+        statusGroups.recebido.total += (pay.due > 0 ? pay.due : pay.total);
       } else if (st === 'confirmado' || st === 'preparacao') {
         statusGroups.prep.count++;
-        statusGroups.prep.total += val;
+        statusGroups.prep.total += Number(o.total_amount) || 0;
       } else if (st === 'enviado') {
         statusGroups.envio.count++;
-        statusGroups.envio.total += val;
+        statusGroups.envio.total += Number(o.total_amount) || 0;
       } else if (st === 'entregue') {
         statusGroups.entregue.count++;
-        statusGroups.entregue.total += val;
+        statusGroups.entregue.total += Number(o.total_amount) || 0;
       }
     });
 
@@ -835,8 +975,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 2.5. Notificação de Pedidos com Saldo a Receber (Baixa Parcial)
     const partialOrders = rawOrdersData.filter(o => {
+      if (isOrderCancelled(o)) return false;
       const pay = getOrderPaymentInfo(o);
-      return pay.isPartial && (o.status || '').toLowerCase() !== 'cancelado';
+      return pay.isPartial;
     });
     renderPartialNotification(partialOrders);
 
@@ -923,7 +1064,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const html = recent.map(o => {
       const st = (o.status || 'recebido').toLowerCase();
       let badgeClass = 'status-recebido';
-      let badgeLabel = 'Aguardando PIX';
+      let badgeLabel = 'Aguardando Pagamento';
       if (st === 'confirmado' || st === 'preparacao') { badgeClass = 'status-preparacao'; badgeLabel = 'Em Preparação'; }
       else if (st === 'enviado') { badgeClass = 'status-enviado'; badgeLabel = 'A Caminho'; }
       else if (st === 'entregue') { badgeClass = 'status-entregue'; badgeLabel = 'Entregue'; }

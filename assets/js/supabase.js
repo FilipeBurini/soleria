@@ -11,8 +11,10 @@ function getDynamicSupabaseUrl() {
   if (typeof window !== 'undefined' && window.TENANT_SUPABASE_URL) {
     return window.TENANT_SUPABASE_URL;
   }
-  const isMasterHost = (typeof window !== 'undefined') && 
-    ['localhost', '127.0.0.1', 'soleria.carlamota.com.br'].includes(window.location.hostname);
+  const isMasterHost = (typeof window !== 'undefined') && (
+    ['localhost', '127.0.0.1', 'soleria.carlamota.com.br', ''].includes(window.location.hostname) ||
+    window.location.protocol === 'file:'
+  );
   return isMasterHost ? 'https://kgmkvskdhoficppjskgy.supabase.co' : null;
 }
 
@@ -20,8 +22,10 @@ function getDynamicSupabaseAnonKey() {
   if (typeof window !== 'undefined' && window.TENANT_SUPABASE_ANON_KEY) {
     return window.TENANT_SUPABASE_ANON_KEY;
   }
-  const isMasterHost = (typeof window !== 'undefined') && 
-    ['localhost', '127.0.0.1', 'soleria.carlamota.com.br'].includes(window.location.hostname);
+  const isMasterHost = (typeof window !== 'undefined') && (
+    ['localhost', '127.0.0.1', 'soleria.carlamota.com.br', ''].includes(window.location.hostname) ||
+    window.location.protocol === 'file:'
+  );
   return isMasterHost ? 'sb_publishable_P-XdBQaYxckZYoussxYHFA_ZW_ZSgmq' : null;
 }
 

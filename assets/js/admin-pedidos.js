@@ -213,7 +213,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const local = JSON.parse(localStorage.getItem('soleria_local_orders') || '[]');
         if (local && local.length > 0) {
           local.forEach(loc => {
-            if (!orders.some(o => o.order_number === loc.order_number)) {
+            const existingIdx = orders.findIndex(o => o.order_number === loc.order_number);
+            if (existingIdx !== -1) {
+              // Prevalece modificações locais mais recentes (ex: cancelamento ou baixa parcial)
+              orders[existingIdx] = { ...orders[existingIdx], ...loc };
+            } else {
               loc.sync_pending = true;
               orders.push(loc);
             }
@@ -237,13 +241,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function getStatusInfo(status) {
     switch ((status || '').toLowerCase()) {
-      case 'recebido': return { label: 'Recebido', class: 'status-recebido' };
+      case 'recebido': return { label: 'Aguardando Pagamento', class: 'status-recebido' };
       case 'confirmado': return { label: 'Pagamento Confirmado', class: 'status-confirmado' };
       case 'preparacao': return { label: 'Em Preparação', class: 'status-preparacao' };
       case 'enviado': return { label: 'Enviado / A Caminho', class: 'status-enviado' };
       case 'entregue': return { label: 'Entregue', class: 'status-entregue' };
       case 'cancelado': return { label: 'Cancelado', class: 'status-cancelado' };
-      default: return { label: status || 'Recebido', class: 'status-recebido' };
+      default: return { label: status || 'Aguardando Pagamento', class: 'status-recebido' };
     }
   }
 
@@ -286,10 +290,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     let totalRevenue = 0;
 
     rawOrders.forEach(o => {
-      const st = (o.status || '').toLowerCase();
-      if (st === 'recebido') countRecebidos++;
+      const st = (o.status || '').toLowerCase().trim();
+      const isCancelled = st === 'cancelado' || st.includes('cancel') || (o.payment_status || '').toLowerCase() === 'cancelado' || o.stock_restored === true;
+      if (isCancelled) return;
+
+      const pay = getOrderPaymentInfo(o);
+      if (st === 'recebido' || st === 'aguardando_pagamento') countRecebidos++;
       if (st === 'confirmado' || st === 'preparacao' || st === 'enviado') countPreparando++;
-      if (st !== 'cancelado') totalRevenue += Number(o.total_amount || o.subtotal || 0);
+      // Faturamento Realizado = tudo o que já foi recebido (incluindo entradas parciais)
+      if (pay.paid > 0) totalRevenue += pay.paid;
     });
 
     if (kpiRecebidos) kpiRecebidos.textContent = countRecebidos;
@@ -383,7 +392,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div style="font-size: 0.76rem; color: #DC2626; font-weight: 700; margin-top: 0.2rem;">
                   Saldo a Receber: ${formatMoney(payInfo.due)}
                 </div>
-              ` : ''}
+              ` : (order.status === 'recebido' || (payInfo.isPending && order.status !== 'cancelado') ? `
+                <div style="font-size: 0.72rem; color: #B45309; font-weight: 700; margin-top: 0.25rem; background: #FFFBEB; padding: 2px 6px; border-radius: 4px; border: 1px solid #FDE68A; display: inline-block;">
+                  ⏳ Aguardando Pagamento
+                </div>
+              ` : (payInfo.isPaid && order.status !== 'cancelado' ? `
+                <div style="font-size: 0.72rem; color: #166534; font-weight: 700; margin-top: 0.25rem; background: #F0FDF4; padding: 2px 6px; border-radius: 4px; border: 1px solid #BBF7D0; display: inline-block;">
+                  ✓ Quitado 100%
+                </div>
+              ` : ''))}
             </div>
             
             <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem;">

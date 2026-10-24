@@ -40,9 +40,10 @@ window.TENANT_PROMISE = (async function initTenant() {
     const currentDomain = cleanDomain;
     const metaLicenseKey = document.querySelector('meta[name="tenant-license-key"]')?.getAttribute('content');
 
-    // Se estiver rodando localmente (localhost ou 127.0.0.1) e não tiver meta tag, usa modo padrão
-    if ((cleanDomain === 'localhost' || cleanDomain === '127.0.0.1') && !metaLicenseKey) {
-      console.log('⚡ Modo Desenvolvimento Local ativo.');
+    // Se estiver rodando localmente (localhost, 127.0.0.1 ou protocolo file:) e não tiver meta tag, usa modo padrão
+    const isLocalOrFile = (cleanDomain === 'localhost' || cleanDomain === '127.0.0.1' || cleanDomain === '' || window.location.protocol === 'file:');
+    if (isLocalOrFile && !metaLicenseKey) {
+      console.log('⚡ Modo Desenvolvimento Local ativo (Banco Soléria Master).');
       return;
     }
 
@@ -63,7 +64,7 @@ window.TENANT_PROMISE = (async function initTenant() {
     const tenant = data && data[0];
 
     // 3. Se a loja não for encontrada
-    const isMasterHost = ['localhost', '127.0.0.1', 'soleria.carlamota.com.br'].includes(currentDomain);
+    const isMasterHost = ['localhost', '127.0.0.1', 'soleria.carlamota.com.br', ''].includes(currentDomain) || window.location.protocol === 'file:';
     if (!tenant) {
       if (!isMasterHost) {
         function showNotConfigured() {
@@ -252,13 +253,12 @@ window.TENANT_PROMISE = (async function initTenant() {
       }
 
       // 10. Proteção: No domínio da cliente parceira, oculta acesso ao Master de Licenças
-      const isMasterHost = ['localhost', '127.0.0.1', 'soleria.carlamota.com.br'].includes(window.location.hostname);
+      const isMasterHost = ['localhost', '127.0.0.1', 'soleria.carlamota.com.br', ''].includes(window.location.hostname) || window.location.protocol === 'file:';
       if (!isMasterHost) {
         document.querySelectorAll('a[href*="admin-licencas"]').forEach(el => el.style.display = 'none');
         if (window.location.pathname.includes('admin-licencas')) {
           window.location.href = 'admin';
         }
-      }
       }
     }
 
@@ -272,3 +272,20 @@ window.TENANT_PROMISE = (async function initTenant() {
     console.warn('[Tenant Bootloader]', err.message || err);
   }
 })();
+
+// Compatibilidade Universal com navegação local via protocolo file:/// (adiciona automaticamente .html para arquivos locais)
+if (typeof window !== 'undefined' && window.location.protocol === 'file:') {
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    if (!href || href.startsWith('#') || href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) return;
+    
+    // Se o link é relativo e não possui extensão (.html, .png, etc.)
+    const [path, queryAndHash] = href.split(/(?=[?#])/);
+    if (path && !path.includes('.') && !path.endsWith('/')) {
+      e.preventDefault();
+      window.location.href = path + '.html' + (queryAndHash || '');
+    }
+  }, true);
+}

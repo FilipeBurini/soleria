@@ -132,9 +132,9 @@
       <!-- Cards de Métricas de Pedidos -->
       <section class="metrics-grid">
         <div class="metric-card accent-terracotta">
-          <div class="metric-card-label">Novos Pedidos (Recebidos)</div>
+          <div class="metric-card-label">Aguardando Pagamento</div>
           <div class="metric-card-value" id="kpi-orders-recebidos">0</div>
-          <div class="metric-card-footer">Aguardando confirmação de pagamento</div>
+          <div class="metric-card-footer">Aguardando confirmação de PIX / Cartão</div>
         </div>
 
         <div class="metric-card accent-blue">
@@ -158,7 +158,7 @@
             <select id="admin-order-status-filter" class="form-select" style="width: auto; padding: 0.5rem 0.75rem; font-size: 0.82rem;">
               <option value="todos">Todos os Status</option>
               <option value="parcial">🟡 Com Saldo a Receber (Pagamento Parcial)</option>
-              <option value="recebido">Apenas Recebidos</option>
+              <option value="recebido">⏳ Aguardando Pagamento</option>
               <option value="confirmado">Pagamento Confirmado</option>
               <option value="preparacao">Em Preparação</option>
               <option value="enviado">Enviados / A Caminho</option>
