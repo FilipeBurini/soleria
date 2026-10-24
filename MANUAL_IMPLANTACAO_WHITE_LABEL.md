@@ -140,37 +140,39 @@ O arquivo [assets/js/tenant-config.js](./assets/js/tenant-config.js) funciona co
 
 ## 🌐 ETAPA 3: Apontar o Domínio da Cliente no Cloudflare Pages
 
-O Cloudflare Pages é onde os arquivos do site ficam online. Ele é **gratuito, não tem limite de visitantes, inclui certificado de segurança SSL (HTTPS) vitalício** e permite cadastrar domínios ilimitados.
+Você **NÃO precisa criar um repositório novo no GitHub** para cada cliente! Você pode usar exatamente o **mesmo projeto do Master**.
 
-### Passo 3.1: Subir o Projeto no GitHub
-1. Crie um repositório no seu GitHub para a loja da cliente (ex: `github.com/SeuUsuario/joias-da-ana`).
-2. Faça o commit e envie os arquivos da loja para esse repositório:
-   ```bash
-   git add .
-   git commit -m "feat: setup inicial loja joias da ana"
-   git push origin main
-   ```
+Como o nosso sistema é uma **Arquitetura SaaS Multi-Tenant Real**, o mesmo código-fonte atende infinitas lojas parceiras.
 
-### Passo 3.2: Conectar no Cloudflare Pages
-1. Acesse [dash.cloudflare.com](https://dash.cloudflare.com) e entre na sua conta Cloudflare.
-2. No menu lateral, clique em **Workers & Pages**.
-3. Clique em **"Create application" > aba "Pages" > "Connect to Git"**.
-4. Selecione o repositório da cliente (ex: `joias-da-ana`).
-5. Nas configurações de build:
-   - **Framework preset:** Deixe como `None` (pois o projeto é Vanilla HTML/CSS/JS).
-   - **Build command:** Deixe em branco.
-   - **Build output directory:** Deixe em branco (ou `./`).
-6. Clique em **"Save and Deploy"**.
-7. Em cerca de 30 segundos, o site já estará no ar em um link gratuito (ex: `joias-da-ana.pages.dev`).
+---
 
-### Passo 3.3: Adicionar o Domínio Próprio da Cliente (ex: `joiasdaana.com.br`)
-1. Dentro do projeto no Cloudflare Pages, clique na aba **"Custom domains"**.
-2. Clique no botão **"Set up a custom domain"**.
-3. Digite o domínio que a cliente comprou:
+### ⭐ Método Recomendado (1 Minuto): Usar o MESMO Projeto no Cloudflare Pages
+
+Você usa o seu repositório atual (`soleria`) e o mesmo projeto que já está rodando no Cloudflare Pages:
+
+1. Acesse [dash.cloudflare.com](https://dash.cloudflare.com) e abra o seu projeto **Pages** (o da Soléria).
+2. Clique na aba **"Custom domains"**.
+3. Clique no botão preto **"Set up a custom domain"**.
+4. Digite o domínio próprio da cliente:
    - Exemplo: `joiasdaana.com.br` e `www.joiasdaana.com.br`.
-4. O Cloudflare Pages vai te mostrar exatamente quais apontamentos DNS devem ser feitos.
+5. O Cloudflare Pages informará o apontamento CNAME necessário (apontando para o seu subdomínio `.pages.dev`).
+6. Aponte o DNS no Registro.br ou provedor da cliente (conforme Passo 3.2 abaixo).
 
-### Passo 3.4: Como a Cliente Configura o Domínio no Registro.br (ou Hostgator/GoDaddy)
+> 💎 **Por que este é o método mais inteligente e profissional?**
+> - ⚡ **Implantação Imediata:** Não precisa criar repositório, nem rodar git clone, nem esperar build.
+> - 🚀 **Atualizações para Todos em 1 Clique:** Sempre que você fizer uma melhoria no sistema e der `git push`, **todas as lojas de todas as clientes atualizam na mesma hora**!
+> - 🔒 **Segurança Blindada:** O script [assets/js/tenant-config.js](./assets/js/tenant-config.js) detecta o domínio da cliente e bloqueia automaticamente qualquer botão ou acesso às telas de gestão de licenças do Master.
+
+---
+
+### 📦 Método Alternativo (Opcional): Repositório Separado
+*(Utilize apenas se uma cliente específica comprar o código-fonte ou exigir um repositório totalmente isolado para customizações manuais de código).*
+1. Crie um novo repositório no GitHub (ex: `joias-da-ana`).
+2. Suba os arquivos e conecte a um novo Pages no Cloudflare.
+
+---
+
+### Passo 3.2: Como a Cliente Configura o Domínio no Registro.br (ou Hostgator/GoDaddy)
 Diga para a cliente (ou faça para ela acessando a conta dela onde ela comprou o domínio):
 
 #### No Registro.br:

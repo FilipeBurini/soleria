@@ -195,6 +195,15 @@ const MASTER_CONFIG = {
           if (el.tagName === 'IMG') el.src = tenant.icon_url;
         });
       }
+
+      // 10. Proteção: No domínio da cliente parceira, oculta acesso ao Master de Licenças
+      const isMasterHost = ['localhost', '127.0.0.1', 'soleria.carlamota.com.br'].includes(window.location.hostname);
+      if (!isMasterHost) {
+        document.querySelectorAll('a[href*="admin-licencas"]').forEach(el => el.style.display = 'none');
+        if (window.location.pathname.includes('admin-licencas')) {
+          window.location.href = 'admin';
+        }
+      }
     });
 
   } catch (err) {
