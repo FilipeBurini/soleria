@@ -257,6 +257,22 @@ window.TENANT_PROMISE = (async function initTenant() {
           window.location.href = 'admin';
         }
       }
+
+      // 11. Organização perfeita do Cabeçalho Admin em 2 linhas (Garante que nunca corte nem comprima)
+      const adminHeaderContent = document.querySelector('.admin-header-content');
+      const adminBrand = document.querySelector('.admin-header-brand');
+      const adminUserMenu = document.querySelector('.admin-user-menu');
+      const adminNav = document.querySelector('.admin-nav');
+      if (adminHeaderContent && adminBrand && adminUserMenu && adminNav) {
+        let topRow = adminHeaderContent.querySelector('.admin-header-top-row');
+        if (!topRow) {
+          topRow = document.createElement('div');
+          topRow.className = 'admin-header-top-row';
+          adminHeaderContent.insertBefore(topRow, adminNav);
+          topRow.appendChild(adminBrand);
+          topRow.appendChild(adminUserMenu);
+        }
+      }
     }
 
     if (document.readyState === 'loading') {
