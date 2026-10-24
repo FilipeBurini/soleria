@@ -105,12 +105,23 @@ Na tela que se abre, preencha os dados da contratante:
    - **URL do Ícone / Favicon:** Link do símbolo da marca da cliente.
    - **Cor Primária:** Escolha visualmente no seletor de cores ou digite o hexadecimal (ex: `#C48259`).
    - **Cor Secundária / Acento:** Escolha visualmente no seletor (ex: `#D4AF37`).
-4. **Atendimento & Cobrança:**
+4. **Textos da Vitrine & Página Inicial (Sincronizado):**
+   - **Slogan / Subtítulo da Marca:** Ex: `Pratas 925 com Alma e Luz` ou `Semijoias que contam sua luz`.
+   - **Destaque Superior do Banner (Eyebrow):** Ex: `Pratas 925 & Pedras Naturais`.
+   - **Título Principal do Banner:** Ex: `O Brilho Autêntico da Prata`.
+   - **Texto Descritivo do Banner:** Frase de apresentação do catálogo no topo da página inicial.
+   - **Texto Sobre a Marca (Rodapé):** Breve parágrafo institucional exibido no rodapé da loja.
+5. **Atendimento & Cobrança:**
    - **WhatsApp de Atendimento:** Número oficial com DDD (ex: `5511999999999`).
    - **Nome da Atendente:** Ex: `Ana` ou `Mariana`.
    - **Valor da Mensalidade (R$):** Ex: `97.00` ou `147.00`.
    - **Válido até:** Defina a data da primeira mensalidade (ex: daqui a 30 dias).
-5. Clique em **"Salvar Parâmetros da Loja"**.
+6. Clique em **"Salvar Parâmetros da Loja"**.
+
+> 🔄 **Sincronização Bidirecional em Tempo Real:**
+> - Você pode alterar qualquer texto ou parâmetro pelo seu Master em [admin-licencas.html](./admin-licencas.html).
+> - A própria lojista também tem um botão **"🎨 Personalizar Loja"** no painel dela ([admin.html](./admin.html)).
+> - Como ambos gravam diretamente no mesmo registro central do Supabase Master, **se um alterar, o outro fica automaticamente atualizado na hora**, sem risco de conflito ou divergência!
 
 ---
 

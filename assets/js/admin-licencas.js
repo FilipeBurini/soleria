@@ -37,6 +37,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const inpPrimaryPicker = document.getElementById('lic-primary-color-picker');
   const inpSecondaryColor = document.getElementById('lic-secondary-color');
   const inpSecondaryPicker = document.getElementById('lic-secondary-color-picker');
+  const inpBrandSubtitle = document.getElementById('lic-brand-subtitle');
+  const inpHeroEyebrow = document.getElementById('lic-hero-eyebrow');
+  const inpHeroTitle = document.getElementById('lic-hero-title');
+  const inpHeroDesc = document.getElementById('lic-hero-desc');
+  const inpAboutText = document.getElementById('lic-about-text');
   const inpWhatsapp = document.getElementById('lic-whatsapp');
   const inpAttendant = document.getElementById('lic-attendant');
   const inpMonthlyFee = document.getElementById('lic-monthly-fee');
@@ -311,6 +316,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       inpPrimaryPicker.value = lic.primary_color || '#AB5332';
       inpSecondaryColor.value = lic.secondary_color || '#C5A465';
       inpSecondaryPicker.value = lic.secondary_color || '#C5A465';
+      if (inpBrandSubtitle) inpBrandSubtitle.value = lic.brand_subtitle || '';
+      if (inpHeroEyebrow) inpHeroEyebrow.value = lic.hero_eyebrow || '';
+      if (inpHeroTitle) inpHeroTitle.value = lic.hero_title || '';
+      if (inpHeroDesc) inpHeroDesc.value = lic.hero_desc || '';
+      if (inpAboutText) inpAboutText.value = lic.about_text || '';
       inpWhatsapp.value = lic.whatsapp_number || '';
       inpAttendant.value = lic.attendant_name || 'Carla';
       inpMonthlyFee.value = lic.monthly_fee !== undefined ? lic.monthly_fee : 97.00;
@@ -330,6 +340,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       inpPrimaryPicker.value = '#AB5332';
       inpSecondaryColor.value = '#C5A465';
       inpSecondaryPicker.value = '#C5A465';
+      if (inpBrandSubtitle) inpBrandSubtitle.value = '';
+      if (inpHeroEyebrow) inpHeroEyebrow.value = '';
+      if (inpHeroTitle) inpHeroTitle.value = '';
+      if (inpHeroDesc) inpHeroDesc.value = '';
+      if (inpAboutText) inpAboutText.value = '';
       inpWhatsapp.value = '';
       inpAttendant.value = 'Carla';
       inpMonthlyFee.value = '97.00';
@@ -413,6 +428,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       icon_url: inpIconUrl.value.trim() || null,
       primary_color: inpPrimaryColor.value.trim().toUpperCase() || '#AB5332',
       secondary_color: inpSecondaryColor.value.trim().toUpperCase() || '#C5A465',
+      brand_subtitle: inpBrandSubtitle?.value.trim() || null,
+      hero_eyebrow: inpHeroEyebrow?.value.trim() || null,
+      hero_title: inpHeroTitle?.value.trim() || null,
+      hero_desc: inpHeroDesc?.value.trim() || null,
+      about_text: inpAboutText?.value.trim() || null,
       whatsapp_number: inpWhatsapp.value.trim() || null,
       attendant_name: inpAttendant.value.trim() || 'Carla',
       monthly_fee: parseFloat(inpMonthlyFee.value) || 0,

@@ -23,6 +23,13 @@ CREATE TABLE IF NOT EXISTS public.licenses (
   primary_color TEXT DEFAULT '#AB5332',                      -- Cor primária (ex: Terracota, Azul, Verde)
   secondary_color TEXT DEFAULT '#C5A465',                    -- Cor secundária / Dourada
   
+  -- Textos Customizáveis da Vitrine / Home (White-Label)
+  brand_subtitle TEXT,                                       -- Slogan da marca (ex: 'Semijoias que contam sua luz' ou 'Pratas 925')
+  hero_eyebrow TEXT,                                         -- Destaque superior do banner (ex: 'Semijoias Finas & Banhadas a Ouro 18k')
+  hero_title TEXT,                                           -- Título principal do banner (ex: 'O Fascínio da Luz e dos Detalhes')
+  hero_desc TEXT,                                            -- Texto descritivo do banner
+  about_text TEXT,                                           -- Texto sobre a marca no rodapé
+
   -- Atendimento & WhatsApp da Loja
   whatsapp_number TEXT,                                      -- Ex: '5511999999999'
   attendant_name TEXT DEFAULT 'Carla',                       -- Nome da atendente (ex: 'Ana', 'Mariana')
@@ -36,6 +43,13 @@ CREATE TABLE IF NOT EXISTS public.licenses (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migração segura (caso a tabela licenses já exista no Supabase Master):
+ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS brand_subtitle TEXT;
+ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS hero_eyebrow TEXT;
+ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS hero_title TEXT;
+ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS hero_desc TEXT;
+ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS about_text TEXT;
 
 -- Índices de busca rápida por chave e por domínio
 CREATE INDEX IF NOT EXISTS idx_licenses_license_key ON public.licenses(license_key);

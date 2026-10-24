@@ -104,23 +104,91 @@ const MASTER_CONFIG = {
     if (tenant.whatsapp_number) window.TENANT_WHATSAPP = tenant.whatsapp_number;
     if (tenant.attendant_name) window.TENANT_ATTENDANT = tenant.attendant_name;
     if (tenant.client_name) window.TENANT_STORE_NAME = tenant.client_name;
+    window.TENANT_CONFIG = tenant;
 
-    // D) Aplica Logos e Título assim que o DOM carregar
+    // Função global de sincronização bidirecional com o Master
+    window.saveTenantSettingsToMaster = async function(fields) {
+      if (!window.TENANT_CONFIG || !window.TENANT_CONFIG.id) {
+        throw new Error('Configuração de loja não encontrada para este domínio.');
+      }
+      const response = await fetch(`${MASTER_CONFIG.supabaseUrl}/rest/v1/licenses?id=eq.${encodeURIComponent(window.TENANT_CONFIG.id)}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': MASTER_CONFIG.supabaseAnonKey,
+          'Authorization': `Bearer ${MASTER_CONFIG.supabaseAnonKey}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(fields)
+      });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || 'Falha ao salvar no servidor Master.');
+      }
+      const rows = await response.json();
+      if (rows && rows[0]) {
+        window.TENANT_CONFIG = { ...window.TENANT_CONFIG, ...rows[0] };
+      }
+      return rows;
+    };
+
+    // D) Aplica Logos, Títulos e Textos Customizáveis assim que o DOM carregar
     document.addEventListener('DOMContentLoaded', () => {
-      // Atualiza o Título da Página
+      // 1. Atualiza o Título da Página e Nome da Marca
       if (tenant.client_name) {
         document.title = document.title.replace(/Soléria/gi, tenant.client_name);
         document.querySelectorAll('.brand-title').forEach(el => el.textContent = tenant.client_name);
       }
 
-      // Atualiza Imagem da Logo
+      // 2. Atualiza Slogan / Subtítulo da Marca
+      if (tenant.brand_subtitle) {
+        document.querySelectorAll('.brand-subtitle').forEach(el => el.textContent = tenant.brand_subtitle);
+      }
+
+      // 3. Atualiza Destaque Superior do Banner (Eyebrow)
+      if (tenant.hero_eyebrow) {
+        const el = document.querySelector('.catalog-hero-eyebrow');
+        if (el) el.textContent = tenant.hero_eyebrow;
+      }
+
+      // 4. Atualiza Título Principal do Banner
+      if (tenant.hero_title) {
+        const el = document.querySelector('.catalog-hero-title');
+        if (el) el.textContent = tenant.hero_title;
+      }
+
+      // 5. Atualiza Texto Descritivo do Banner
+      if (tenant.hero_desc) {
+        const el = document.querySelector('.catalog-hero-desc');
+        if (el) el.textContent = tenant.hero_desc;
+      }
+
+      // 6. Atualiza Texto "Sobre a Loja" no Rodapé
+      if (tenant.about_text) {
+        const el = document.querySelector('.site-footer .footer-top p');
+        if (el) el.textContent = tenant.about_text;
+      }
+
+      // 7. Atualiza Nome da Atendente no botão do WhatsApp e rodapé
+      if (tenant.attendant_name) {
+        const btnWa = document.getElementById('modal-whatsapp-btn');
+        if (btnWa && btnWa.textContent.includes('Carla')) {
+          btnWa.innerHTML = btnWa.innerHTML.replace(/Carla/g, tenant.attendant_name);
+        }
+        const footerAtt = document.querySelector('.footer-bottom');
+        if (footerAtt && footerAtt.textContent.includes('Carla')) {
+          footerAtt.innerHTML = footerAtt.innerHTML.replace(/com a Carla/g, `com a ${tenant.attendant_name}`);
+        }
+      }
+
+      // 8. Atualiza Imagem da Logo
       if (tenant.logo_url) {
         document.querySelectorAll('.header-logo-img, .admin-logo-img, img[alt*="Soléria"]').forEach(img => {
           img.src = tenant.logo_url;
         });
       }
 
-      // Atualiza Ícone / Favicon
+      // 9. Atualiza Ícone / Favicon
       if (tenant.icon_url) {
         document.querySelectorAll('link[rel="icon"], .admin-logo-icon').forEach(el => {
           if (el.tagName === 'LINK') el.href = tenant.icon_url;

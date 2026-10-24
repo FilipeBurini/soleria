@@ -454,8 +454,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateWhatsappLink() {
-      const phone = '5516997990729'; // WhatsApp Soléria (Carla)
-      let text = `Olá, Carla! Gostaria de mais informações sobre a peça "${product.name}" (${formatBRL(product.sale_price)}) que visualizei no catálogo Soléria.`;
+      const phone = window.TENANT_WHATSAPP || '5516997990729';
+      const attendant = window.TENANT_ATTENDANT || 'Carla';
+      const storeName = window.TENANT_STORE_NAME || 'Soléria';
+      let text = `Olá, ${attendant}! Gostaria de mais informações sobre a peça "${product.name}" (${formatBRL(product.sale_price)}) que visualizei no catálogo ${storeName}.`;
       if (selectedSize) {
         text += ` Tenho interesse no Aro ${selectedSize}.`;
       }
