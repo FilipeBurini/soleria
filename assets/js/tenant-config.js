@@ -17,7 +17,7 @@ const MASTER_CONFIG = {
   supabaseAnonKey: "sb_publishable_P-XdBQaYxckZYoussxYHFA_ZW_ZSgmq"
 };
 
-(async function initTenant() {
+window.TENANT_PROMISE = (async function initTenant() {
   try {
     // 1. Identifica a loja pelo domínio atual ou pela meta tag
     const currentDomain = window.location.hostname;
@@ -58,7 +58,7 @@ const MASTER_CONFIG = {
     // 4. Se for o painel administrativo e a licença estiver suspensa ou vencida: BLOQUEIA
     const isAdminPage = window.location.pathname.includes('admin');
     if (isAdminPage && (isExpired || isSuspended)) {
-      document.addEventListener('DOMContentLoaded', () => {
+      function showBlockedScreen() {
         document.body.innerHTML = `
           <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #141312; color: #FAF8F5; font-family: system-ui, -apple-system, sans-serif; padding: 1.5rem; text-align: center;">
             <div style="max-width: 480px; width: 100%; background: #1E1C1A; border: 1.5px solid ${tenant.primary_color || '#AB5332'}; border-radius: 12px; padding: 2.5rem 2rem; box-shadow: 0 15px 40px rgba(0,0,0,0.6);">
@@ -76,7 +76,12 @@ const MASTER_CONFIG = {
             </div>
           </div>
         `;
-      });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', showBlockedScreen);
+      } else {
+        showBlockedScreen();
+      }
       throw new Error('Acesso administrativo bloqueado por expiração de licença.');
     }
 
@@ -98,6 +103,8 @@ const MASTER_CONFIG = {
     if (tenant.supabase_url && tenant.supabase_anon_key) {
       window.TENANT_SUPABASE_URL = tenant.supabase_url;
       window.TENANT_SUPABASE_ANON_KEY = tenant.supabase_anon_key;
+      // Reseta cliente em cache se houver
+      window.db = null;
     }
 
     // C) Aplica Dados de Atendimento da Loja
@@ -132,8 +139,8 @@ const MASTER_CONFIG = {
       return rows;
     };
 
-    // D) Aplica Logos, Títulos e Textos Customizáveis assim que o DOM carregar
-    document.addEventListener('DOMContentLoaded', () => {
+    // D) Aplica Logos, Títulos e Textos Customizáveis (Executa com segurança de ciclo de vida)
+    function applyDOMChanges() {
       // 1. Atualiza o Título da Página e Nome da Marca
       if (tenant.client_name) {
         document.title = document.title.replace(/Soléria/gi, tenant.client_name);
@@ -181,10 +188,15 @@ const MASTER_CONFIG = {
         }
       }
 
-      // 8. Atualiza Imagem da Logo
+      // 8. Atualiza Imagem da Logo ou esconde logo genérica se cliente não tiver imagem ainda
       if (tenant.logo_url) {
-        document.querySelectorAll('.header-logo-img, .admin-logo-img, img[alt*="Soléria"]').forEach(img => {
+        document.querySelectorAll('.header-brand-symbol, .header-logo-img, .admin-logo-img, img[alt*="Soléria"]').forEach(img => {
           img.src = tenant.logo_url;
+        });
+      } else if (tenant.client_name) {
+        // Se a cliente não tem logo personalizada ainda, remove o símbolo do sol da Soléria
+        document.querySelectorAll('.header-brand-symbol, .hero-emblem-wrap').forEach(el => {
+          el.style.display = 'none';
         });
       }
 
@@ -204,7 +216,13 @@ const MASTER_CONFIG = {
           window.location.href = 'admin';
         }
       }
-    });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyDOMChanges);
+    } else {
+      applyDOMChanges();
+    }
 
   } catch (err) {
     console.warn('[Tenant Bootloader]', err.message || err);

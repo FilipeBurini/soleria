@@ -15,17 +15,26 @@ const SUPABASE_ANON_KEY = (typeof window !== 'undefined' && window.TENANT_SUPABA
   ? window.TENANT_SUPABASE_ANON_KEY
   : 'sb_publishable_P-XdBQaYxckZYoussxYHFA_ZW_ZSgmq';
 
-// Inicialização do cliente Supabase via CDN global (@supabase/supabase-js@2)
 let db = null;
+let _cachedUrl = null;
 
 function getSupabaseClient() {
-  if (db) {
+  const targetUrl = (typeof window !== 'undefined' && window.TENANT_SUPABASE_URL)
+    ? window.TENANT_SUPABASE_URL
+    : 'https://kgmkvskdhoficppjskgy.supabase.co';
+
+  const targetKey = (typeof window !== 'undefined' && window.TENANT_SUPABASE_ANON_KEY)
+    ? window.TENANT_SUPABASE_ANON_KEY
+    : 'sb_publishable_P-XdBQaYxckZYoussxYHFA_ZW_ZSgmq';
+
+  if (db && _cachedUrl === targetUrl) {
     if (typeof window !== 'undefined') window.db = db;
     return db;
   }
+
   try {
-    if (window.supabase && typeof window.supabase.createClient === 'function' && isSupabaseConfigured()) {
-      db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      db = window.supabase.createClient(targetUrl, targetKey, {
         auth: {
           persistSession: true,
           autoRefreshToken: true,
@@ -35,6 +44,7 @@ function getSupabaseClient() {
           }
         }
       });
+      _cachedUrl = targetUrl;
       if (typeof window !== 'undefined') window.db = db;
       return db;
     }

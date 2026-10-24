@@ -207,9 +207,16 @@ document.addEventListener('DOMContentLoaded', () => {
     grid.style.display = 'none';
     emptyState.style.display = 'none';
 
+    // Aguarda o carregamento das credenciais do tenant (White-Label)
+    if (window.TENANT_PROMISE) {
+      try { await window.TENANT_PROMISE; } catch (e) {}
+    }
+    const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : (window.db || null));
+    const isTenant = Boolean(window.TENANT_CONFIG && window.TENANT_CONFIG.client_name);
+
     try {
-      if (db && isSupabaseConfigured()) {
-        const { data, error } = await db
+      if (client && isSupabaseConfigured()) {
+        const { data, error } = await client
           .from('products')
           .select('id, name, sku, category, description, sale_price, images, status, sizes, original_price, stock')
           .eq('status', 'ativo')
@@ -217,22 +224,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (error) {
           console.error('Erro ao buscar produtos:', error);
-          showToast('Não foi possível carregar o catálogo ao vivo. Exibindo acervo demonstrativo.', 'error');
-          allProducts = DEMO_PRODUCTS;
+          if (isTenant) {
+            allProducts = [];
+          } else {
+            showToast('Não foi possível carregar o catálogo ao vivo. Exibindo acervo demonstrativo.', 'error');
+            allProducts = DEMO_PRODUCTS;
+          }
         } else if (data && data.length > 0) {
           // O estoque dos produtos já é mantido sincronizado atomicamente via triggers do banco
           allProducts = data;
         } else {
-          // Sem produtos ativos ainda cadastrados no banco
-          allProducts = DEMO_PRODUCTS;
+          // Loja sem produtos ativos cadastrados ainda
+          if (isTenant) {
+            allProducts = [];
+            const emptyTitle = document.querySelector('.empty-state-title');
+            const emptyDesc = document.querySelector('.empty-state-desc');
+            if (emptyTitle) emptyTitle.textContent = 'Catálogo em Preparação';
+            if (emptyDesc) emptyDesc.textContent = `A loja ${window.TENANT_CONFIG.client_name} está cadastrando suas peças exclusivas. Em breve novidades!`;
+          } else {
+            allProducts = DEMO_PRODUCTS;
+          }
         }
       } else {
-        // Modo demonstração pré-configuração
-        allProducts = DEMO_PRODUCTS;
+        allProducts = isTenant ? [] : DEMO_PRODUCTS;
       }
     } catch (err) {
       console.error('Falha de conexão:', err);
-      allProducts = DEMO_PRODUCTS;
+      allProducts = isTenant ? [] : DEMO_PRODUCTS;
     } finally {
       spinner.style.display = 'none';
       setupCategoryFilters();

@@ -4,6 +4,11 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Aguarda carregamento das credenciais do tenant
+  if (window.TENANT_PROMISE) {
+    try { await window.TENANT_PROMISE; } catch (e) {}
+  }
+
   // Elementos de Autenticação
   const authSection = document.getElementById('auth-section');
   const adminApp = document.getElementById('admin-app');
