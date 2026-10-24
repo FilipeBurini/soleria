@@ -7,29 +7,47 @@
  * 2. As permissões de acesso são protegidas pelas Políticas RLS no banco de dados.
  */
 
-const SUPABASE_URL = (typeof window !== 'undefined' && window.TENANT_SUPABASE_URL)
-  ? window.TENANT_SUPABASE_URL
-  : 'https://kgmkvskdhoficppjskgy.supabase.co';
+function getDynamicSupabaseUrl() {
+  if (typeof window !== 'undefined' && window.TENANT_SUPABASE_URL) {
+    return window.TENANT_SUPABASE_URL;
+  }
+  const isMasterHost = (typeof window !== 'undefined') && 
+    ['localhost', '127.0.0.1', 'soleria.carlamota.com.br'].includes(window.location.hostname);
+  return isMasterHost ? 'https://kgmkvskdhoficppjskgy.supabase.co' : null;
+}
 
-const SUPABASE_ANON_KEY = (typeof window !== 'undefined' && window.TENANT_SUPABASE_ANON_KEY)
-  ? window.TENANT_SUPABASE_ANON_KEY
-  : 'sb_publishable_P-XdBQaYxckZYoussxYHFA_ZW_ZSgmq';
+function getDynamicSupabaseAnonKey() {
+  if (typeof window !== 'undefined' && window.TENANT_SUPABASE_ANON_KEY) {
+    return window.TENANT_SUPABASE_ANON_KEY;
+  }
+  const isMasterHost = (typeof window !== 'undefined') && 
+    ['localhost', '127.0.0.1', 'soleria.carlamota.com.br'].includes(window.location.hostname);
+  return isMasterHost ? 'sb_publishable_P-XdBQaYxckZYoussxYHFA_ZW_ZSgmq' : null;
+}
+
+// Vincula SUPABASE_URL e SUPABASE_ANON_KEY dinamicamente a nível global
+try {
+  if (typeof window !== 'undefined') {
+    Object.defineProperty(window, 'SUPABASE_URL', {
+      get: getDynamicSupabaseUrl,
+      configurable: true
+    });
+    Object.defineProperty(window, 'SUPABASE_ANON_KEY', {
+      get: getDynamicSupabaseAnonKey,
+      configurable: true
+    });
+  }
+} catch (e) {
+  window.SUPABASE_URL = getDynamicSupabaseUrl();
+  window.SUPABASE_ANON_KEY = getDynamicSupabaseAnonKey();
+}
 
 let db = null;
 let _cachedUrl = null;
 
 function getSupabaseClient() {
-  const isMasterHost = (typeof window !== 'undefined') && 
-    ['localhost', '127.0.0.1', 'soleria.carlamota.com.br'].includes(window.location.hostname);
-
-  // Se for domínio de cliente parceira, SÓ conecta no banco DELA. Nunca usa o da Soléria como fallback.
-  const targetUrl = (typeof window !== 'undefined' && window.TENANT_SUPABASE_URL)
-    ? window.TENANT_SUPABASE_URL
-    : (isMasterHost ? 'https://kgmkvskdhoficppjskgy.supabase.co' : null);
-
-  const targetKey = (typeof window !== 'undefined' && window.TENANT_SUPABASE_ANON_KEY)
-    ? window.TENANT_SUPABASE_ANON_KEY
-    : (isMasterHost ? 'sb_publishable_P-XdBQaYxckZYoussxYHFA_ZW_ZSgmq' : null);
+  const targetUrl = getDynamicSupabaseUrl();
+  const targetKey = getDynamicSupabaseAnonKey();
 
   if (!targetUrl || !targetKey) {
     return null;
@@ -73,10 +91,9 @@ try {
  * Verifica se o usuário já preencheu a URL e chave do Supabase
  */
 function isSupabaseConfigured() {
-  return SUPABASE_URL && 
-         SUPABASE_ANON_KEY && 
-         !SUPABASE_URL.includes('SUA-URL-AQUI') && 
-         !SUPABASE_ANON_KEY.includes('SUA-ANON-KEY-AQUI');
+  const u = getDynamicSupabaseUrl();
+  const k = getDynamicSupabaseAnonKey();
+  return u && k && !u.includes('SUA-URL-AQUI') && !k.includes('SUA-ANON-KEY-AQUI');
 }
 
 /**
@@ -138,29 +155,37 @@ function getAuthToken() {
 }
 
 /**
- * Retorna o usuário autenticado atualmente, ou null se não houver sessão ativa
+ * Retorna o usuário autenticado atualmente no projeto ativo, ou null se não houver sessão ativa
  */
 async function getCurrentUser() {
-  // 1. Tenta recuperar instantaneamente do LocalStorage
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.startsWith('sb-') && key.endsWith('-auth-token'))) {
-        const item = localStorage.getItem(key);
-        if (item) {
-          const parsed = JSON.parse(item);
-          const user = parsed.user || parsed?.session?.user;
-          if (user) return user;
-        }
+  if (typeof window !== 'undefined' && window.TENANT_PROMISE) {
+    try { await window.TENANT_PROMISE; } catch (e) {}
+  }
+
+  const targetUrl = getDynamicSupabaseUrl();
+  if (!targetUrl) return null;
+
+  // Extrai o ID do projeto atual (ex: 'nppvswphtiquqgscpgvj') para isolar a sessão
+  const projectRef = targetUrl.split('//')[1]?.split('.')[0];
+  const targetTokenKey = projectRef ? `sb-${projectRef}-auth-token` : null;
+
+  // 1. Tenta recuperar estritamente do LocalStorage do projeto ativo (nunca de outro projeto!)
+  if (targetTokenKey) {
+    try {
+      const item = localStorage.getItem(targetTokenKey);
+      if (item) {
+        const parsed = JSON.parse(item);
+        const user = parsed.user || parsed?.session?.user;
+        if (user) return user;
       }
-    }
-  } catch (e) {}
+    } catch (e) {}
+  }
 
   const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : db);
   if (!client || !isSupabaseConfigured()) return null;
   try {
     const sessionPromise = client.auth.getSession();
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout session')), 1500));
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout session')), 2000));
     const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]);
     if (error || !session) return null;
     return session.user;
@@ -171,11 +196,15 @@ async function getCurrentUser() {
 
 /**
  * Guarda de rota para páginas restritas do Admin.
- * Se o usuário não estiver autenticado, redireciona para admin.html
+ * Se o usuário não estiver autenticado no projeto ativo, redireciona para login
  */
 async function requireAuth() {
+  if (typeof window !== 'undefined' && window.TENANT_PROMISE) {
+    try { await window.TENANT_PROMISE; } catch (e) {}
+  }
+
   if (!isSupabaseConfigured()) {
-    console.warn('Supabase não configurado. Redirecionando para login admin.');
+    console.warn('Supabase não configurado para este domínio.');
     if (!window.location.pathname.endsWith('admin')) {
       window.location.href = 'admin';
     }
@@ -196,9 +225,10 @@ async function requireAuth() {
  * Realiza logout do usuário e redireciona para tela de login
  */
 async function logoutAdmin() {
-  if (db) {
+  const client = getSupabaseClient();
+  if (client) {
     try {
-      await db.auth.signOut();
+      await client.auth.signOut();
     } catch (e) {
       console.error('Erro ao deslogar:', e);
     }

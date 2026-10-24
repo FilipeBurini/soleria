@@ -17,6 +17,21 @@ const MASTER_CONFIG = {
   supabaseAnonKey: "sb_publishable_P-XdBQaYxckZYoussxYHFA_ZW_ZSgmq"
 };
 
+// Carga instantânea síncrona (0ms) a partir de cache de sessão do domínio atual
+const currentHost = window.location.hostname;
+try {
+  const cachedStr = sessionStorage.getItem('soleria_cfg_' + currentHost);
+  if (cachedStr) {
+    const cachedTenant = JSON.parse(cachedStr);
+    if (cachedTenant && cachedTenant.supabase_url) {
+      window.TENANT_SUPABASE_URL = cachedTenant.supabase_url;
+      window.TENANT_SUPABASE_ANON_KEY = cachedTenant.supabase_anon_key;
+      window.TENANT_STORE_NAME = cachedTenant.client_name;
+      window.TENANT_CONFIG = cachedTenant;
+    }
+  }
+} catch (e) {}
+
 window.TENANT_PROMISE = (async function initTenant() {
   try {
     // 1. Identifica a loja pelo domínio atual ou pela meta tag
@@ -133,6 +148,11 @@ window.TENANT_PROMISE = (async function initTenant() {
     if (tenant.attendant_name) window.TENANT_ATTENDANT = tenant.attendant_name;
     if (tenant.client_name) window.TENANT_STORE_NAME = tenant.client_name;
     window.TENANT_CONFIG = tenant;
+
+    // Salva em cache de sessão para que abas e telas subsequentes tenham acesso síncrono instantâneo (0ms)
+    try {
+      sessionStorage.setItem('soleria_cfg_' + currentDomain, JSON.stringify(tenant));
+    } catch (e) {}
 
     // Função global de sincronização bidirecional com o Master
     window.saveTenantSettingsToMaster = async function(fields) {
