@@ -212,7 +212,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Logout
   if (btnLogout) {
-    btnLogout.addEventListener('click', () => {
+    btnLogout.addEventListener('click', (e) => {
+      e.preventDefault();
       logoutAdmin();
     });
   }

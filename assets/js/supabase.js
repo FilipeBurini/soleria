@@ -203,6 +203,29 @@ async function getCurrentUser() {
 }
 
 /**
+ * Retorna a rota correta para a tela de autenticação / login do admin
+ */
+function getAdminLoginUrl() {
+  if (typeof window !== 'undefined' && window.location.protocol === 'file:') {
+    return 'admin.html';
+  }
+  return '/admin';
+}
+
+/**
+ * Identifica se a página atual é a tela principal do admin / login
+ */
+function isMainAdminPage() {
+  if (typeof window === 'undefined') return false;
+  const path = (window.location.pathname || '').toLowerCase();
+  return path === '/admin' || 
+         path.endsWith('/admin') || 
+         path.endsWith('/admin.html') || 
+         path.endsWith('\\admin.html') ||
+         path === 'admin';
+}
+
+/**
  * Guarda de rota para páginas restritas do Admin.
  * Se o usuário não estiver autenticado no projeto ativo, redireciona para login
  */
@@ -211,18 +234,20 @@ async function requireAuth() {
     try { await window.TENANT_PROMISE; } catch (e) {}
   }
 
+  const loginUrl = getAdminLoginUrl();
+
   if (!isSupabaseConfigured()) {
     console.warn('Supabase não configurado para este domínio.');
-    if (!window.location.pathname.endsWith('admin')) {
-      window.location.href = 'admin';
+    if (!isMainAdminPage()) {
+      window.location.replace(loginUrl);
     }
     return null;
   }
 
   const user = await getCurrentUser();
   if (!user) {
-    if (!window.location.pathname.endsWith('admin')) {
-      window.location.href = 'admin';
+    if (!isMainAdminPage()) {
+      window.location.replace(loginUrl);
     }
     return null;
   }
@@ -230,18 +255,74 @@ async function requireAuth() {
 }
 
 /**
- * Realiza logout do usuário e redireciona para tela de login
+ * Realiza logout do usuário e redireciona para tela de login com limpeza total de sessão
  */
 async function logoutAdmin() {
+  // 1. Feedback visual imediato nos botões de logout
+  try {
+    const logoutBtns = document.querySelectorAll('#btn-logout, .btn-logout');
+    logoutBtns.forEach(btn => {
+      btn.disabled = true;
+      btn.textContent = 'Saindo...';
+      btn.style.opacity = '0.6';
+      btn.style.cursor = 'not-allowed';
+    });
+  } catch (e) {}
+
+  // 2. Chamada de signOut no Supabase com timeout de segurança (não trava em caso de oscilação de rede)
   const client = getSupabaseClient();
-  if (client) {
+  if (client && client.auth) {
     try {
-      await client.auth.signOut();
+      const signOutPromise = client.auth.signOut();
+      const timeoutPromise = new Promise(resolve => setTimeout(resolve, 1200));
+      await Promise.race([signOutPromise, timeoutPromise]);
     } catch (e) {
-      console.error('Erro ao deslogar:', e);
+      console.warn('Aviso durante signOut do Supabase:', e);
     }
   }
-  window.location.href = 'admin';
+
+  // 3. Limpeza forçada e explícita de todos os tokens de autenticação no localStorage
+  try {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('sb-') || key.includes('auth-token') || key.includes('supabase.auth'))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+  } catch (e) {
+    console.warn('Aviso ao limpar tokens do localStorage:', e);
+  }
+
+  // 4. Reseta instâncias e cache em memória
+  db = null;
+  _cachedUrl = null;
+  if (typeof window !== 'undefined') {
+    window.db = null;
+  }
+
+  const loginUrl = getAdminLoginUrl();
+
+  // 5. Se já estiver na página principal do admin (/admin ou admin.html)
+  if (isMainAdminPage()) {
+    // Altera o DOM instantaneamente para garantir percepção imediata de logout
+    const authSection = document.getElementById('auth-section');
+    const adminApp = document.getElementById('admin-app');
+    if (adminApp) adminApp.style.display = 'none';
+    if (authSection) authSection.style.display = 'flex';
+
+    // Limpa campos sensíveis do formulário de login
+    const loginPass = document.getElementById('login-password');
+    if (loginPass) loginPass.value = '';
+
+    // Força o reload da página para garantir que todos os timers e listeners sejam descarregados
+    window.location.replace(loginUrl);
+    window.location.reload();
+  } else {
+    // Se estiver em outra página do painel (ex: pedidos, clientes, lotes), redireciona para a tela de login
+    window.location.replace(loginUrl);
+  }
 }
 
 /**
@@ -356,3 +437,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.body.prepend(notice);
   }
 });
+
+// Garante que qualquer botão de logout na interface execute logoutAdmin de forma infalível
+if (typeof document !== 'undefined') {
+  const attachGlobalLogoutHandlers = () => {
+    const logoutBtns = document.querySelectorAll('#btn-logout, .btn-logout');
+    logoutBtns.forEach(btn => {
+      if (!btn.dataset.globalLogoutBound) {
+        btn.dataset.globalLogoutBound = 'true';
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          logoutAdmin();
+        });
+      }
+    });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachGlobalLogoutHandlers);
+  } else {
+    attachGlobalLogoutHandlers();
+  }
+  // Fallback após carregamento assíncrono de componentes
+  setTimeout(attachGlobalLogoutHandlers, 500);
+}

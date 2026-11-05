@@ -5,6 +5,21 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Guarda de rota autenticada
+  const currentUser = await requireAuth();
+  if (!currentUser) return;
+
+  const adminEmailElem = document.getElementById('admin-user-email');
+  if (adminEmailElem) adminEmailElem.textContent = currentUser.email || 'Operador Autenticado';
+
+  const btnLogout = document.getElementById('btn-logout');
+  if (btnLogout) {
+    btnLogout.addEventListener('click', (e) => {
+      e.preventDefault();
+      logoutAdmin();
+    });
+  }
+
   const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : (window.db || null));
 
   // Elementos do DOM
