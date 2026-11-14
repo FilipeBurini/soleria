@@ -151,107 +151,140 @@
         </svg>
       </button>
 
-      <div class="modal-grid">
-        <!-- Galeria de Imagens do Modal -->
+      <div class="modal-product-layout">
+        <!-- Galeria de Imagens -->
         <div class="modal-gallery">
-          <div class="modal-main-image-wrap">
-            <img class="modal-main-img" id="modal-img" src="" alt="Imagem da joia" loading="eager">
+          <div class="modal-main-image-wrap" id="modal-main-image-wrap" role="button" tabindex="0" title="Toque para ver a foto maior" aria-label="Toque para ver a foto maior">
+            <img id="modal-main-img" class="modal-main-image" src="" alt="Imagem do Produto">
+            <span class="modal-zoom-badge" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <line x1="11" y1="8" x2="11" y2="14"></line>
+                <line x1="8" y1="11" x2="14" y2="11"></line>
+              </svg>
+              <span>Toque para ampliar</span>
+            </span>
           </div>
           <div class="modal-thumbnails" id="modal-thumbnails">
             <!-- Miniaturas injetadas dinamicamente -->
           </div>
         </div>
 
-        <!-- Informações e Ações do Produto -->
-        <div class="modal-info">
-          <span class="modal-sku-tag" id="modal-sku">SKU: ---</span>
+        <!-- Informações e Ações -->
+        <div class="modal-details">
           <span class="modal-category-tag" id="modal-category">Categoria</span>
-          <h2 class="modal-title" id="modal-title">Nome do Produto</h2>
-          <p class="modal-desc" id="modal-desc">Descrição detalhada da peça...</p>
-
-          <div class="modal-pricing-box">
+          <h2 class="modal-product-name" id="modal-title">Nome da Joia</h2>
+          <div class="modal-product-sku" id="modal-sku" style="display: none;">
+            SKU: <span id="modal-sku-val"></span>
+          </div>
+          
+          <div class="modal-price-box">
             <div class="modal-price-promo-row" id="modal-promo-row" style="display: none;">
               <span class="modal-price-old" id="modal-price-old">De R$ 0,00</span>
-              <span class="modal-promo-badge" id="modal-promo-badge">-0% OFF</span>
+              <span class="modal-discount-badge" id="modal-discount-badge">-35% OFF</span>
             </div>
-            <div class="modal-price-current" id="modal-price-current">R$ 0,00</div>
-            <span class="modal-installments" id="modal-installments">ou em até 3x sem juros</span>
+            <div class="modal-price-val">
+              <span class="modal-price-prefix" id="modal-price-prefix" style="display: none;">Por </span><span id="modal-price">R$ 0,00</span>
+            </div>
+            <div class="modal-price-installment" id="modal-installment">Até 6x sem juros no cartão de crédito</div>
           </div>
 
-          <!-- Seleção de Aros Disponíveis -->
-          <div class="modal-ring-sizes-wrapper" id="modal-ring-sizes-wrapper" style="display: none;">
-            <div class="modal-ring-header">
-              <span class="modal-ring-title">💍 Escolha o tamanho do Aro:</span>
-              <span class="modal-ring-selected-label" id="modal-ring-selected-label">Nenhum selecionado</span>
+          <!-- Seleção de Aros Disponíveis (Visível apenas quando houver tamanhos em estoque) -->
+          <div class="modal-sizes-box" id="modal-sizes-wrapper" style="display: none;">
+            <div class="modal-sizes-title">
+              <span>💍</span> Aros Disponíveis em Estoque:
             </div>
-            <div class="modal-ring-grid" id="modal-ring-grid">
-              <!-- Botões de aro injetados dinamicamente via JS -->
-            </div>
-            <div class="modal-ring-hint" id="modal-ring-hint">
-              Selecione o aro desejado para adicionar à sacola.
-            </div>
+            <div class="modal-sizes-list" id="modal-sizes-list"></div>
           </div>
 
-          <div class="modal-cta-group">
-            <button class="btn-primary modal-cart-action-btn" id="modal-add-cart-btn" type="button">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <div class="modal-description-title">Detalhes da Peça</div>
+          <div class="modal-description-text" id="modal-description">
+            Descrição detalhada da peça.
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-add-to-cart" id="btn-modal-add-cart">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <path d="M16 10a4 4 0 0 1-8 0"></path>
               </svg>
-              <span>Adicionar à Sacola</span>
+              Adicionar à Sacola
             </button>
 
-            <a class="btn-secondary modal-whatsapp-btn" id="modal-whatsapp-link" href="#" target="_blank" rel="noopener noreferrer">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.694.062-2.123-.526-1.503-.618-2.463-2.158-2.538-2.257-.075-.1-0.609-.812-.609-1.547 0-.735.385-1.097.521-1.247.137-.15.299-.187.399-.187.1 0 .199.001.287.006.092.005.215-.035.337.257.126.301.433 1.055.471 1.133.038.078.063.17.013.27-.05.1-.075.163-.15.25-.075.088-.158.196-.226.263-.075.074-.153.155-.066.305.087.15.386.638.829 1.032.57.507 1.05.664 1.2.739.15.075.238.063.326-.038.088-.1.376-.438.476-.588.1-.15.199-.125.337-.075.138.05.875.413 1.025.488.15.075.25.112.287.175.037.062.037.362-.107.767z"/>
+            <a id="modal-whatsapp-btn" href="#" target="_blank" rel="noopener noreferrer" class="btn-whatsapp-concierge">
+              <svg viewBox="0 0 24 24">
+                <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.63c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.12-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.78 2.71 4.3 3.8 2.53 1.09 2.53.73 2.99.69.45-.05 1.47-.6 1.68-1.18.21-.59.21-1.09.15-1.19-.06-.1-.23-.17-.48-.29z"/>
               </svg>
-              <span>Comprar via WhatsApp</span>
+              Falar com a Carla no WhatsApp
             </a>
-          </div>
 
-          <div class="modal-benefits-list">
-            <div class="benefit-item">
-              <span class="benefit-icon">✦</span>
-              <span>Banho nobre em Ouro 18k e acabamento refinado</span>
-            </div>
-            <div class="benefit-item">
-              <span class="benefit-icon">🛡️</span>
-              <span>Garantia de 1 ano no banho e camada antialérgica</span>
-            </div>
-            <div class="benefit-item">
-              <span class="benefit-icon">📦</span>
-              <span>Embalagem elegante perfeita para presentear</span>
-            </div>
+            <button type="button" class="btn-modal-close-secondary" id="btn-modal-close-secondary">
+              ✕ Fechar Janela
+            </button>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Modal de Zoom da Foto (Lightbox) -->
-  <div class="lightbox-overlay" id="lightbox-modal" role="dialog" aria-hidden="true" style="display: none;">
-    <div class="lightbox-container">
-      <button type="button" class="lightbox-close-btn" id="lightbox-close" aria-label="Fechar ampliação">&times;</button>
-      
+  <!-- Lightbox de Ampliação de Foto (Modal de Zoom com Botão de Fechar) -->
+  <div class="image-lightbox-overlay" id="image-lightbox-modal" aria-hidden="true" role="dialog" aria-label="Foto ampliada da joia">
+    <div class="lightbox-header">
+      <span class="lightbox-counter" id="lightbox-counter">1 de 1</span>
+      <button type="button" class="lightbox-close-btn" id="lightbox-close-btn" aria-label="Fechar foto ampliada">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="lightbox-content" id="lightbox-content">
       <button type="button" class="lightbox-nav-btn lightbox-prev" id="lightbox-prev" aria-label="Foto anterior" style="display: none;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"></polyline>
         </svg>
       </button>
 
-      <div class="lightbox-img-wrap">
-        <img src="" alt="Ampliação da joia" id="lightbox-img" class="lightbox-img">
+      <div class="lightbox-img-wrapper" id="lightbox-img-wrapper">
+        <img id="lightbox-img" class="lightbox-img" src="" alt="Foto ampliada da joia">
       </div>
 
       <button type="button" class="lightbox-nav-btn lightbox-next" id="lightbox-next" aria-label="Próxima foto" style="display: none;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="9 18 15 12 9 6"></polyline>
         </svg>
       </button>
-
-      <div class="lightbox-counter" id="lightbox-counter" style="display: none;">1 / 1</div>
     </div>
+
+    <div class="lightbox-footer">
+      <div class="lightbox-thumbnails" id="lightbox-thumbnails"></div>
+      <button type="button" class="lightbox-btn-close-bottom" id="lightbox-btn-close-bottom">
+        ✕ Fechar foto ampliada
+      </button>
+    </div>
+  </div>
+
+  <!-- Drawer da Sacola de Compras -->
+  <div class="cart-drawer-overlay" id="cart-drawer-overlay">
+    <aside class="cart-drawer">
+      <div class="cart-drawer-header">
+        <div class="cart-drawer-title-wrap">
+          <h2 class="cart-drawer-title">Sua Sacola</h2>
+          <span class="cart-drawer-count" id="cart-drawer-count">0 peças</span>
+        </div>
+        <button type="button" class="cart-drawer-close" id="cart-drawer-close" aria-label="Fechar sacola">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="cart-drawer-body" id="cart-drawer-body"></div>
+      <div class="cart-drawer-footer" id="cart-drawer-footer"></div>
+    </aside>
   </div>
 
   <!-- Footer Público -->

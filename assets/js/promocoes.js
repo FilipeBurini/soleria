@@ -2,70 +2,88 @@
  * ==========================================================================
  * SOLÉRIA — SISTEMA DE PROMOÇÕES & OFERTAS (promocoes.js)
  * Renderiza exclusivamente as joias marcadas como promocionais no estoque.
- * Integração completa com Supabase, Sacola de Compras e White-Label.
+ * Modal idêntico à Home/Catálogo com galeria, aros em estoque, lightbox e sacola.
  * ==========================================================================
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Elementos DOM do Catálogo de Promoções
   const grid = document.getElementById('product-grid');
   const spinner = document.getElementById('loading-spinner');
   const emptyState = document.getElementById('empty-state');
   const categoryFilters = document.getElementById('category-filters');
   const searchInput = document.getElementById('catalog-search');
   const promoCountChip = document.getElementById('promo-count-chip');
+  const catalogAdminBar = document.getElementById('catalog-admin-bar');
 
-  // Modal Elements
+  // Modal DOM (Estrutura idêntica à Home/index.html)
   const modal = document.getElementById('product-modal');
   const modalCloseBtn = document.getElementById('modal-close-btn');
-  const modalImg = document.getElementById('modal-img');
+  const modalCloseSecondary = document.getElementById('btn-modal-close-secondary');
+  const modalMainImg = document.getElementById('modal-main-img');
+  const modalMainImageWrap = document.getElementById('modal-main-image-wrap');
   const modalThumbnails = document.getElementById('modal-thumbnails');
   const modalTitle = document.getElementById('modal-title');
-  const modalDesc = document.getElementById('modal-desc');
-  const modalPriceCurrent = document.getElementById('modal-price-current');
-  const modalPriceOld = document.getElementById('modal-price-old');
-  const modalPromoBadge = document.getElementById('modal-promo-badge');
-  const modalPromoRow = document.getElementById('modal-promo-row');
   const modalCategory = document.getElementById('modal-category');
   const modalSku = document.getElementById('modal-sku');
-  const modalInstallments = document.getElementById('modal-installments');
-  const modalWhatsappLink = document.getElementById('modal-whatsapp-link');
-  const modalAddCartBtn = document.getElementById('modal-add-cart-btn');
+  const modalSkuVal = document.getElementById('modal-sku-val');
+  const modalPrice = document.getElementById('modal-price');
+  const modalPriceOld = document.getElementById('modal-price-old');
+  const modalDiscountBadge = document.getElementById('modal-discount-badge');
+  const modalPromoRow = document.getElementById('modal-promo-row');
+  const modalPricePrefix = document.getElementById('modal-price-prefix');
+  const modalInstallment = document.getElementById('modal-installment');
+  const modalDesc = document.getElementById('modal-description');
+  const modalWhatsappBtn = document.getElementById('modal-whatsapp-btn');
+  const modalSizesWrapper = document.getElementById('modal-sizes-wrapper');
+  const modalSizesList = document.getElementById('modal-sizes-list');
 
-  // Aros
-  const ringSizesWrapper = document.getElementById('modal-ring-sizes-wrapper');
-  const ringGrid = document.getElementById('modal-ring-grid');
-  const ringSelectedLabel = document.getElementById('modal-ring-selected-label');
-  const ringHint = document.getElementById('modal-ring-hint');
-
-  // Lightbox
-  const lightboxModal = document.getElementById('lightbox-modal');
+  // Lightbox DOM (Foto Ampliada)
+  const lightboxModal = document.getElementById('image-lightbox-modal');
   const lightboxImg = document.getElementById('lightbox-img');
-  const lightboxClose = document.getElementById('lightbox-close');
-  const lightboxPrev = document.getElementById('lightbox-prev');
-  const lightboxNext = document.getElementById('lightbox-next');
+  const lightboxCloseBtn = document.getElementById('lightbox-close-btn');
+  const lightboxCloseBottom = document.getElementById('lightbox-btn-close-bottom');
   const lightboxCounter = document.getElementById('lightbox-counter');
+  const lightboxPrevBtn = document.getElementById('lightbox-prev');
+  const lightboxNextBtn = document.getElementById('lightbox-next');
+  const lightboxThumbnails = document.getElementById('lightbox-thumbnails');
+  const lightboxImgWrapper = document.getElementById('lightbox-img-wrapper');
 
+  // Estados Globais
   let allPromoProducts = [];
   let currentCategory = 'todas';
   let searchTerm = '';
-  let activeProduct = null;
-  let selectedAro = null;
-  let currentGalleryImages = [];
-  let currentImageIndex = 0;
   let isManagerActive = false;
+  let currentProductGallery = [];
+  let currentGalleryIndex = 0;
 
-  // Verifica se administrador está logado para exibir barra de gestão
+  // Utilitário de Formatação de Moeda
+  function formatBRL(val) {
+    if (typeof window.formatBRL === 'function') return window.formatBRL(val);
+    const n = Number(val) || 0;
+    return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  // Notificações Toast
+  function showToast(msg, type = 'info') {
+    if (typeof window.showToast === 'function') {
+      window.showToast(msg, type);
+    } else {
+      alert(msg);
+    }
+  }
+
+  // Checa se gestor está autenticado no Supabase
   checkAdminSession();
 
   async function checkAdminSession() {
-    const adminBar = document.getElementById('catalog-admin-bar');
     try {
       const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : (window.db || null));
       if (!client) return;
       const { data: { session } } = await client.auth.getSession();
       if (session && session.user) {
         isManagerActive = true;
-        if (adminBar) adminBar.style.display = 'block';
+        if (catalogAdminBar) catalogAdminBar.style.display = 'block';
       }
     } catch (e) {}
   }
@@ -96,7 +114,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (sizesOldPrice > salePrice) {
       oldPrice = sizesOldPrice;
     } else {
-      // Valor sugerido coerente (+35%) arredondado para final .90
       const raw = salePrice * 1.35;
       oldPrice = Math.ceil(raw) - 0.10;
       if (oldPrice <= salePrice) oldPrice = salePrice + 10;
@@ -144,9 +161,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Busca do Supabase
   async function fetchPromoProducts() {
-    spinner.style.display = 'block';
-    grid.style.display = 'none';
-    emptyState.style.display = 'none';
+    if (spinner) spinner.style.display = 'block';
+    if (grid) grid.style.display = 'none';
+    if (emptyState) emptyState.style.display = 'none';
 
     if (window.TENANT_PROMISE) {
       try { await window.TENANT_PROMISE; } catch (e) {}
@@ -196,9 +213,9 @@ document.addEventListener('DOMContentLoaded', () => {
       renderPromoCatalog();
     } catch (err) {
       console.error('Erro ao carregar promoções:', err);
-      emptyState.style.display = 'block';
+      if (emptyState) emptyState.style.display = 'block';
     } finally {
-      spinner.style.display = 'none';
+      if (spinner) spinner.style.display = 'none';
     }
   }
 
@@ -248,8 +265,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Renderiza Grid
+  // Renderiza Grid de Produtos em Promoção
   function renderPromoCatalog() {
+    if (!grid) return;
     const q = (searchTerm || '').toLowerCase().trim();
 
     const filtered = allPromoProducts.filter(p => {
@@ -267,11 +285,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (filtered.length === 0) {
       grid.style.display = 'none';
-      emptyState.style.display = 'block';
+      if (emptyState) emptyState.style.display = 'block';
       return;
     }
 
-    emptyState.style.display = 'none';
+    if (emptyState) emptyState.style.display = 'none';
     grid.style.display = 'grid';
 
     filtered.forEach(product => {
@@ -361,205 +379,420 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Modal do Produto
+  /**
+   * ========================================================================
+   * MODAL DO PRODUTO (Estrutura idêntica à Home/index.html e catalogo.js)
+   * ========================================================================
+   */
   function openProductModal(product) {
-    activeProduct = product;
-    selectedAro = null;
+    if (!modal) return;
 
-    currentGalleryImages = parseImages(product.images);
-    currentImageIndex = 0;
-
-    modalImg.src = currentGalleryImages[0] || 'assets/images/logo-simbolo.png';
-    modalImg.alt = product.name;
-
-    modalThumbnails.innerHTML = '';
-    if (currentGalleryImages.length > 1) {
-      modalThumbnails.style.display = 'flex';
-      currentGalleryImages.forEach((imgUrl, idx) => {
-        const thumb = document.createElement('img');
-        thumb.src = imgUrl;
-        thumb.alt = `${product.name} miniatura ${idx + 1}`;
-        thumb.className = `modal-thumb-img ${idx === 0 ? 'active' : ''}`;
-        thumb.loading = 'lazy';
-        thumb.addEventListener('click', (e) => {
-          e.stopPropagation();
-          currentImageIndex = idx;
-          modalImg.src = imgUrl;
-          modalThumbnails.querySelectorAll('.modal-thumb-img').forEach(t => t.classList.remove('active'));
-          thumb.classList.add('active');
-        });
-        modalThumbnails.appendChild(thumb);
-      });
-    } else {
-      modalThumbnails.style.display = 'none';
-    }
-
-    modalSku.textContent = `SKU: ${product.sku || 'N/A'}`;
-    modalCategory.textContent = product.category || 'Semijoias';
-    modalTitle.textContent = product.name;
-    modalDesc.textContent = product.description || 'Peça finamente trabalhada, banhada com camada nobre de Ouro 18k e verniz de proteção de alta durabilidade.';
+    const images = parseImages(product.images);
+    currentProductGallery = images;
+    currentGalleryIndex = 0;
 
     const promo = calculatePromotionalPricing(product);
-    modalPriceCurrent.textContent = formatBRL(promo.salePrice);
 
-    if (promo.hasDiscount) {
-      modalPromoRow.style.display = 'flex';
-      modalPriceOld.textContent = `De ${formatBRL(promo.oldPrice)}`;
-      modalPromoBadge.textContent = `-${promo.discountPct}% OFF`;
-    } else {
-      modalPromoRow.style.display = 'none';
+    if (modalTitle) modalTitle.textContent = product.name;
+    if (modalCategory) modalCategory.textContent = product.category || 'Semijoias';
+    if (modalDesc) modalDesc.textContent = product.description || 'Semijoia de alta qualidade com banho nobre, verniz protetor e acabamento primoroso de joia.';
+
+    // Exibe SKU discreto abaixo do nome do item
+    if (modalSku && modalSkuVal) {
+      if (product.sku && product.sku !== 'N/A') {
+        modalSkuVal.textContent = product.sku;
+        modalSku.style.display = 'block';
+      } else {
+        modalSku.style.display = 'none';
+      }
     }
 
-    const parcelVal = (promo.salePrice / 3).toFixed(2).replace('.', ',');
-    modalInstallments.textContent = `ou 3x de R$ ${parcelVal} sem juros`;
+    // Exibe preços promocionais no modal
+    if (promo.hasDiscount) {
+      if (modalPromoRow) modalPromoRow.style.display = 'flex';
+      if (modalPriceOld) modalPriceOld.textContent = `De ${formatBRL(promo.oldPrice)}`;
+      if (modalDiscountBadge) modalDiscountBadge.textContent = `-${promo.discountPct}% OFF`;
+      if (modalPricePrefix) modalPricePrefix.style.display = 'inline';
+    } else {
+      if (modalPromoRow) modalPromoRow.style.display = 'none';
+      if (modalPricePrefix) modalPricePrefix.style.display = 'none';
+    }
+    if (modalPrice) modalPrice.textContent = formatBRL(promo.salePrice);
 
-    // Grade de Aros (Anéis)
+    // Parcelamento sugerido
+    if (modalInstallment) {
+      const parcelVal = (promo.salePrice / 3).toFixed(2).replace('.', ',');
+      modalInstallment.textContent = `ou 3x de R$ ${parcelVal} sem juros`;
+    }
+
+    // Define imagem principal
+    if (modalMainImg) {
+      modalMainImg.src = images[0] || 'assets/images/logo-simbolo.png';
+      modalMainImg.alt = product.name;
+    }
+
+    // Constrói miniaturas da galeria
+    if (modalThumbnails) {
+      modalThumbnails.innerHTML = '';
+      if (images.length > 1) {
+        images.forEach((imgUrl, idx) => {
+          const thumb = document.createElement('div');
+          thumb.className = `modal-thumb ${idx === 0 ? 'active' : ''}`;
+          thumb.innerHTML = `<img src="${imgUrl}" alt="Foto ${idx + 1} de ${product.name}">`;
+          
+          thumb.addEventListener('click', () => {
+            modalThumbnails.querySelectorAll('.modal-thumb').forEach(t => t.classList.remove('active'));
+            thumb.classList.add('active');
+            if (modalMainImg) modalMainImg.src = imgUrl;
+            currentGalleryIndex = idx;
+          });
+
+          modalThumbnails.appendChild(thumb);
+        });
+        modalThumbnails.style.display = 'flex';
+      } else {
+        modalThumbnails.style.display = 'none';
+      }
+    }
+
+    // Configuração dos Aros / Tamanhos em Estoque
+    let selectedSize = null;
     const sizes = parseSizes(product.sizes);
-    const sizeEntries = Object.entries(sizes)
+    const allSizesEntries = Object.entries(sizes)
       .filter(([k]) => !k.startsWith('_'))
       .sort((a, b) => Number(a[0]) - Number(b[0]));
+    const availableSizes = allSizesEntries.filter(([_, qty]) => Number(qty) > 0);
+    const totalStockCount = allSizesEntries.length > 0 
+      ? allSizesEntries.reduce((acc, [_, q]) => acc + (Number(q) || 0), 0)
+      : (Number(product.stock) || 0);
 
-    const isRing = (product.category && product.category.toLowerCase().includes('an')) || sizeEntries.length > 0;
-
-    if (isRing && sizeEntries.length > 0) {
-      ringSizesWrapper.style.display = 'block';
-      ringGrid.innerHTML = '';
-      ringSelectedLabel.textContent = 'Nenhum selecionado';
-      ringHint.textContent = 'Selecione o aro desejado para adicionar à sacola.';
-      ringHint.style.color = 'var(--text-muted)';
-
-      sizeEntries.forEach(([aro, qty]) => {
-        const count = Number(qty) || 0;
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = `ring-size-btn ${count <= 0 ? 'disabled' : ''}`;
-        btn.dataset.aro = aro;
-        btn.innerHTML = `<span>${aro}</span>`;
-
-        if (count > 0) {
-          btn.addEventListener('click', () => {
-            ringGrid.querySelectorAll('.ring-size-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            selectedAro = aro;
-            ringSelectedLabel.textContent = `Aro ${aro} (${count} un)`;
-            ringHint.textContent = `✓ Aro ${aro} selecionado`;
-            ringHint.style.color = '#2E7D32';
-            updateWhatsappLink();
-          });
-        }
-        ringGrid.appendChild(btn);
-      });
-    } else {
-      ringSizesWrapper.style.display = 'none';
+    // Se houver apenas 1 aro disponível, pré-seleciona para facilitar a compra
+    if (availableSizes.length === 1) {
+      selectedSize = availableSizes[0][0];
     }
 
+    function updateWhatsappLink() {
+      if (!modalWhatsappBtn) return;
+      const phone = window.TENANT_WHATSAPP || (window.TENANT_CONFIG && window.TENANT_CONFIG.whatsapp_number) || '5516997990729';
+      const attendant = window.TENANT_ATTENDANT || 'Carla';
+      const storeName = window.TENANT_STORE_NAME || 'Soléria';
+      let text = `Olá, ${attendant}! Gostaria de mais informações sobre a joia em promoção "${product.name}" (${formatBRL(promo.salePrice)}) que visualizei no catálogo ${storeName}.`;
+      if (selectedSize) {
+        text += ` Tenho interesse no Aro ${selectedSize}.`;
+      }
+      modalWhatsappBtn.href = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+    }
+
+    if (modalSizesWrapper && modalSizesList) {
+      if (allSizesEntries.length > 0) {
+        modalSizesWrapper.style.display = 'block';
+        modalSizesList.innerHTML = '';
+
+        allSizesEntries.forEach(([size, qty]) => {
+          const numQty = Number(qty) || 0;
+          const isAroOutOfStock = numQty <= 0;
+          const pill = document.createElement('button');
+          pill.type = 'button';
+          pill.className = `modal-size-pill ${selectedSize === size ? 'selected' : ''} ${isAroOutOfStock ? 'out-of-stock' : ''}`;
+          
+          if (isAroOutOfStock) {
+            pill.disabled = true;
+            pill.setAttribute('title', `Aro ${size} esgotado`);
+            pill.innerHTML = `<span>Aro ${size}</span><span class="modal-size-stock">(Esgotado)</span>`;
+          } else {
+            pill.setAttribute('title', `${numQty} peça(s) disponível(is) no Aro ${size}`);
+            pill.innerHTML = `<span>Aro ${size}</span><span class="modal-size-stock">(${numQty} un)</span>`;
+
+            pill.addEventListener('click', () => {
+              if (pill.classList.contains('selected')) {
+                pill.classList.remove('selected');
+                selectedSize = null;
+              } else {
+                modalSizesList.querySelectorAll('.modal-size-pill').forEach(p => p.classList.remove('selected'));
+                pill.classList.add('selected');
+                selectedSize = size;
+              }
+              updateWhatsappLink();
+            });
+          }
+
+          modalSizesList.appendChild(pill);
+        });
+      } else {
+        modalSizesWrapper.style.display = 'none';
+        modalSizesList.innerHTML = '';
+      }
+    }
+
+    // Atualiza link de atendimento WhatsApp
     updateWhatsappLink();
 
-    // Evento Adicionar à Sacola
-    modalAddCartBtn.onclick = () => {
-      if (isRing && sizeEntries.length > 0 && !selectedAro) {
-        ringHint.textContent = '⚠️ Por favor, clique em um dos aros acima antes de continuar.';
-        ringHint.style.color = 'var(--brand-terracotta)';
-        ringSizesWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        return;
-      }
+    // Configura Botão "Adicionar à Sacola"
+    const btnAddToCart = document.getElementById('btn-modal-add-cart');
+    if (btnAddToCart) {
+      const freshCartBtn = btnAddToCart.cloneNode(true);
+      btnAddToCart.parentNode.replaceChild(freshCartBtn, btnAddToCart);
 
-      if (window.SoleriaCart && typeof window.SoleriaCart.add === 'function') {
-        window.SoleriaCart.add(activeProduct, selectedAro, 1);
-        closeModal();
+      const isRing = (product.category && product.category.toLowerCase().includes('an')) || allSizesEntries.length > 0;
+      const isProductSoldOut = isRing ? (availableSizes.length === 0) : (totalStockCount <= 0);
+
+      if (isProductSoldOut) {
+        freshCartBtn.disabled = true;
+        freshCartBtn.classList.add('btn-modal-soldout');
+        freshCartBtn.innerHTML = '<span>✦ Peça Esgotada no Momento</span>';
       } else {
-        alert('Item adicionado à sua sacola!');
-        closeModal();
-      }
-    };
+        freshCartBtn.disabled = false;
+        freshCartBtn.classList.remove('btn-modal-soldout');
+        freshCartBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          Adicionar à Sacola
+        `;
 
+        freshCartBtn.addEventListener('click', () => {
+          if (isRing && availableSizes.length > 0 && !selectedSize) {
+            showToast('Por favor, selecione um Aro disponível acima antes de adicionar à sacola.', 'warning');
+            return;
+          }
+
+          if (window.SoleriaCart && typeof window.SoleriaCart.add === 'function') {
+            window.SoleriaCart.add(product, selectedSize, 1);
+            closeModal();
+          } else {
+            showToast('Joia adicionada à sacola!', 'success');
+            closeModal();
+          }
+        });
+      }
+    }
+
+    // Exibe modal e previne scroll de fundo
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
+    const modalWin = modal.querySelector('.modal-window');
+    if (modalWin) modalWin.scrollTop = 0;
     document.body.style.overflow = 'hidden';
   }
 
-  function updateWhatsappLink() {
-    if (!activeProduct) return;
-    const phone = (window.TENANT_CONFIG && window.TENANT_CONFIG.whatsapp_number) || '5511999998888';
-    const aroText = selectedAro ? ` no tamanho Aro ${selectedAro}` : '';
-    const msg = `Olá! Vi a oferta da joia "${activeProduct.name}" (SKU: ${activeProduct.sku || ''})${aroText} em promoção na Soléria por ${formatBRL(activeProduct.sale_price)} e gostaria de tirar dúvidas e finalizar a compra.`;
-    modalWhatsappLink.href = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-  }
-
-  function closeModal() {
-    modal.classList.remove('active');
-    modal.setAttribute('aria-hidden', 'true');
-    document.body.style.overflow = '';
-    activeProduct = null;
-    selectedAro = null;
-  }
-
-  modalCloseBtn?.addEventListener('click', closeModal);
-  modal?.addEventListener('click', (e) => {
-    if (e.target === modal) closeModal();
-  });
-
-  // Lightbox (Zoom da Foto)
-  modalImg?.addEventListener('click', () => {
-    if (currentGalleryImages.length > 0) openLightbox(currentImageIndex);
-  });
-
+  /**
+   * ========================================================================
+   * LIGHTBOX DE FOTO AMPLIADA (Idêntico ao catalogo.js)
+   * ========================================================================
+   */
   function openLightbox(index = 0) {
-    if (!lightboxModal) return;
-    currentImageIndex = index;
+    if (!lightboxModal || !lightboxImg) return;
+    if (!currentProductGallery || currentProductGallery.length === 0) {
+      if (modalMainImg && modalMainImg.src) {
+        currentProductGallery = [modalMainImg.src];
+      } else {
+        return;
+      }
+    }
+
+    currentGalleryIndex = Math.max(0, Math.min(index, currentProductGallery.length - 1));
     updateLightboxView();
-    lightboxModal.style.display = 'flex';
+
+    lightboxModal.classList.add('active');
     lightboxModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
   }
 
   function updateLightboxView() {
-    if (!lightboxImg || currentGalleryImages.length === 0) return;
-    lightboxImg.src = currentGalleryImages[currentImageIndex];
-    if (currentGalleryImages.length > 1) {
-      if (lightboxCounter) {
-        lightboxCounter.style.display = 'block';
-        lightboxCounter.textContent = `${currentImageIndex + 1} / ${currentGalleryImages.length}`;
+    if (!lightboxImg || !currentProductGallery[currentGalleryIndex]) return;
+
+    lightboxImg.src = currentProductGallery[currentGalleryIndex];
+    lightboxImg.alt = modalTitle ? modalTitle.textContent : 'Foto da joia ampliada';
+
+    if (lightboxCounter) {
+      if (currentProductGallery.length > 1) {
+        lightboxCounter.textContent = `${currentGalleryIndex + 1} de ${currentProductGallery.length}`;
+        lightboxCounter.style.display = 'inline-block';
+      } else {
+        lightboxCounter.textContent = '1 de 1';
+        lightboxCounter.style.display = 'inline-block';
       }
-      if (lightboxPrev) lightboxPrev.style.display = 'flex';
-      if (lightboxNext) lightboxNext.style.display = 'flex';
+    }
+
+    if (currentProductGallery.length > 1) {
+      if (lightboxPrevBtn) lightboxPrevBtn.style.display = 'flex';
+      if (lightboxNextBtn) lightboxNextBtn.style.display = 'flex';
     } else {
-      if (lightboxCounter) lightboxCounter.style.display = 'none';
-      if (lightboxPrev) lightboxPrev.style.display = 'none';
-      if (lightboxNext) lightboxNext.style.display = 'none';
+      if (lightboxPrevBtn) lightboxPrevBtn.style.display = 'none';
+      if (lightboxNextBtn) lightboxNextBtn.style.display = 'none';
+    }
+
+    if (lightboxThumbnails) {
+      lightboxThumbnails.innerHTML = '';
+      if (currentProductGallery.length > 1) {
+        currentProductGallery.forEach((imgUrl, idx) => {
+          const thumb = document.createElement('div');
+          thumb.className = `lightbox-thumb ${idx === currentGalleryIndex ? 'active' : ''}`;
+          thumb.innerHTML = `<img src="${imgUrl}" alt="Miniatura ${idx + 1}">`;
+          thumb.addEventListener('click', (e) => {
+            e.stopPropagation();
+            currentGalleryIndex = idx;
+            updateLightboxView();
+            syncModalGallery();
+          });
+          lightboxThumbnails.appendChild(thumb);
+        });
+        lightboxThumbnails.style.display = 'flex';
+      } else {
+        lightboxThumbnails.style.display = 'none';
+      }
+    }
+  }
+
+  function syncModalGallery() {
+    if (modalMainImg && currentProductGallery[currentGalleryIndex]) {
+      modalMainImg.src = currentProductGallery[currentGalleryIndex];
+    }
+    if (modalThumbnails) {
+      const thumbs = modalThumbnails.querySelectorAll('.modal-thumb');
+      thumbs.forEach((t, i) => {
+        if (i === currentGalleryIndex) t.classList.add('active');
+        else t.classList.remove('active');
+      });
     }
   }
 
   function closeLightbox() {
     if (!lightboxModal) return;
-    lightboxModal.style.display = 'none';
+    lightboxModal.classList.remove('active');
     lightboxModal.setAttribute('aria-hidden', 'true');
+    syncModalGallery();
+    if (modal && modal.classList.contains('active')) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
   }
 
-  lightboxClose?.addEventListener('click', closeLightbox);
-  lightboxPrev?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    currentImageIndex = (currentImageIndex - 1 + currentGalleryImages.length) % currentGalleryImages.length;
+  function nextLightboxImage() {
+    if (currentProductGallery.length <= 1) return;
+    currentGalleryIndex = (currentGalleryIndex + 1) % currentProductGallery.length;
     updateLightboxView();
-  });
-  lightboxNext?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    currentImageIndex = (currentImageIndex + 1) % currentGalleryImages.length;
-    updateLightboxView();
-  });
-  lightboxModal?.addEventListener('click', (e) => {
-    if (e.target === lightboxModal) closeLightbox();
-  });
+    syncModalGallery();
+  }
 
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      if (lightboxModal && lightboxModal.style.display === 'flex') {
+  function prevLightboxImage() {
+    if (currentProductGallery.length <= 1) return;
+    currentGalleryIndex = (currentGalleryIndex - 1 + currentProductGallery.length) % currentProductGallery.length;
+    updateLightboxView();
+    syncModalGallery();
+  }
+
+  function closeModal() {
+    if (lightboxModal && lightboxModal.classList.contains('active')) {
+      closeLightbox();
+    }
+    if (modal) {
+      modal.classList.remove('active');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+    document.body.style.overflow = '';
+  }
+
+  // Abertura do lightbox ao clicar na imagem principal
+  if (modalMainImageWrap) {
+    modalMainImageWrap.addEventListener('click', () => {
+      openLightbox(currentGalleryIndex);
+    });
+    modalMainImageWrap.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openLightbox(currentGalleryIndex);
+      }
+    });
+  } else if (modalMainImg) {
+    modalMainImg.addEventListener('click', () => {
+      openLightbox(currentGalleryIndex);
+    });
+  }
+
+  // Listeners do Lightbox
+  if (lightboxCloseBtn) lightboxCloseBtn.addEventListener('click', closeLightbox);
+  if (lightboxCloseBottom) lightboxCloseBottom.addEventListener('click', closeLightbox);
+  if (lightboxPrevBtn) {
+    lightboxPrevBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      prevLightboxImage();
+    });
+  }
+  if (lightboxNextBtn) {
+    lightboxNextBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      nextLightboxImage();
+    });
+  }
+  if (lightboxModal) {
+    lightboxModal.addEventListener('click', (e) => {
+      if (e.target === lightboxModal || e.target === lightboxImgWrapper || (e.target && e.target.id === 'lightbox-content')) {
         closeLightbox();
-      } else if (modal && modal.classList.contains('active')) {
+      }
+    });
+
+    // Gestos touch swipe
+    let touchStartX = 0;
+    let touchStartY = 0;
+    lightboxModal.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    lightboxModal.addEventListener('touchend', (e) => {
+      if (e.changedTouches.length === 1) {
+        const deltaX = e.changedTouches[0].clientX - touchStartX;
+        const deltaY = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY)) {
+          if (deltaX < 0) {
+            nextLightboxImage();
+          } else {
+            prevLightboxImage();
+          }
+        }
+      }
+    }, { passive: true });
+  }
+
+  // Listeners de Fechamento do Modal do Produto
+  if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
+  if (modalCloseSecondary) modalCloseSecondary.addEventListener('click', closeModal);
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+  }
+
+  // Teclas de Atalho globais (Esc, setas)
+  document.addEventListener('keydown', (e) => {
+    if (lightboxModal && lightboxModal.classList.contains('active')) {
+      if (e.key === 'Escape') {
+        closeLightbox();
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        nextLightboxImage();
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        prevLightboxImage();
+        return;
+      }
+    }
+
+    if (modal && modal.classList.contains('active')) {
+      if (e.key === 'Escape') {
         closeModal();
       }
     }
   });
 
-  // Inicialização
+  // Carrega produtos em promoção
   fetchPromoProducts();
 });
