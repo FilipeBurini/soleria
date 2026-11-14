@@ -14,3 +14,10 @@ yarn-debug.log*
 .idea/
 *.swp
 *.swo
+
+# Arquivos de Teste Local (Não subir para o Git)
+preview-fontes.html
+teste-fontes.html
+assets/images/preview-sample.jpg
+
+
