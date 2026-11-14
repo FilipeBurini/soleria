@@ -625,8 +625,9 @@
           <div style="flex: 1; min-width: 0;">
             <span id="modal-promo-sku" style="font-size: 0.72rem; font-weight: 700; color: var(--brand-terracotta); text-transform: uppercase;">SKU</span>
             <div id="modal-promo-title" style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nome</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">
-              Estoque físico: <strong id="modal-promo-stock" style="color: var(--text-primary);">0</strong> peças
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+              <span>Estoque físico: <strong id="modal-promo-stock" style="color: var(--text-primary);">0</strong> peças</span>
+              <span>Custo total da peça: <strong id="modal-promo-cost" style="color: #92400E;">R$ 0,00</strong></span>
             </div>
           </div>
         </div>
@@ -675,6 +676,7 @@
               <div>
                 <span style="font-size: 0.7rem; text-transform: uppercase; font-weight: 700; color: #065F46; display: block;">Desconto da Oferta:</span>
                 <span id="modal-promo-calc-text" style="font-size: 0.82rem; color: #047857; font-weight: 600;">Economia de R$ 0,00</span>
+                <span id="modal-promo-margin-text" style="font-size: 0.72rem; color: #065F46; display: block; margin-top: 0.2rem;">Lucro previsto na promoção: R$ 0,00</span>
               </div>
             </div>
             <span id="modal-promo-calc-badge" style="background: #059669; color: #FFFFFF; font-size: 0.78rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 999px;">0% OFF</span>

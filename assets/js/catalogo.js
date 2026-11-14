@@ -163,10 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!prod) return false;
     if (prod.is_promo === true || prod.is_promo === 'true' || prod.is_promo === 1) return true;
     const sizes = parseSizes(prod.sizes);
-    if (sizes && (sizes._is_promo === true || sizes._is_promo === 'true')) return true;
-    const orig = Number(prod.original_price);
-    const sale = Number(prod.sale_price);
-    if (!isNaN(orig) && orig > sale && sale > 0) return true;
+    if (sizes && (sizes._is_promo === true || sizes._is_promo === 'true' || sizes._is_promo === 1)) return true;
     return false;
   }
 

@@ -5704,6 +5704,77 @@ body > main.container {
   margin-bottom: 0.5rem;
 }
 
+/* Tarja Específica de Promoção nos Cards */
+.promo-card-tarja {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(90deg, #7C2D12 0%, #AB5332 50%, #B45309 100%);
+  color: #FFFFFF;
+  padding: 0.45rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  z-index: 2;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.25);
+  font-family: var(--font-sans);
+}
+
+.promo-tarja-main {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #FEF3C7;
+  white-space: nowrap;
+}
+
+.promo-tarja-prices {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.promo-tarja-old {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: line-through;
+}
+
+.promo-tarja-current {
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.promo-tarja-current strong {
+  color: #FEF08A;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+/* Tag de Custo da Peça (Modo Gestor Ativo) */
+.promo-manager-cost-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  color: #92400E;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.5rem;
+}
+
+
 
 
 

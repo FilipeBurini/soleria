@@ -52,35 +52,30 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedAro = null;
   let currentGalleryImages = [];
   let currentImageIndex = 0;
+  let isManagerActive = false;
 
   // Verifica se administrador está logado para exibir barra de gestão
   checkAdminSession();
 
   async function checkAdminSession() {
     const adminBar = document.getElementById('catalog-admin-bar');
-    if (!adminBar) return;
     try {
       const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : (window.db || null));
       if (!client) return;
       const { data: { session } } = await client.auth.getSession();
       if (session && session.user) {
-        adminBar.style.display = 'block';
+        isManagerActive = true;
+        if (adminBar) adminBar.style.display = 'block';
       }
     } catch (e) {}
   }
 
-  // Identifica se uma joia está marcada para promoção
+  // Identifica se uma joia está marcada para promoção (SOMENTE com marcação explícita do lojista)
   function isProductInPromo(prod) {
     if (!prod) return false;
     if (prod.is_promo === true || prod.is_promo === 'true' || prod.is_promo === 1) return true;
     const sizes = parseSizes(prod.sizes);
-    if (sizes && (sizes._is_promo === true || sizes._is_promo === 'true')) return true;
-    
-    // Se tiver preço original explicitamente maior que o preço de venda
-    const orig = Number(prod.original_price);
-    const sale = Number(prod.sale_price);
-    if (!isNaN(orig) && orig > sale && sale > 0) return true;
-
+    if (sizes && (sizes._is_promo === true || sizes._is_promo === 'true' || sizes._is_promo === 1)) return true;
     return false;
   }
 
@@ -211,6 +206,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function setupCategoryFilters() {
     if (!categoryFilters) return;
 
+    const filterSection = document.getElementById('promocoes-filtro');
+
+    if (allPromoProducts.length === 0) {
+      if (filterSection) filterSection.style.display = 'none';
+      categoryFilters.innerHTML = '';
+      return;
+    }
+
+    if (filterSection) filterSection.style.display = 'block';
+
     const categories = new Set();
     allPromoProducts.forEach(p => {
       if (p.category && p.category.trim()) {
@@ -303,8 +308,25 @@ document.addEventListener('DOMContentLoaded', () => {
           <img class="product-card-img" src="${mainImgUrl}" alt="${product.name}" loading="lazy" onerror="this.src='assets/images/logo-simbolo.png'">
           ${isSoldOut ? `<span class="product-card-badge-soldout">Esgotado</span>` : (product.category ? `<span class="product-card-category-badge">${product.category}</span>` : '')}
           ${promo.hasDiscount && !isSoldOut ? `<span class="product-card-discount-badge">-${promo.discountPct}% OFF</span>` : '<span class="product-card-discount-badge">OFERTA</span>'}
+          
+          <!-- TARJA ESPECÍFICA DE PROMOÇÃO NA BASE DA FOTO -->
+          <div class="promo-card-tarja">
+            <div class="promo-tarja-main">
+              <span class="promo-tarja-icon">🔥</span>
+              <span class="promo-tarja-label">PROMOÇÃO</span>
+            </div>
+            <div class="promo-tarja-prices">
+              ${promo.hasDiscount ? `<span class="promo-tarja-old">De ${formatBRL(promo.oldPrice)}</span>` : ''}
+              <span class="promo-tarja-current">Por <strong>${formatBRL(promo.salePrice)}</strong></span>
+            </div>
+          </div>
         </div>
         <div class="product-card-content">
+          ${isManagerActive && product.product_cost ? `
+            <div class="promo-manager-cost-tag" title="Visível apenas para o gestor autenticado">
+              🛡️ Custo da peça: <strong>${formatBRL(product.product_cost)}</strong> · Margem: <strong>${formatBRL(promo.salePrice - Number(product.product_cost))}</strong>
+            </div>
+          ` : ''}
           <h2 class="product-card-title">${product.name}</h2>
           <p class="product-card-desc">${product.description || ''}</p>
           ${sizesPreviewHtml}

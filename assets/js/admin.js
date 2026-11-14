@@ -1313,6 +1313,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (modalPromoTitle) modalPromoTitle.textContent = item.name;
     if (modalPromoStock) modalPromoStock.textContent = item.stock;
 
+    const modalPromoCost = document.getElementById('modal-promo-cost');
+    if (modalPromoCost) modalPromoCost.textContent = formatBRL(item.totalCost);
+
     const images = parseImages(item.images);
     if (modalPromoImg) modalPromoImg.src = images[0] || 'assets/images/logo-simbolo.png';
 
@@ -1352,6 +1355,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updatePromoModalDiscountCalculation() {
     const orig = parseFloat(inpPromoOriginalPrice?.value) || 0;
     const sale = parseFloat(inpPromoSalePrice?.value) || 0;
+    const item = rawFinancialsData.find(x => x.id === inpPromoProdId?.value);
+    const cost = item ? item.totalCost : 0;
+    const profit = sale - cost;
+    const modalPromoMarginText = document.getElementById('modal-promo-margin-text');
 
     if (orig > sale && sale > 0) {
       const diff = orig - sale;
@@ -1361,6 +1368,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       if (modalPromoCalcText) modalPromoCalcText.textContent = 'Sem desconto percentual ativo';
       if (modalPromoCalcBadge) modalPromoCalcBadge.textContent = '0% OFF';
+    }
+
+    if (modalPromoMarginText) {
+      if (sale > 0) {
+        const marginPct = sale > 0 ? Math.round((profit / sale) * 100) : 0;
+        modalPromoMarginText.textContent = `Lucro previsto na promoção: ${formatBRL(profit)} (${marginPct}% de margem sobre custo de ${formatBRL(cost)})`;
+      } else {
+        modalPromoMarginText.textContent = 'Informe o preço promocional para ver o lucro';
+      }
     }
   }
 
