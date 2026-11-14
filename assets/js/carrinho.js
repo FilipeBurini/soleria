@@ -904,8 +904,10 @@
       });
     }
 
-    // Preenche dados do cliente autenticado se houver
-    if (window.SoleriaCustomer && typeof window.SoleriaCustomer.getCurrent === 'function') {
+    // Preenche dados do cliente autenticado se houver (apenas para clientes normais, nunca para administradores em modo gestor)
+    const isManagerActive = (typeof isAdmin !== 'undefined' && isAdmin) ||
+                            (document.getElementById('catalog-admin-bar') && document.getElementById('catalog-admin-bar').style.display !== 'none');
+    if (!isManagerActive && window.SoleriaCustomer && typeof window.SoleriaCustomer.getCurrent === 'function') {
       const activeCust = window.SoleriaCustomer.getCurrent();
       if (activeCust) {
         const nameInp = document.getElementById('order-customer-name');
@@ -1260,12 +1262,14 @@
         let customerSyncResult = null;
         try {
           if (window.SoleriaCustomer && typeof window.SoleriaCustomer.syncFromCheckout === 'function') {
+            const isManagerActive = (typeof isAdmin !== 'undefined' && isAdmin) || 
+                                    (document.getElementById('catalog-admin-bar') && document.getElementById('catalog-admin-bar').style.display !== 'none');
             customerSyncResult = await window.SoleriaCustomer.syncFromCheckout({
               name: nameInput.value.trim(),
               cpf: rawCpf,
               phone: phoneField.value.trim(),
               address: addressData
-            });
+            }, { autoLogin: !isManagerActive });
           }
         } catch (cErr) {
           console.warn('Aviso ao sincronizar cliente no checkout:', cErr);

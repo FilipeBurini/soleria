@@ -507,12 +507,25 @@
   /**
    * Atualiza a indicação do usuário na navbar
    */
-  function updateNavAccountUI() {
+  async function updateNavAccountUI() {
     const accountLink = document.getElementById('nav-customer-account');
     if (!accountLink) return;
 
+    // Se houver um administrador logado no Supabase, a navbar nunca deve vincular a sessão de um cliente
+    let isManager = false;
+    try {
+      if (typeof getCurrentUser === 'function') {
+        const adminUser = await getCurrentUser();
+        if (adminUser) isManager = true;
+      }
+    } catch (e) {}
+
+    if (isManager) {
+      try { localStorage.removeItem(CUSTOMER_SESSION_KEY); } catch (e) {}
+    }
+
     const cust = getCurrentCustomer();
-    if (cust && cust.name) {
+    if (!isManager && cust && cust.name) {
       const firstName = cust.name.trim().split(' ')[0];
       accountLink.innerHTML = `👤 Olá, ${firstName}`;
       accountLink.title = `Minha Conta (${formatCPF(cust.cpf)})`;
@@ -530,7 +543,8 @@
   /**
    * Sincroniza ou cadastra automaticamente a cliente ao concluir um pedido no Checkout
    */
-  async function syncCustomerFromCheckout({ name, cpf, phone, email = '', address = {} }) {
+  async function syncCustomerFromCheckout({ name, cpf, phone, email = '', address = {} }, options = {}) {
+    const autoLogin = typeof options === 'boolean' ? options : (options.autoLogin !== false);
     const cleanNum = cleanCPF(cpf);
     if (!cleanNum || cleanNum.length !== 11) return null;
 
@@ -599,7 +613,20 @@
       saveLocalCustomer(customer);
     }
 
-    setCustomerSession(customer);
+    // Só inicia sessão automática da cliente se autoLogin for true e NÃO houver sessão de administrador ativa
+    let shouldLogin = autoLogin;
+    if (shouldLogin) {
+      try {
+        if (typeof getCurrentUser === 'function') {
+          const adminUser = await getCurrentUser();
+          if (adminUser) shouldLogin = false;
+        }
+      } catch (e) {}
+    }
+
+    if (shouldLogin) {
+      setCustomerSession(customer);
+    }
     return { customer, isNew, initialPassword: isNew ? defaultPassword : null };
   }
 

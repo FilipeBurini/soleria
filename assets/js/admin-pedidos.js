@@ -2547,6 +2547,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('soleria_customers', JSON.stringify(localCusts));
           } catch (e) {}
 
+          // Garante que o navegador do administrador nunca herde a sessão de cliente pública
+          try {
+            localStorage.removeItem('soleria_customer_session');
+          } catch (e) {}
+
           // 3. Criação do Pedido
           const orderRecord = {
             order_number: orderNumber,
