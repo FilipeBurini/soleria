@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS public.products (
   cost_price NUMERIC(10,2) DEFAULT 0.00,
   sale_price NUMERIC(10,2) NOT NULL DEFAULT 0.00,
   original_price NUMERIC(10,2),
+  is_promo BOOLEAN NOT NULL DEFAULT false,
+  promo_price NUMERIC(10,2),
   stock INTEGER NOT NULL DEFAULT 0,
   stock_qty INTEGER DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'ativo' CHECK (status IN ('ativo', 'inativo')),

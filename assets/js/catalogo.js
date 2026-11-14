@@ -157,9 +157,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
+   * Identifica se uma joia está marcada para promoção
+   */
+  function isProductInPromo(prod) {
+    if (!prod) return false;
+    if (prod.is_promo === true || prod.is_promo === 'true' || prod.is_promo === 1) return true;
+    const sizes = parseSizes(prod.sizes);
+    if (sizes && (sizes._is_promo === true || sizes._is_promo === 'true')) return true;
+    const orig = Number(prod.original_price);
+    const sale = Number(prod.sale_price);
+    if (!isNaN(orig) && orig > sale && sale > 0) return true;
+    return false;
+  }
+
+  /**
    * Calcula o preço promocional original ("De:") e a porcentagem de desconto.
-   * Se o item já tiver original_price no banco, utiliza ele; caso contrário,
-   * gera um valor acima realista (35% a 50% superior) e consistente baseado no item.
+   * Respeita a marcação explícita de promoção feita pelo lojista no estoque.
    */
   function calculatePromotionalPricing(product) {
     const salePrice = Number(product.sale_price) || 0;
@@ -167,35 +180,31 @@ document.addEventListener('DOMContentLoaded', () => {
       return { salePrice: 0, oldPrice: 0, discountPct: 0, hasDiscount: false };
     }
 
+    const inPromo = isProductInPromo(product);
     let oldPrice = 0;
     const customOriginal = Number(product.original_price || product.compare_price);
+    const sizes = parseSizes(product.sizes);
+    const sizesOldPrice = sizes && sizes._promo_original_price ? Number(sizes._promo_original_price) : 0;
+
     if (!isNaN(customOriginal) && customOriginal > salePrice) {
       oldPrice = customOriginal;
-    } else {
-      // Gera um valor acima consistente entre 35% e 50% acima
-      let seed = 0;
-      const str = String(product.id || product.name || 'soleria');
-      for (let i = 0; i < str.length; i++) {
-        seed = (seed + str.charCodeAt(i) * (i + 1)) % 100;
-      }
-      const factor = 1.35 + ((seed % 16) / 100); // Fator entre 1.35 e 1.50
-      const rawPrice = salePrice * factor;
-
-      // Arredonda para final .90 para aspecto de semijoia em oferta
+    } else if (sizesOldPrice > salePrice) {
+      oldPrice = sizesOldPrice;
+    } else if (inPromo) {
+      // Se marcado como promo sem definir original_price, sugere 35% com final .90
+      const rawPrice = salePrice * 1.35;
       const rounded = Math.ceil(rawPrice);
       oldPrice = rounded - 0.10;
-      if (oldPrice <= salePrice) {
-        oldPrice = salePrice + 10 - 0.10;
-      }
+      if (oldPrice <= salePrice) oldPrice = salePrice + 10;
     }
 
-    const discountPct = Math.round(((oldPrice - salePrice) / oldPrice) * 100);
+    const discountPct = oldPrice > salePrice ? Math.round(((oldPrice - salePrice) / oldPrice) * 100) : 0;
 
     return {
       salePrice,
       oldPrice,
       discountPct,
-      hasDiscount: oldPrice > salePrice && discountPct >= 5
+      hasDiscount: (inPromo || (!isNaN(customOriginal) && customOriginal > salePrice)) && oldPrice > salePrice && discountPct >= 5
     };
   }
 
@@ -218,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (client && isSupabaseConfigured()) {
         const { data, error } = await client
           .from('products')
-          .select('id, name, sku, category, description, sale_price, images, status, sizes, original_price, stock')
+          .select('*')
           .eq('status', 'ativo')
           .order('created_at', { ascending: false });
 
@@ -270,11 +279,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Mantém o botão "Todas"
+    const promoCount = allProducts.filter(p => isProductInPromo(p)).length;
+    let promoPillHtml = '';
+    if (promoCount > 0) {
+      promoPillHtml = `
+        <button class="category-pill pill-promo-highlight ${currentCategory === 'promocoes' ? 'active' : ''}" data-category="promocoes">
+          🔥 Promoções (${promoCount})
+        </button>
+      `;
+    }
+
+    // Mantém o botão "Todas" e inclui botão de Promoções caso haja itens
     categoryFiltersContainer.innerHTML = `
       <button class="category-pill ${currentCategory === 'todas' ? 'active' : ''}" data-category="todas">
         Todas as Peças
       </button>
+      ${promoPillHtml}
     `;
 
     categories.forEach(cat => {
@@ -301,8 +321,14 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function renderCatalog() {
     const filtered = allProducts.filter(p => {
-      const matchesCategory = currentCategory === 'todas' || 
-        (p.category && p.category.toLowerCase() === currentCategory.toLowerCase());
+      let matchesCategory = false;
+      if (currentCategory === 'todas') {
+        matchesCategory = true;
+      } else if (currentCategory === 'promocoes') {
+        matchesCategory = isProductInPromo(p);
+      } else {
+        matchesCategory = (p.category && p.category.toLowerCase() === currentCategory.toLowerCase());
+      }
       
       const q = searchTerm.toLowerCase();
       const matchesSearch = !q || 

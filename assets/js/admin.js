@@ -353,6 +353,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const totalProfit = Number(finRow.total_profit ?? finRow['Lucro total do item'] ?? (unitProfit * stock));
         const status = (prod.status || finRow.status || 'ativo').toLowerCase();
 
+        const isInPromo = Boolean(
+          prod.is_promo === true || 
+          prod.is_promo === 'true' || 
+          prod.is_promo === 1 || 
+          (sizes && (sizes._is_promo === true || sizes._is_promo === 'true'))
+        );
+        const originalPrice = Number(prod.original_price ?? finRow.original_price ?? 0);
+
         return {
           id: prod.id,
           sku: prod.sku || finRow.sku || 'N/A',
@@ -362,12 +370,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           suppliesCost,
           totalCost,
           salePrice,
+          originalPrice,
+          isPromo: isInPromo,
           unitProfit,
           stock,
           totalProfit,
           status,
           images: prod.images,
-          sizes: sizes
+          sizes: sizes,
+          rawProd: prod
         };
       });
 
@@ -391,7 +402,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const selectedStatus = (statusFilter ? statusFilter.value : 'todos');
 
     const filtered = rawFinancialsData.filter(item => {
-      const matchStatus = selectedStatus === 'todos' || item.status === selectedStatus;
+      const matchStatus = selectedStatus === 'todos' || 
+        (selectedStatus === 'promo' ? item.isPromo : item.status === selectedStatus);
       const matchSearch = !q || 
         item.sku.toLowerCase().includes(q) ||
         item.name.toLowerCase().includes(q) ||
@@ -399,6 +411,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       return matchStatus && matchSearch;
     });
+
+    // Atualiza contador de itens em promoção no badge do estoque
+    const promoCount = rawFinancialsData.filter(i => i.isPromo).length;
+    const adminCountPromoBadge = document.getElementById('admin-count-promo-badge');
+    if (adminCountPromoBadge) adminCountPromoBadge.textContent = promoCount;
 
     // 1. Atualiza KPIs Globais
     let totalInvested = 0;
@@ -488,8 +505,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
       }
 
+      const promoBadgeTop = item.isPromo
+        ? `<span class="admin-promo-active-tag">🔥 EM PROMOÇÃO</span>`
+        : '';
+
+      const promoButton = item.isPromo
+        ? `<button type="button" class="btn-admin-promo active btn-trigger-promo" data-id="${item.id}" title="Configurar ou desmarcar promoção">🔥 Promoção</button>`
+        : `<button type="button" class="btn-admin-promo btn-trigger-promo" data-id="${item.id}" title="Marcar para a Tela de Promoções">+ Promoção</button>`;
+
       card.innerHTML = `
         <div class="admin-visual-top">
+          ${promoBadgeTop}
           <img src="${imgUrl}" alt="${item.name}" class="admin-visual-img" loading="lazy" onerror="this.src='assets/images/logo-simbolo.png'">
           <div class="admin-visual-meta">
             <span class="admin-visual-sku">${item.sku}</span>
@@ -515,7 +541,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           <span style="font-size: 0.75rem; color: var(--text-muted);">
             Lucro unit: <strong style="color: #216E39;">${formatBRL(item.unitProfit)}</strong>
           </span>
-          <div style="display: flex; gap: 0.4rem; align-items: center;">
+          <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
+            ${promoButton}
             <a href="admin-pedidos?novo=true" class="btn-primary" style="font-size: 0.72rem; padding: 0.35rem 0.65rem;" title="Registrar venda formal vinculada a pedido">
               + Vender
             </a>
@@ -558,6 +585,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         <td style="text-align: right;" class="val-currency">${formatBRL(item.salePrice)}</td>
         <td style="text-align: right;" class="val-profit">${formatBRL(item.unitProfit)}</td>
         <td style="text-align: center;">${stockBadge}</td>
+        <td style="text-align: center;">
+          ${item.isPromo 
+            ? `<button type="button" class="badge-promo-toggle active btn-trigger-promo" data-id="${item.id}" title="Configurar promoção">🔥 Ativa</button>` 
+            : `<button type="button" class="badge-promo-toggle btn-trigger-promo" data-id="${item.id}" title="Marcar para promoção">+ Ativar</button>`}
+        </td>
         <td style="text-align: right;" class="val-profit" style="font-weight: 700;">${formatBRL(item.totalProfit)}</td>
         <td style="text-align: center;">${statusBadge}</td>
         <td style="text-align: center;">
@@ -1224,6 +1256,272 @@ document.addEventListener('DOMContentLoaded', async () => {
     }).join('');
 
     dashTopClientsList.innerHTML = html;
+  }
+
+  // ==========================================================================
+  // SISTEMA DE GESTÃO DE PROMOÇÕES NO ESTOQUE
+  // ==========================================================================
+
+  const modalManagePromo = document.getElementById('modal-manage-promo');
+  const btnCloseManagePromo = document.getElementById('btn-close-manage-promo');
+  const btnCancelManagePromo = document.getElementById('btn-cancel-manage-promo');
+  const formManagePromo = document.getElementById('form-manage-promo');
+  const inpPromoProdId = document.getElementById('modal-promo-prod-id');
+  const inpPromoActiveSwitch = document.getElementById('modal-promo-active-switch');
+  const inpPromoOriginalPrice = document.getElementById('modal-promo-original-price');
+  const inpPromoSalePrice = document.getElementById('modal-promo-sale-price');
+  const btnRemoveFromPromo = document.getElementById('btn-remove-from-promo');
+  const btnSaveManagePromo = document.getElementById('btn-save-manage-promo');
+  const btnFilterPromoOnly = document.getElementById('btn-filter-promo-only');
+
+  const modalPromoImg = document.getElementById('modal-promo-img');
+  const modalPromoSku = document.getElementById('modal-promo-sku');
+  const modalPromoTitle = document.getElementById('modal-promo-title');
+  const modalPromoStock = document.getElementById('modal-promo-stock');
+  const modalPromoCalcText = document.getElementById('modal-promo-calc-text');
+  const modalPromoCalcBadge = document.getElementById('modal-promo-calc-badge');
+
+  // Botão de filtro rápido de promoções na barra de ferramentas
+  if (btnFilterPromoOnly && statusFilter) {
+    btnFilterPromoOnly.addEventListener('click', () => {
+      if (statusFilter.value === 'promo') {
+        statusFilter.value = 'todos';
+        btnFilterPromoOnly.classList.remove('active');
+      } else {
+        statusFilter.value = 'promo';
+        btnFilterPromoOnly.classList.add('active');
+      }
+      renderAllViews();
+    });
+  }
+
+  // Delegação de cliques para botões de promoção nos cards e linhas
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-trigger-promo');
+    if (btn) {
+      const prodId = btn.dataset.id;
+      if (prodId) openManagePromoModal(prodId);
+    }
+  });
+
+  function openManagePromoModal(productId) {
+    const item = rawFinancialsData.find(x => x.id === productId);
+    if (!item || !modalManagePromo) return;
+
+    inpPromoProdId.value = item.id;
+    if (modalPromoSku) modalPromoSku.textContent = item.sku;
+    if (modalPromoTitle) modalPromoTitle.textContent = item.name;
+    if (modalPromoStock) modalPromoStock.textContent = item.stock;
+
+    const images = parseImages(item.images);
+    if (modalPromoImg) modalPromoImg.src = images[0] || 'assets/images/logo-simbolo.png';
+
+    if (inpPromoActiveSwitch) inpPromoActiveSwitch.checked = Boolean(item.isPromo);
+
+    const orig = Number(item.originalPrice) || 0;
+    const sale = Number(item.salePrice) || 0;
+
+    if (inpPromoOriginalPrice) {
+      if (orig > sale && orig > 0) {
+        inpPromoOriginalPrice.value = orig.toFixed(2);
+      } else {
+        const suggested = sale > 0 ? (sale * 1.35) : 0;
+        const rounded = Math.ceil(suggested) - 0.10;
+        inpPromoOriginalPrice.value = rounded > sale ? rounded.toFixed(2) : (sale + 10).toFixed(2);
+      }
+    }
+
+    if (inpPromoSalePrice) {
+      inpPromoSalePrice.value = sale > 0 ? sale.toFixed(2) : '';
+    }
+
+    updatePromoModalDiscountCalculation();
+
+    modalManagePromo.style.display = 'flex';
+    modalManagePromo.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeManagePromoModal() {
+    if (!modalManagePromo) return;
+    modalManagePromo.style.display = 'none';
+    modalManagePromo.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  function updatePromoModalDiscountCalculation() {
+    const orig = parseFloat(inpPromoOriginalPrice?.value) || 0;
+    const sale = parseFloat(inpPromoSalePrice?.value) || 0;
+
+    if (orig > sale && sale > 0) {
+      const diff = orig - sale;
+      const pct = Math.round((diff / orig) * 100);
+      if (modalPromoCalcText) modalPromoCalcText.textContent = `Economia de ${formatBRL(diff)} para a cliente`;
+      if (modalPromoCalcBadge) modalPromoCalcBadge.textContent = `${pct}% OFF`;
+    } else {
+      if (modalPromoCalcText) modalPromoCalcText.textContent = 'Sem desconto percentual ativo';
+      if (modalPromoCalcBadge) modalPromoCalcBadge.textContent = '0% OFF';
+    }
+  }
+
+  inpPromoOriginalPrice?.addEventListener('input', updatePromoModalDiscountCalculation);
+  inpPromoSalePrice?.addEventListener('input', updatePromoModalDiscountCalculation);
+
+  btnCloseManagePromo?.addEventListener('click', closeManagePromoModal);
+  btnCancelManagePromo?.addEventListener('click', closeManagePromoModal);
+  modalManagePromo?.addEventListener('click', (e) => {
+    if (e.target === modalManagePromo) closeManagePromoModal();
+  });
+
+  // Salvar Promoção
+  formManagePromo?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const prodId = inpPromoProdId.value;
+    const isPromo = inpPromoActiveSwitch.checked;
+    const origPrice = parseFloat(inpPromoOriginalPrice.value) || 0;
+    const salePrice = parseFloat(inpPromoSalePrice.value) || 0;
+
+    if (salePrice <= 0) {
+      showToast('Informe um preço de venda promocional válido.', 'warning');
+      return;
+    }
+
+    btnSaveManagePromo.disabled = true;
+    btnSaveManagePromo.textContent = 'Gravando...';
+
+    const ok = await persistProductPromo(prodId, isPromo, origPrice, salePrice);
+    btnSaveManagePromo.disabled = false;
+    btnSaveManagePromo.textContent = 'Salvar Promoção';
+
+    if (ok) {
+      closeManagePromoModal();
+      showToast(isPromo ? 'Joia colocada na Tela de Promoções com sucesso!' : 'Joia desmarcada da promoção.', 'success');
+    }
+  });
+
+  // Desmarcar Promoção
+  btnRemoveFromPromo?.addEventListener('click', async () => {
+    const prodId = inpPromoProdId.value;
+    const item = rawFinancialsData.find(x => x.id === prodId);
+    if (!item) return;
+
+    btnRemoveFromPromo.disabled = true;
+    btnRemoveFromPromo.textContent = 'Removendo...';
+
+    const ok = await persistProductPromo(prodId, false, null, item.salePrice);
+    btnRemoveFromPromo.disabled = false;
+    btnRemoveFromPromo.textContent = '✕ Desmarcar Promoção';
+
+    if (ok) {
+      closeManagePromoModal();
+      showToast('Produto desmarcado da Tela de Promoções.', 'info');
+    }
+  });
+
+  async function persistProductPromo(productId, isPromo, originalPrice, salePrice) {
+    const item = rawFinancialsData.find(x => x.id === productId);
+    if (!item) return false;
+
+    const currentSizes = { ...(item.sizes || {}) };
+    currentSizes._is_promo = isPromo;
+    if (originalPrice && originalPrice > 0) {
+      currentSizes._promo_original_price = originalPrice;
+    } else {
+      delete currentSizes._promo_original_price;
+    }
+
+    const payloadWithColumn = {
+      is_promo: isPromo,
+      sale_price: salePrice,
+      original_price: (originalPrice && originalPrice > 0) ? originalPrice : null,
+      sizes: currentSizes
+    };
+
+    const payloadFallback = {
+      sale_price: salePrice,
+      original_price: (originalPrice && originalPrice > 0) ? originalPrice : null,
+      sizes: currentSizes
+    };
+
+    let saved = false;
+    const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : (window.db || db));
+
+    if (client && isSupabaseConfigured()) {
+      try {
+        const res = await client.from('products').update(payloadWithColumn).eq('id', productId);
+        if (res.error) {
+          const resFallback = await client.from('products').update(payloadFallback).eq('id', productId);
+          if (!resFallback.error) saved = true;
+        } else {
+          saved = true;
+        }
+      } catch (e) {
+        console.warn('Tentando fallback via REST fetch...', e);
+      }
+    }
+
+    if (!saved && typeof SUPABASE_URL !== 'undefined') {
+      try {
+        const token = (typeof getAuthToken === 'function' ? getAuthToken() : null);
+        let headers = {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${token || SUPABASE_ANON_KEY}`,
+          'Prefer': 'return=minimal'
+        };
+        let r = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(productId)}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify(payloadWithColumn)
+        });
+        if (!r.ok) {
+          let rFallback = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(productId)}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(payloadFallback)
+          });
+          if (rFallback.ok) saved = true;
+        } else {
+          saved = true;
+        }
+      } catch (err) {
+        console.error('Falha de rede ao gravar:', err);
+      }
+    }
+
+    if (saved) {
+      item.isPromo = isPromo;
+      item.salePrice = salePrice;
+      item.originalPrice = (originalPrice && originalPrice > 0) ? originalPrice : null;
+      item.sizes = currentSizes;
+      if (item.rawProd) {
+        item.rawProd.is_promo = isPromo;
+        item.rawProd.sale_price = salePrice;
+        item.rawProd.original_price = item.originalPrice;
+        item.rawProd.sizes = currentSizes;
+      }
+
+      try {
+        const cached = localStorage.getItem('soleria_cached_products');
+        if (cached) {
+          const list = JSON.parse(cached);
+          const idx = list.findIndex(p => p.id === productId);
+          if (idx !== -1) {
+            list[idx].is_promo = isPromo;
+            list[idx].sale_price = salePrice;
+            list[idx].original_price = item.originalPrice;
+            list[idx].sizes = currentSizes;
+            localStorage.setItem('soleria_cached_products', JSON.stringify(list));
+          }
+        }
+      } catch (e) {}
+
+      renderAllViews();
+      return true;
+    } else {
+      showToast('Erro ao sincronizar com o banco de dados.', 'error');
+      return false;
+    }
   }
 
   // Inicializa verificação de autenticação

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Soléria — Promoções & Ofertas Exclusivas em Semijoias</title>
+  
+  <meta name="description" content="Aproveite os descontos e ofertas especiais em semijoias finas banhadas a Ouro 18k e Prata 925 da Soléria. Joias selecionadas com preços imperdíveis.">
+  <meta name="keywords" content="promoção semijoias, ofertas joias ouro 18k, descontos brincos anéis colares, soleria">
+  <meta name="author" content="Soléria">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://soleria.carlamota.com.br/promocoes.html">
+
+  <!-- Open Graph / Redes Sociais -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://soleria.carlamota.com.br/promocoes.html">
+  <meta property="og:title" content="Soléria — Promoções & Ofertas Exclusivas em Semijoias">
+  <meta property="og:description" content="Semijoias finas com descontos especiais selecionados no estoque. Banhadas a Ouro 18k.">
+  <meta property="og:image" content="https://soleria.carlamota.com.br/assets/images/logo-sem-fundo.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/images/logo-simbolo.png">
+  <link rel="apple-touch-icon" href="assets/images/logo-simbolo.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Bootloader White-Label / Multi-Tenant -->
+  <script src="assets/js/tenant-config.js"></script>
+
+  <!-- Estilos Compartilhados -->
+  <link rel="stylesheet" href="assets/css/style.css?v=4.1">
+  
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- Header Público -->
+  <header class="site-header">
+    <div class="container header-top">
+      <div class="header-brand">
+        <a href="/" class="header-brand-link" title="Soléria — Joias que contam sua luz">
+          <img src="assets/images/logo-simbolo.png" alt="Símbolo Soléria" class="header-brand-symbol">
+          <div>
+            <span class="brand-title">Soléria</span>
+            <span class="brand-subtitle">Semijoias que contam sua luz</span>
+          </div>
+        </a>
+      </div>
+
+      <nav class="header-nav">
+        <a href="/" class="nav-link">Coleções</a>
+        <a href="promocoes.html" class="nav-link active promo-link">🔥 Promoções</a>
+        <a href="rastreio.html" class="nav-link">Acompanhar Pedido</a>
+        <a href="minha-conta.html" class="nav-link" id="nav-customer-account">Minha Conta</a>
+        <button type="button" class="header-cart-btn" id="btn-open-cart" title="Ver Sacola de Compras">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          <span>Sacola</span>
+          <span class="header-cart-badge">0</span>
+        </button>
+        <a href="admin.html" class="btn-header-admin" title="Acesso Restrito à Equipe">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          Área Interna
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Barra de Administrador Ativo no Catálogo (Exibida dinamicamente se logado) -->
+  <div id="catalog-admin-bar" class="catalog-admin-bar" style="display: none;">
+    <div class="container admin-bar-content">
+      <div class="admin-bar-left">
+        <span class="admin-bar-dot"></span>
+        <span><strong>Modo Gestor Ativo:</strong> Você está visualizando a tela pública de promoções. Gerencie quais itens entram aqui no Painel de Estoque.</span>
+      </div>
+      <div>
+        <a href="admin.html" class="admin-bar-link">Painel Estoque &rarr;</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hero Section Especial de Promoções -->
+  <section class="catalog-hero container promo-hero-section">
+    <div class="hero-emblem-wrap">
+      <img src="assets/images/logo-simbolo.png" alt="Soléria Emblema" class="hero-emblem-img">
+    </div>
+    <span class="promo-hero-badge">✦ Ofertas Especiais & Peças Selecionadas ✦</span>
+    <h1 class="catalog-hero-title">Oportunidades Únicas de Brilhar</h1>
+    <p class="catalog-hero-desc">
+      Uma curadoria especial de semijoias finas banhadas a Ouro 18k e Prata 925 com descontos exclusivos por tempo limitado. Peças selecionadas diretamente do nosso acervo.
+    </p>
+    <div style="margin-top: 1rem;">
+      <span id="promo-count-chip" style="font-size: 0.8rem; font-weight: 600; color: var(--brand-terracotta); background: #FAF3EF; padding: 0.4rem 0.95rem; border-radius: 999px; border: 1px solid var(--brand-terracotta-border);">
+        Carregando joias em promoção...
+      </span>
+    </div>
+  </section>
+
+  <!-- Barra de Filtros e Busca -->
+  <section class="container filter-bar-wrapper" id="promocoes-filtro">
+    <div class="filter-search-container">
+      <svg class="filter-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input type="text" id="catalog-search" class="filter-search-input" placeholder="Buscar entre as peças em promoção...">
+    </div>
+
+    <div class="category-pills" id="category-filters">
+      <button class="category-pill active" data-category="todas">Todas as Promoções</button>
+      <!-- Categorias adicionais injetadas dinamicamente via JS -->
+    </div>
+  </section>
+
+  <!-- Grid de Produtos em Promoção -->
+  <main class="container">
+    <div id="loading-spinner" class="spinner"></div>
+
+    <div class="product-grid" id="product-grid" style="display: none;">
+      <!-- Cards de produtos promocionais injetados via promocoes.js -->
+    </div>
+
+    <!-- Estado Vazio -->
+    <div id="empty-state" class="empty-state" style="display: none;">
+      <div class="empty-state-icon">🏷️</div>
+      <h3 class="empty-state-title">Nenhuma promoção encontrada</h3>
+      <p class="empty-state-desc">No momento não há peças nesta categoria em promoção, ou o filtro de busca não retornou resultados. Confira todas as nossas joias disponíveis!</p>
+      <a href="/" class="btn-primary" style="display: inline-block; margin-top: 1rem; text-decoration: none;">
+        Ver Catálogo Completo &rarr;
+      </a>
+    </div>
+  </main>
+
+  <!-- Modal de Detalhes do Produto -->
+  <div class="modal-overlay" id="product-modal" aria-hidden="true" role="dialog">
+    <div class="modal-window">
+      <button class="modal-close-btn" id="modal-close-btn" aria-label="Fechar modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <div class="modal-grid">
+        <!-- Galeria de Imagens do Modal -->
+        <div class="modal-gallery">
+          <div class="modal-main-image-wrap">
+            <img class="modal-main-img" id="modal-img" src="" alt="Imagem da joia" loading="eager">
+          </div>
+          <div class="modal-thumbnails" id="modal-thumbnails">
+            <!-- Miniaturas injetadas dinamicamente -->
+          </div>
+        </div>
+
+        <!-- Informações e Ações do Produto -->
+        <div class="modal-info">
+          <span class="modal-sku-tag" id="modal-sku">SKU: ---</span>
+          <span class="modal-category-tag" id="modal-category">Categoria</span>
+          <h2 class="modal-title" id="modal-title">Nome do Produto</h2>
+          <p class="modal-desc" id="modal-desc">Descrição detalhada da peça...</p>
+
+          <div class="modal-pricing-box">
+            <div class="modal-price-promo-row" id="modal-promo-row" style="display: none;">
+              <span class="modal-price-old" id="modal-price-old">De R$ 0,00</span>
+              <span class="modal-promo-badge" id="modal-promo-badge">-0% OFF</span>
+            </div>
+            <div class="modal-price-current" id="modal-price-current">R$ 0,00</div>
+            <span class="modal-installments" id="modal-installments">ou em até 3x sem juros</span>
+          </div>
+
+          <!-- Seleção de Aros Disponíveis -->
+          <div class="modal-ring-sizes-wrapper" id="modal-ring-sizes-wrapper" style="display: none;">
+            <div class="modal-ring-header">
+              <span class="modal-ring-title">💍 Escolha o tamanho do Aro:</span>
+              <span class="modal-ring-selected-label" id="modal-ring-selected-label">Nenhum selecionado</span>
+            </div>
+            <div class="modal-ring-grid" id="modal-ring-grid">
+              <!-- Botões de aro injetados dinamicamente via JS -->
+            </div>
+            <div class="modal-ring-hint" id="modal-ring-hint">
+              Selecione o aro desejado para adicionar à sacola.
+            </div>
+          </div>
+
+          <div class="modal-cta-group">
+            <button class="btn-primary modal-cart-action-btn" id="modal-add-cart-btn" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <path d="M16 10a4 4 0 0 1-8 0"></path>
+              </svg>
+              <span>Adicionar à Sacola</span>
+            </button>
+
+            <a class="btn-secondary modal-whatsapp-btn" id="modal-whatsapp-link" href="#" target="_blank" rel="noopener noreferrer">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.694.062-2.123-.526-1.503-.618-2.463-2.158-2.538-2.257-.075-.1-0.609-.812-.609-1.547 0-.735.385-1.097.521-1.247.137-.15.299-.187.399-.187.1 0 .199.001.287.006.092.005.215-.035.337.257.126.301.433 1.055.471 1.133.038.078.063.17.013.27-.05.1-.075.163-.15.25-.075.088-.158.196-.226.263-.075.074-.153.155-.066.305.087.15.386.638.829 1.032.57.507 1.05.664 1.2.739.15.075.238.063.326-.038.088-.1.376-.438.476-.588.1-.15.199-.125.337-.075.138.05.875.413 1.025.488.15.075.25.112.287.175.037.062.037.362-.107.767z"/>
+              </svg>
+              <span>Comprar via WhatsApp</span>
+            </a>
+          </div>
+
+          <div class="modal-benefits-list">
+            <div class="benefit-item">
+              <span class="benefit-icon">✦</span>
+              <span>Banho nobre em Ouro 18k e acabamento refinado</span>
+            </div>
+            <div class="benefit-item">
+              <span class="benefit-icon">🛡️</span>
+              <span>Garantia de 1 ano no banho e camada antialérgica</span>
+            </div>
+            <div class="benefit-item">
+              <span class="benefit-icon">📦</span>
+              <span>Embalagem elegante perfeita para presentear</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Zoom da Foto (Lightbox) -->
+  <div class="lightbox-overlay" id="lightbox-modal" role="dialog" aria-hidden="true" style="display: none;">
+    <div class="lightbox-container">
+      <button type="button" class="lightbox-close-btn" id="lightbox-close" aria-label="Fechar ampliação">&times;</button>
+      
+      <button type="button" class="lightbox-nav-btn lightbox-prev" id="lightbox-prev" aria-label="Foto anterior" style="display: none;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+
+      <div class="lightbox-img-wrap">
+        <img src="" alt="Ampliação da joia" id="lightbox-img" class="lightbox-img">
+      </div>
+
+      <button type="button" class="lightbox-nav-btn lightbox-next" id="lightbox-next" aria-label="Próxima foto" style="display: none;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+
+      <div class="lightbox-counter" id="lightbox-counter" style="display: none;">1 / 1</div>
+    </div>
+  </div>
+
+  <!-- Footer Público -->
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <div class="footer-brand-col">
+        <div class="footer-logo">
+          <img src="assets/images/logo-simbolo.png" alt="Soléria" class="footer-logo-img">
+          <span class="footer-brand-name">Soléria</span>
+        </div>
+        <p class="footer-desc" id="footer-about-text">
+          Semijoias que celebram a sua luz própria através do brilho e da sofisticação. Peças com padrão de alta joalheria feitas para durar.
+        </p>
+      </div>
+
+      <div class="footer-links-col">
+        <h4 class="footer-col-title">Navegação</h4>
+        <ul class="footer-links-list">
+          <li><a href="/">Todas as Coleções</a></li>
+          <li><a href="promocoes.html" style="color: var(--brand-terracotta); font-weight: 700;">🔥 Promoções</a></li>
+          <li><a href="rastreio.html">Acompanhar Pedido</a></li>
+          <li><a href="minha-conta.html">Minha Conta</a></li>
+          <li><a href="admin.html">Área do Gestor</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-security-col">
+        <h4 class="footer-col-title">Atendimento & Garantia</h4>
+        <p class="footer-guarantee-text">
+          ✦ Banho Hipoalergênico<br>
+          ✦ Verniz Italiano Protetor<br>
+          ✦ Garantia de 1 ano no acabamento
+        </p>
+      </div>
+    </div>
+
+    <div class="container footer-bottom">
+      <p>&copy; 2026 Soléria Semijoias. Todos os direitos reservados.</p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="assets/js/supabase.js?v=6.0"></script>
+  <script src="assets/js/carrinho.js?v=5.0"></script>
+  <script src="assets/js/promocoes.js?v=1.0"></script>
+</body>
+</html>

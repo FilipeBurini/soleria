@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const costInput = document.getElementById('prod-cost');
   const priceInput = document.getElementById('prod-price');
   const originalPriceInput = document.getElementById('prod-original-price');
+  const promoInput = document.getElementById('prod-is-promo');
   const stockInput = document.getElementById('prod-stock');
   const stockHelpText = document.getElementById('stock-help-text');
   const btnRecalc300 = document.getElementById('btn-recalc-300');
@@ -1005,6 +1006,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       const originalPriceVal = originalPriceInput && parseFloat(originalPriceInput.value) > 0 
         ? parseFloat(originalPriceInput.value) 
         : null;
+      const isPromoChecked = promoInput ? promoInput.checked : false;
+
+      if (isPromoChecked) {
+        ringSizes._is_promo = true;
+        if (originalPriceVal > 0) ringSizes._promo_original_price = originalPriceVal;
+      }
 
       const productPayload = {
         name,
@@ -1016,6 +1023,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         cost_price: cost,
         sale_price: price,
         original_price: originalPriceVal,
+        is_promo: isPromoChecked,
         stock: parseInt(stockInput.value, 10) || 0,
         stock_qty: parseInt(stockInput.value, 10) || 0,
         vendor_id: (prodVendorSelect && prodVendorSelect.value) ? prodVendorSelect.value : null,

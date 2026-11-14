@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const costInput = document.getElementById('prod-cost');
   const priceInput = document.getElementById('prod-price');
   const originalPriceInput = document.getElementById('prod-original-price');
+  const promoInput = document.getElementById('prod-is-promo');
   const stockInput = document.getElementById('prod-stock');
   const stockHelpText = document.getElementById('stock-help-text');
   const btnSave = document.getElementById('btn-save-product');
@@ -391,6 +392,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (costInput) costInput.value = resolvedCost > 0 ? resolvedCost.toFixed(2) : '';
     if (priceInput) priceInput.value = resolvedPrice > 0 ? resolvedPrice.toFixed(2) : '';
     if (originalPriceInput) originalPriceInput.value = resolvedOriginalPrice > 0 ? resolvedOriginalPrice.toFixed(2) : '';
+    const isPromoFlag = Boolean(prod.is_promo === true || prod.is_promo === 'true' || prod.is_promo === 1 || (prod.sizes && (prod.sizes._is_promo === true || prod.sizes._is_promo === 'true')));
+    if (promoInput) promoInput.checked = isPromoFlag;
     if (stockInput) stockInput.value = prod.stock ?? prod.stock_qty ?? 0;
 
     // Grade de Aros (se categoria for Anel)
@@ -919,6 +922,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const origPriceVal = originalPriceInput && parseFloat(originalPriceInput.value) > 0 
       ? parseFloat(originalPriceInput.value) 
       : null;
+    const isPromoChecked = promoInput ? promoInput.checked : false;
+
+    if (isPromoChecked) {
+      ringSizes._is_promo = true;
+      if (origPriceVal > 0) ringSizes._promo_original_price = origPriceVal;
+    } else {
+      delete ringSizes._is_promo;
+      delete ringSizes._promo_original_price;
+    }
 
     const payload = {
       name: nameInput.value.trim(),
@@ -929,6 +941,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       product_cost: parseFloat(costInput.value) || 0,
       sale_price: parseFloat(priceInput.value) || 0,
       original_price: origPriceVal,
+      is_promo: isPromoChecked,
       stock: parseInt(stockInput.value, 10) || 0,
       vendor_id: (prodVendorSelect && prodVendorSelect.value) ? prodVendorSelect.value : null,
       batch_id: (prodBatchSelect && prodBatchSelect.value) ? prodBatchSelect.value : null,
@@ -953,6 +966,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         body: JSON.stringify(payload)
       });
 
+      // Se falhar e a coluna is_promo não existir ainda, tenta sem is_promo (usando sizes._is_promo)
+      if (!patchRes.ok) {
+        const fallbackPayload = { ...payload };
+        delete fallbackPayload.is_promo;
+        patchRes = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(targetId)}`, {
+          method: 'PATCH',
+          headers: authHeaders,
+          body: JSON.stringify(fallbackPayload)
+        });
+      }
+
       // Se der 401 por token expirado, tenta com a chave de emergência
       if (patchRes.status === 401 || patchRes.status === 403) {
         authHeaders['Authorization'] = `Bearer ${SUPABASE_ANON_KEY}`;
@@ -961,6 +985,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           headers: authHeaders,
           body: JSON.stringify(payload)
         });
+        if (!patchRes.ok) {
+          const fallbackPayload = { ...payload };
+          delete fallbackPayload.is_promo;
+          patchRes = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(targetId)}`, {
+            method: 'PATCH',
+            headers: authHeaders,
+            body: JSON.stringify(fallbackPayload)
+          });
+        }
       }
 
       if (!patchRes.ok) {
