@@ -924,14 +924,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       : null;
     const isPromoChecked = promoInput ? promoInput.checked : false;
 
-    if (isPromoChecked) {
-      ringSizes._is_promo = true;
-      if (origPriceVal > 0) ringSizes._promo_original_price = origPriceVal;
-    } else {
-      delete ringSizes._is_promo;
-      delete ringSizes._promo_original_price;
-    }
-
     const payload = {
       name: nameInput.value.trim(),
       status: statusInput.value,

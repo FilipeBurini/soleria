@@ -1008,11 +1008,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         : null;
       const isPromoChecked = promoInput ? promoInput.checked : false;
 
-      if (isPromoChecked) {
-        ringSizes._is_promo = true;
-        if (originalPriceVal > 0) ringSizes._promo_original_price = originalPriceVal;
-      }
-
       const productPayload = {
         name,
         status: statusInput.value || 'ativo',

@@ -240,16 +240,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function parseSizes(sizesField) {
     if (!sizesField) return {};
-    if (typeof sizesField === 'object' && !Array.isArray(sizesField)) return sizesField;
-    if (typeof sizesField === 'string') {
+    let raw = {};
+    if (typeof sizesField === 'object' && !Array.isArray(sizesField)) {
+      raw = sizesField;
+    } else if (typeof sizesField === 'string') {
       try {
         const parsed = JSON.parse(sizesField);
-        if (typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+        if (typeof parsed === 'object' && !Array.isArray(parsed)) raw = parsed;
       } catch (e) {
         return {};
       }
     }
-    return {};
+    // Remove qualquer metadado interno (que comece com _) para não quebrar o estoque ou aros
+    const clean = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (!k.startsWith('_')) {
+        clean[k] = v;
+      }
+    }
+    return clean;
   }
 
   // ==========================================================================
@@ -353,11 +362,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const totalProfit = Number(finRow.total_profit ?? finRow['Lucro total do item'] ?? (unitProfit * stock));
         const status = (prod.status || finRow.status || 'ativo').toLowerCase();
 
+        let rawSizes = prod.sizes;
+        if (typeof rawSizes === 'string') {
+          try { rawSizes = JSON.parse(rawSizes); } catch (e) { rawSizes = null; }
+        }
         const isInPromo = Boolean(
           prod.is_promo === true || 
           prod.is_promo === 'true' || 
           prod.is_promo === 1 || 
-          (sizes && (sizes._is_promo === true || sizes._is_promo === 'true'))
+          (rawSizes && (rawSizes._is_promo === true || rawSizes._is_promo === 'true'))
         );
         const originalPrice = Number(prod.original_price ?? finRow.original_price ?? 0);
 
@@ -1319,19 +1332,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const images = parseImages(item.images);
     if (modalPromoImg) modalPromoImg.src = images[0] || 'assets/images/logo-simbolo.png';
 
-    if (inpPromoActiveSwitch) inpPromoActiveSwitch.checked = Boolean(item.isPromo);
+    // Se já está em promoção, mantém ativo. Se clicou em "+ Promoção" para ativar, já pré-marca como true!
+    if (inpPromoActiveSwitch) {
+      inpPromoActiveSwitch.checked = item.isPromo ? true : true;
+    }
 
     const orig = Number(item.originalPrice) || 0;
     const sale = Number(item.salePrice) || 0;
 
     if (inpPromoOriginalPrice) {
-      if (orig > sale && orig > 0) {
-        inpPromoOriginalPrice.value = orig.toFixed(2);
-      } else {
-        const suggested = sale > 0 ? (sale * 1.35) : 0;
-        const rounded = Math.ceil(suggested) - 0.10;
-        inpPromoOriginalPrice.value = rounded > sale ? rounded.toFixed(2) : (sale + 10).toFixed(2);
-      }
+      inpPromoOriginalPrice.value = orig > 0 ? orig.toFixed(2) : '';
     }
 
     if (inpPromoSalePrice) {
@@ -1438,38 +1448,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     const item = rawFinancialsData.find(x => x.id === productId);
     if (!item) return false;
 
-    const currentSizes = { ...(item.sizes || {}) };
-    currentSizes._is_promo = isPromo;
-    if (originalPrice && originalPrice > 0) {
-      currentSizes._promo_original_price = originalPrice;
-    } else {
-      delete currentSizes._promo_original_price;
+    // Garante que sizes mantenha EXCLUSIVAMENTE tamanhos de aros reais, sem metadados internos
+    const cleanSizes = {};
+    for (const [k, v] of Object.entries(item.sizes || {})) {
+      if (!k.startsWith('_')) {
+        cleanSizes[k] = v;
+      }
     }
 
-    const payloadWithColumn = {
+    // O payload altera estritamente o status de promoção (is_promo)
+    // e garante que sizes no banco fique limpo de resíduos
+    const payload = {
       is_promo: isPromo,
-      sale_price: salePrice,
-      original_price: (originalPrice && originalPrice > 0) ? originalPrice : null,
-      sizes: currentSizes
+      sizes: cleanSizes
     };
 
-    const payloadFallback = {
-      sale_price: salePrice,
-      original_price: (originalPrice && originalPrice > 0) ? originalPrice : null,
-      sizes: currentSizes
-    };
+    if (originalPrice && originalPrice > 0) {
+      payload.original_price = originalPrice;
+    }
+
+    if (salePrice && salePrice > 0) {
+      payload.sale_price = salePrice;
+    }
 
     let saved = false;
     const client = (typeof getSupabaseClient === 'function' ? getSupabaseClient() : (window.db || db));
 
     if (client && isSupabaseConfigured()) {
       try {
-        const res = await client.from('products').update(payloadWithColumn).eq('id', productId);
-        if (res.error) {
-          const resFallback = await client.from('products').update(payloadFallback).eq('id', productId);
-          if (!resFallback.error) saved = true;
-        } else {
+        const res = await client.from('products').update(payload).eq('id', productId);
+        if (!res.error) {
           saved = true;
+        } else {
+          console.warn('Erro ao gravar promoção via Supabase client:', res.error);
         }
       } catch (e) {
         console.warn('Tentando fallback via REST fetch...', e);
@@ -1488,18 +1499,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         let r = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(productId)}`, {
           method: 'PATCH',
           headers,
-          body: JSON.stringify(payloadWithColumn)
+          body: JSON.stringify(payload)
         });
-        if (!r.ok) {
-          let rFallback = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(productId)}`, {
-            method: 'PATCH',
-            headers,
-            body: JSON.stringify(payloadFallback)
-          });
-          if (rFallback.ok) saved = true;
-        } else {
-          saved = true;
-        }
+        if (r.ok) saved = true;
       } catch (err) {
         console.error('Falha de rede ao gravar:', err);
       }
@@ -1507,14 +1509,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (saved) {
       item.isPromo = isPromo;
-      item.salePrice = salePrice;
-      item.originalPrice = (originalPrice && originalPrice > 0) ? originalPrice : null;
-      item.sizes = currentSizes;
+      if (salePrice && salePrice > 0) item.salePrice = salePrice;
+      if (originalPrice && originalPrice > 0) item.originalPrice = originalPrice;
+      item.sizes = cleanSizes;
       if (item.rawProd) {
         item.rawProd.is_promo = isPromo;
-        item.rawProd.sale_price = salePrice;
-        item.rawProd.original_price = item.originalPrice;
-        item.rawProd.sizes = currentSizes;
+        if (salePrice && salePrice > 0) item.rawProd.sale_price = salePrice;
+        if (originalPrice && originalPrice > 0) item.rawProd.original_price = item.originalPrice;
+        item.rawProd.sizes = cleanSizes;
+      }
+
+      // Recalcula o estoque real exclusivamente a partir dos aros limpos
+      const sizesValues = Object.values(cleanSizes);
+      if (sizesValues.length > 0) {
+        item.stock = sizesValues.reduce((a, b) => a + Number(b), 0);
       }
 
       try {
@@ -1526,7 +1534,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             list[idx].is_promo = isPromo;
             list[idx].sale_price = salePrice;
             list[idx].original_price = item.originalPrice;
-            list[idx].sizes = currentSizes;
+            list[idx].sizes = cleanSizes;
             localStorage.setItem('soleria_cached_products', JSON.stringify(list));
           }
         }
