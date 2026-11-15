@@ -283,10 +283,10 @@ document.addEventListener('DOMContentLoaded', () => {
    * Constrói dinamicamente os botões de filtro de categoria
    */
   function setupCategoryFilters() {
-    // Extrai categorias únicas
+    // Extrai categorias únicas apenas das peças regulares (itens em promoção ficam na vitrine de promoções)
     const categories = new Set();
     allProducts.forEach(p => {
-      if (p.category && p.category.trim()) {
+      if (!isProductInPromo(p) && p.category && p.category.trim()) {
         categories.add(p.category.trim());
       }
     });
@@ -338,11 +338,15 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function renderCatalog() {
     const filtered = allProducts.filter(p => {
+      // Regra: Peças em promoção pertencem exclusivamente à tela /promocoes.html
+      // Quando um item entra em promoção, ele sai automaticamente da tela principal de Coleções
+      if (isProductInPromo(p)) {
+        return false;
+      }
+
       let matchesCategory = false;
       if (currentCategory === 'todas') {
         matchesCategory = true;
-      } else if (currentCategory === 'promocoes') {
-        matchesCategory = isProductInPromo(p);
       } else {
         matchesCategory = (p.category && p.category.toLowerCase() === currentCategory.toLowerCase());
       }
@@ -362,6 +366,47 @@ document.addEventListener('DOMContentLoaded', () => {
     if (filtered.length === 0) {
       grid.style.display = 'none';
       emptyState.style.display = 'block';
+
+      const q = searchTerm.toLowerCase();
+      const matchingPromo = q ? allProducts.filter(p => isProductInPromo(p) && (
+        (p.name && p.name.toLowerCase().includes(q)) || 
+        (p.sku && p.sku.toLowerCase().includes(q)) || 
+        (p.category && p.category.toLowerCase().includes(q)) ||
+        (p.description && p.description.toLowerCase().includes(q))
+      )) : [];
+
+      if (matchingPromo.length > 0) {
+        emptyState.innerHTML = `
+          <div class="empty-state-icon">🔥</div>
+          <h3 class="empty-state-title">Esta peça está em Promoção!</h3>
+          <p class="empty-state-desc" style="max-width: 440px; margin: 0 auto 1.25rem;">
+            Encontramos ${matchingPromo.length} joia${matchingPromo.length > 1 ? 's' : ''} com preço especial na nossa vitrine exclusiva de promoções.
+          </p>
+          <a href="promocoes.html" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; padding: 0.65rem 1.4rem; font-size: 0.88rem;">
+            <span>Conferir Oferta em Promoções</span> &rarr;
+          </a>
+        `;
+      } else {
+        emptyState.innerHTML = `
+          <div class="empty-state-icon">✦</div>
+          <h3 class="empty-state-title">Nenhuma peça encontrada</h3>
+          <p class="empty-state-desc">Tente ajustar seus filtros de busca ou conferir nossas outras categorias.</p>
+          <button type="button" class="btn btn-outline" id="btn-reset-filter" style="margin-top: 1rem;">Limpar Filtros</button>
+        `;
+        const newReset = document.getElementById('btn-reset-filter');
+        if (newReset) {
+          newReset.addEventListener('click', () => {
+            currentCategory = 'todas';
+            searchTerm = '';
+            searchInput.value = '';
+            categoryFiltersContainer.querySelectorAll('.category-pill').forEach((pill, idx) => {
+              if (idx === 0) pill.classList.add('active');
+              else pill.classList.remove('active');
+            });
+            renderCatalog();
+          });
+        }
+      }
       return;
     }
 
