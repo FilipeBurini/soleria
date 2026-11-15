@@ -202,6 +202,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       const validOrders = clientOrders.filter(o => o.status !== 'cancelado');
       const totalSpent = validOrders.reduce((acc, o) => acc + (Number(o.total_amount) || 0), 0);
 
+      const sortedByDate = [...clientOrders].filter(x => x.created_at).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      const earliestOrderDate = sortedByDate[0] ? sortedByDate[0].created_at : null;
+      const registrationDate = c.created_at || earliestOrderDate || new Date().toISOString();
+
       enrichedCustomers.push({
         id: c.id,
         name: c.name || 'Cliente Sem Nome',
@@ -209,7 +213,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         phone: c.phone || '',
         email: c.email || '',
         address: c.address || {},
-        created_at: c.created_at || new Date().toISOString(),
+        created_at: registrationDate,
         orders: clientOrders,
         orderCount: clientOrders.length,
         validOrderCount: validOrders.length,
@@ -229,6 +233,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const validOrders = custOrders.filter(ord => ord.status !== 'cancelado');
         const totalSpent = validOrders.reduce((acc, ord) => acc + (Number(ord.total_amount) || 0), 0);
 
+        const sortedByDate = [...custOrders].filter(x => x.created_at).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        const earliestOrderDate = sortedByDate[0] ? sortedByDate[0].created_at : o.created_at;
+        const registrationDate = earliestOrderDate || new Date().toISOString();
+
         enrichedCustomers.push({
           id: `order-cust-${cleanCpf}`,
           name: o.customer_name || 'Cliente Catálogo',
@@ -236,7 +244,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           phone: o.customer_phone || '',
           email: o.customer_email || '',
           address: o.customer_address || {},
-          created_at: o.created_at || new Date().toISOString(),
+          created_at: registrationDate,
           orders: custOrders,
           orderCount: custOrders.length,
           validOrderCount: validOrders.length,
@@ -360,6 +368,18 @@ document.addEventListener('DOMContentLoaded', async () => {
               ` : '<span style="color: var(--text-muted);">Não informado</span>'}
             </div>
             ${cust.email ? `<div style="font-size: 0.73rem; color: var(--text-muted);">${cust.email}</div>` : ''}
+          </td>
+
+          <td style="padding: 0.85rem 1rem; color: var(--text-secondary); white-space: nowrap;">
+            <div style="font-weight: 600; color: var(--text-primary); font-size: 0.82rem; display: flex; align-items: center; gap: 0.35rem;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--brand-terracotta); flex-shrink: 0;">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              ${formatDate(cust.created_at)}
+            </div>
           </td>
 
           <td style="padding: 0.85rem 1rem; color: var(--text-secondary);">
