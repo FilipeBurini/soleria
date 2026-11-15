@@ -50,10 +50,11 @@ Cada cliente ganha seu próprio banco no plano gratuito do Supabase. Dessa forma
 4. Clique no botão verde **"Run"**.
    - Isso criará em 1 clique:
      - 💎 **Catálogo:** `products`, grade de aros (10-20), até 6 fotos, view financeira e de lucratividade;
+     - 🔥 **Vitrine de Promoções Dedicada:** `is_promo`, `promo_price` e página promocional (`promocoes.html`) integrada ao estoque;
      - 🏢 **Fornecedores & Lotes de Compra:** `vendors`, `purchase_batches`, `batch_items` e controle de custo de reposição;
      - 📦 **Insumos:** `supplies` e engenharia de custos (`product_supplies`);
-     - 🛍️ **Vendas & Caixa:** `orders` com baixa parcial (`amount_paid` e `balance_due`) e triggers automáticos de estoque;
-     - 👥 **CRM & Fidelização:** `customers` com autenticação segura e `coupons` com validação RPC.
+     - 🛍️ **Vendas & Caixa:** `orders` com baixa parcial (`amount_paid` e `balance_due`) e triggers automáticos de estoque com proteção de metadados;
+     - 👥 **CRM & Fidelização:** `customers` com data auditada de cadastro (`created_at`), histórico de compras, LTV acumulado, autenticação segura e `coupons` com validação RPC.
 
 ### Passo 1.3: Armazenamento de Fotos (Criado Automaticamente pelo SQL! 🎉)
 O próprio script [schema_completo_loja_nova.sql](./schema_completo_loja_nova.sql) executado no Passo 1.2 já cuida de tudo no Storage:
@@ -224,6 +225,8 @@ Antes de mandar as credenciais para a cliente:
 
 - [ ] Domínio dela acessando com cadeado verde HTTPS (`https://www.joiasdaana.com.br`).
 - [ ] Catálogo carregando e botão do WhatsApp chamando o número dela.
+- [ ] Vitrine de Promoções (`promocoes.html`) abrindo e sincronizada com as peças ativadas no painel.
+- [ ] Painel CRM (`admin-clientes.html`) exibindo a base de clientes com datas de cadastro e LTV.
 - [ ] Upload de 1 produto teste realizado no painel com foto no bucket `Fotos Produtos`.
 - [ ] Realizado 1 pedido teste no checkout com baixa de estoque testada.
 - [ ] Testado o filtro de **Baixa Parcial** e disparo de recibo no WhatsApp.
@@ -248,6 +251,8 @@ Copie e envie para a cliente no WhatsApp:
 >
 > **O que já está configurado para você:**
 > - Catálogo completo com grade de aros (10 ao 20);
+> - Vitrine exclusiva de Promoções (`/promocoes.html`);
+> - Gestão de Clientes e CRM com data de cadastro e histórico de compras;
 > - Atendimento direto no seu WhatsApp em 1 clique;
 > - Gestão de pedidos com opção de baixa parcial (entrada/sinal no Pix);
 > - Controle de estoque e cálculo de lucro em tempo real.

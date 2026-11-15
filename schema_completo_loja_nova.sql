@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS public.products (
 CREATE INDEX IF NOT EXISTS idx_products_sku ON public.products(sku);
 CREATE INDEX IF NOT EXISTS idx_products_category ON public.products(category);
 CREATE INDEX IF NOT EXISTS idx_products_status ON public.products(status);
+CREATE INDEX IF NOT EXISTS idx_products_is_promo ON public.products(is_promo);
 
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 
@@ -265,6 +266,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
   admin_notes TEXT,
   stock_deducted BOOLEAN DEFAULT false,
   stock_restored BOOLEAN DEFAULT false,
+  stock_reserved_in_db BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -397,7 +399,8 @@ BEGIN
               curr_sizes := jsonb_set(curr_sizes, ARRAY[item_size], to_jsonb(GREATEST(0, curr_aro_qty - item_qty)));
               
               SELECT COALESCE(SUM((val)::INT), 0) INTO curr_stock 
-              FROM jsonb_each_text(curr_sizes) AS t(key, val);
+              FROM jsonb_each_text(curr_sizes) AS t(key, val)
+              WHERE key NOT LIKE '\_%' AND val ~ '^-?[0-9]+$';
 
               UPDATE public.products 
               SET sizes = curr_sizes, stock = curr_stock, updated_at = now()
@@ -462,7 +465,8 @@ BEGIN
               curr_sizes := jsonb_set(curr_sizes, ARRAY[item_size], to_jsonb(curr_aro_qty + item_qty));
               
               SELECT COALESCE(SUM((val)::INT), 0) INTO curr_stock 
-              FROM jsonb_each_text(curr_sizes) AS t(key, val);
+              FROM jsonb_each_text(curr_sizes) AS t(key, val)
+              WHERE key NOT LIKE '\_%' AND val ~ '^-?[0-9]+$';
 
               UPDATE public.products 
               SET sizes = curr_sizes, stock = curr_stock, updated_at = now()
@@ -647,7 +651,12 @@ BEGIN
 END;
 $$;
 
--- Concede permissões para as funções RPC
+-- Concede permissões para as tabelas e funções RPC no schema public
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated, service_role;
+
 GRANT EXECUTE ON FUNCTION public.customer_authenticate(TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_order_tracking(TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.validate_coupon(TEXT, NUMERIC) TO anon, authenticated;
