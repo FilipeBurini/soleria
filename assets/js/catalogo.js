@@ -144,16 +144,25 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function parseSizes(sizesField) {
     if (!sizesField) return {};
-    if (typeof sizesField === 'object' && !Array.isArray(sizesField)) return sizesField;
-    if (typeof sizesField === 'string') {
+    let raw = {};
+    if (typeof sizesField === 'object' && !Array.isArray(sizesField)) {
+      raw = sizesField;
+    } else if (typeof sizesField === 'string') {
       try {
         const parsed = JSON.parse(sizesField);
-        if (typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+        if (typeof parsed === 'object' && !Array.isArray(parsed)) raw = parsed;
       } catch (e) {
         return {};
       }
     }
-    return {};
+    // Remove qualquer metadado interno (que comece com _) para não vazar na vitrine ou aros
+    const clean = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (!k.startsWith('_')) {
+        clean[k] = v;
+      }
+    }
+    return clean;
   }
 
   /**
@@ -162,8 +171,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function isProductInPromo(prod) {
     if (!prod) return false;
     if (prod.is_promo === true || prod.is_promo === 'true' || prod.is_promo === 1) return true;
-    const sizes = parseSizes(prod.sizes);
-    if (sizes && (sizes._is_promo === true || sizes._is_promo === 'true' || sizes._is_promo === 1)) return true;
+    let rawSizes = prod.sizes;
+    if (typeof rawSizes === 'string') {
+      try { rawSizes = JSON.parse(rawSizes); } catch (e) { rawSizes = null; }
+    }
+    if (rawSizes && (rawSizes._is_promo === true || rawSizes._is_promo === 'true' || rawSizes._is_promo === 1)) return true;
     return false;
   }
 
@@ -180,8 +192,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const inPromo = isProductInPromo(product);
     let oldPrice = 0;
     const customOriginal = Number(product.original_price || product.compare_price);
-    const sizes = parseSizes(product.sizes);
-    const sizesOldPrice = sizes && sizes._promo_original_price ? Number(sizes._promo_original_price) : 0;
+    let rawSizes = product.sizes;
+    if (typeof rawSizes === 'string') {
+      try { rawSizes = JSON.parse(rawSizes); } catch (e) { rawSizes = null; }
+    }
+    const sizesOldPrice = rawSizes && rawSizes._promo_original_price ? Number(rawSizes._promo_original_price) : 0;
 
     if (!isNaN(customOriginal) && customOriginal > salePrice) {
       oldPrice = customOriginal;
@@ -587,6 +602,8 @@ document.addEventListener('DOMContentLoaded', () => {
     modal.setAttribute('aria-hidden', 'false');
     const modalWin = modal.querySelector('.modal-window');
     if (modalWin) modalWin.scrollTop = 0;
+    const modalLayout = modal.querySelector('.modal-product-layout');
+    if (modalLayout) modalLayout.scrollTop = 0;
     document.body.style.overflow = 'hidden'; // Evita scroll do body
   }
 
@@ -715,6 +732,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     modal.classList.remove('active');
     modal.setAttribute('aria-hidden', 'true');
+    const modalWin = modal.querySelector('.modal-window');
+    if (modalWin) modalWin.scrollTop = 0;
+    const modalLayout = modal.querySelector('.modal-product-layout');
+    if (modalLayout) modalLayout.scrollTop = 0;
     document.body.style.overflow = '';
   }
 

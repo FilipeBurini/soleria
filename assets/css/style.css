@@ -3845,6 +3845,12 @@ body > main.container {
     z-index: 2;
   }
 
+  .product-card-category-badge.badge-top-left {
+    top: 0.45rem !important;
+    bottom: auto !important;
+    left: 0.45rem !important;
+  }
+
   .product-card-discount-badge {
     top: 0.45rem !important;
     right: 0.45rem !important;
@@ -4005,6 +4011,7 @@ body > main.container {
     align-items: center !important;
     gap: 0.5rem !important;
     width: 100% !important;
+    flex-shrink: 0 !important;
   }
 
   .modal-main-image-wrap {
@@ -4025,6 +4032,7 @@ body > main.container {
     position: relative !important;
     cursor: zoom-in !important;
     -webkit-tap-highlight-color: rgba(212, 175, 55, 0.2) !important;
+    flex-shrink: 0 !important;
   }
 
   .modal-main-image {
