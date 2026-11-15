@@ -289,6 +289,7 @@ a {
   transition: all var(--trans-fast);
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.4rem;
   white-space: nowrap;
   flex-shrink: 0;
@@ -408,6 +409,7 @@ a {
   transition: all var(--trans-fast);
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   justify-content: center;
   text-align: center;
   white-space: nowrap;
@@ -752,6 +754,7 @@ a {
   border-radius: 20px;
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 5px;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -1001,6 +1004,7 @@ a {
 .admin-brand-link {
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.75rem;
   text-decoration: none;
   min-width: 0;
@@ -1100,6 +1104,7 @@ a {
   transition: all var(--trans-fast);
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.45rem;
   white-space: nowrap;
   flex-shrink: 0;
@@ -1350,6 +1355,7 @@ body > main.container {
 .status-badge {
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.35rem;
   padding: 0.2rem 0.55rem;
   border-radius: var(--radius-full);
@@ -1675,6 +1681,7 @@ body > main.container {
   transition: all var(--trans-fast);
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.4rem;
 }
 
@@ -1768,6 +1775,7 @@ body > main.container {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   justify-content: center;
   gap: 0.5rem;
   transition: all var(--trans-fast);
@@ -1800,6 +1808,7 @@ body > main.container {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   justify-content: center;
   gap: 0.5rem;
   transition: all var(--trans-fast);
@@ -1837,6 +1846,7 @@ body > main.container {
   transition: color var(--trans-fast);
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   justify-content: center;
 }
 
@@ -2392,6 +2402,7 @@ body > main.container {
 .modal-size-pill {
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.4rem;
   padding: 0.42rem 0.8rem;
   border: 1.5px solid var(--border-medium);
@@ -2541,6 +2552,7 @@ body > main.container {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   justify-content: center;
   gap: 0.5rem;
   box-shadow: 0 2px 8px rgba(171, 83, 50, 0.25);
@@ -2580,6 +2592,7 @@ body > main.container {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.4rem;
   transition: all var(--trans-fast);
 }
@@ -2720,6 +2733,7 @@ body > main.container {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.3rem;
   transition: all var(--trans-fast);
 }
@@ -2768,6 +2782,7 @@ body > main.container {
   color: var(--text-primary);
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.55rem;
   cursor: pointer;
   position: relative;
@@ -2791,6 +2806,7 @@ body > main.container {
   font-weight: 700;
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   justify-content: center;
   transition: transform var(--trans-fast);
 }
@@ -2962,6 +2978,7 @@ body > main.container {
 .cart-qty-selector {
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-full);
   background: #FFFFFF;
@@ -3002,6 +3019,7 @@ body > main.container {
   transition: color var(--trans-fast);
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.2rem;
 }
 
@@ -3154,6 +3172,7 @@ body > main.container {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   justify-content: center;
   gap: 0.5rem;
   transition: all var(--trans-fast);
@@ -3216,6 +3235,7 @@ body > main.container {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   justify-content: center;
   gap: 0.5rem;
   text-decoration: none;
@@ -3423,6 +3443,7 @@ body > main.container {
   font-weight: 600;
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   justify-content: center;
   gap: 0.45rem;
   cursor: pointer;
@@ -3452,6 +3473,7 @@ body > main.container {
   font-weight: 600;
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   justify-content: center;
   gap: 0.45rem;
   cursor: pointer;
@@ -3499,6 +3521,7 @@ body > main.container {
 .order-badge {
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.35rem;
   padding: 0.25rem 0.65rem;
   border-radius: var(--radius-full);
@@ -3867,6 +3890,38 @@ body > main.container {
     font-size: 0.58rem !important;
     padding: 0.18rem 0.45rem !important;
     z-index: 2;
+  }
+
+  /* Tarja de Promoção nos Cards no Mobile: 100% visível e legível em 2 colunas */
+  .promo-card-tarja {
+    padding: 0.35rem 0.45rem !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.15rem !important;
+    box-sizing: border-box !important;
+  }
+
+  .promo-tarja-main {
+    font-size: 0.58rem !important;
+    letter-spacing: 0.05em !important;
+    gap: 0.25rem !important;
+    justify-content: flex-start !important;
+  }
+
+  .promo-tarja-prices {
+    font-size: 0.68rem !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    gap: 0.25rem !important;
+  }
+
+  .promo-tarja-old {
+    font-size: 0.56rem !important;
+  }
+
+  .promo-tarja-current {
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
   }
 
   .product-card-content {
@@ -4723,6 +4778,7 @@ body > main.container {
   border: 1px solid #BCF0DA;
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.25rem;
 }
 
@@ -4736,6 +4792,7 @@ body > main.container {
   border: 1px solid #FDE68A;
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.25rem;
 }
 
@@ -5250,6 +5307,7 @@ body > main.container {
 .lightbox-btn-close-bottom {
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   justify-content: center;
   gap: 6px;
   background: rgba(255, 255, 255, 0.14);
@@ -5332,6 +5390,7 @@ body > main.container {
 .admin-tab-toggle-btn {
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.5rem;
   background: transparent;
   border: 1px solid transparent;
@@ -5619,6 +5678,7 @@ body > main.container {
   transition: all var(--trans-fast);
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.3rem;
 }
 
@@ -5644,6 +5704,7 @@ body > main.container {
 .badge-promo-toggle {
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.3rem;
   font-size: 0.72rem;
   padding: 0.28rem 0.6rem;
@@ -5703,6 +5764,7 @@ body > main.container {
 .promo-hero-badge {
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.45rem;
   background: #FBF2EE;
   border: 1px solid var(--brand-terracotta-border);
@@ -5788,6 +5850,7 @@ body > main.container {
 .promo-manager-cost-tag {
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
   gap: 0.35rem;
   background: #FEF3C7;
   border: 1px solid #FCD34D;

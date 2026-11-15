@@ -295,9 +295,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let promoPillHtml = '';
     if (promoCount > 0) {
       promoPillHtml = `
-        <button class="category-pill pill-promo-highlight ${currentCategory === 'promocoes' ? 'active' : ''}" data-category="promocoes">
+        <a href="promocoes.html" class="category-pill pill-promo-highlight" data-category="promocoes" title="Ver Ofertas na Tela de Promoções">
           🔥 Promoções (${promoCount})
-        </button>
+        </a>
       `;
     }
 
@@ -319,7 +319,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Adiciona event listeners nos pills
     categoryFiltersContainer.querySelectorAll('.category-pill').forEach(pill => {
-      pill.addEventListener('click', () => {
+      pill.addEventListener('click', (e) => {
+        if (pill.dataset.category === 'promocoes' || pill.getAttribute('href') === 'promocoes.html') {
+          // Navega diretamente para a tela de promoções conforme solicitado
+          window.location.href = 'promocoes.html';
+          return;
+        }
         categoryFiltersContainer.querySelectorAll('.category-pill').forEach(b => b.classList.remove('active'));
         pill.classList.add('active');
         currentCategory = pill.dataset.category;
@@ -396,7 +401,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="product-card-image-box">
           <img class="product-card-img" src="${mainImgUrl}" alt="${product.name}" loading="lazy">
           ${isSoldOut ? `<span class="product-card-badge-soldout">Esgotado</span>` : (product.category ? `<span class="product-card-category-badge">${product.category}</span>` : '')}
-          ${promo.hasDiscount && !isSoldOut ? `<span class="product-card-discount-badge">-${promo.discountPct}% OFF</span>` : ''}
         </div>
         <div class="product-card-content">
           <h2 class="product-card-title">${product.name}</h2>
@@ -404,9 +408,8 @@ document.addEventListener('DOMContentLoaded', () => {
           ${sizesPreviewHtml}
           <div class="product-card-footer">
             <div class="product-card-pricing-block">
-              ${promo.hasDiscount ? `<span class="product-price-old">De ${formatBRL(promo.oldPrice)}</span>` : ''}
               <div class="product-card-price">
-                ${promo.hasDiscount ? '<span class="price-prefix">Por</span> ' : ''}${formatBRL(promo.salePrice)}
+                ${formatBRL(product.sale_price)}
               </div>
             </div>
             <span class="product-card-action-hint">
@@ -452,22 +455,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Exibe preços promocionais no modal
+    // Na vitrine principal da home, o foco de promoção fica exclusivo na tela de promoções
     const modalPromoRow = document.getElementById('modal-promo-row');
-    const modalPriceOld = document.getElementById('modal-price-old');
-    const modalDiscountBadge = document.getElementById('modal-discount-badge');
     const modalPricePrefix = document.getElementById('modal-price-prefix');
-
-    if (promo.hasDiscount) {
-      if (modalPromoRow) modalPromoRow.style.display = 'flex';
-      if (modalPriceOld) modalPriceOld.textContent = `De ${formatBRL(promo.oldPrice)}`;
-      if (modalDiscountBadge) modalDiscountBadge.textContent = `-${promo.discountPct}% OFF`;
-      if (modalPricePrefix) modalPricePrefix.style.display = 'inline';
-    } else {
-      if (modalPromoRow) modalPromoRow.style.display = 'none';
-      if (modalPricePrefix) modalPricePrefix.style.display = 'none';
-    }
-    modalPrice.textContent = formatBRL(promo.salePrice);
+    if (modalPromoRow) modalPromoRow.style.display = 'none';
+    if (modalPricePrefix) modalPricePrefix.style.display = 'none';
+    modalPrice.textContent = formatBRL(product.sale_price);
 
     // Define imagem principal
     modalMainImg.src = images[0];
