@@ -920,51 +920,83 @@ document.addEventListener('DOMContentLoaded', async () => {
       totalStockPieces += item.stock;
     });
 
-    // 1. Consolidação de Clientes e Compradoras (Base Unificada)
-    const allCustomersMap = new Map();
+    // 1. Consolidação Rigorosa de Clientes e Compradoras (Base Unificada com cruzamento CPF/Telefone)
+    function isTestOrder(o) {
+      if (!o) return false;
+      const num = (o.order_number || '').toUpperCase();
+      const name = (o.customer_name || '').toLowerCase();
+      return num.startsWith('TEST-') || name.includes('teste sanitizado');
+    }
 
-    // Clientes cadastrados na base
+    function cleanDigits(val) {
+      return val ? String(val).replace(/\D/g, '') : '';
+    }
+
+    function getPhoneKey(phone) {
+      const d = cleanDigits(phone);
+      if (!d) return '';
+      return d.length >= 8 ? d.slice(-8) : d;
+    }
+
+    const unifiedCustomers = [];
+
+    function findCustomer(cpf, phone, name) {
+      const cleanCpf = cleanDigits(cpf);
+      const phoneKey = getPhoneKey(phone);
+
+      for (const c of unifiedCustomers) {
+        if (cleanCpf && c.cpf && cleanDigits(c.cpf) === cleanCpf) return c;
+        if (phoneKey && c.phone && getPhoneKey(c.phone) === phoneKey) return c;
+        if (!cleanCpf && !phoneKey && name && c.name && c.name.trim().toLowerCase() === name.trim().toLowerCase()) return c;
+      }
+      return null;
+    }
+
+    // A) Clientes cadastrados na base / localStorage
     (rawCustomersData || []).forEach(c => {
-      const cleanCpf = c.cpf ? String(c.cpf).replace(/\D/g, '') : '';
-      const cleanPhone = c.phone ? String(c.phone).replace(/\D/g, '') : '';
-      const key = cleanCpf || cleanPhone || (c.email ? c.email.trim().toLowerCase() : (c.id ? String(c.id) : ''));
-      if (key) {
-        allCustomersMap.set(key, {
-          name: c.name || 'Cliente',
-          phone: c.phone || '',
+      const cleanCpf = cleanDigits(c.cpf);
+      const phone = c.phone || '';
+      const name = c.name || 'Cliente';
+      let entry = findCustomer(cleanCpf, phone, name);
+      if (!entry) {
+        entry = {
+          name,
           cpf: cleanCpf,
+          phone,
           hasOrders: false
-        });
+        };
+        unifiedCustomers.push(entry);
       }
     });
 
-    // Clientes identificados a partir dos pedidos
-    const buyersSet = new Set();
+    // B) Clientes identificados a partir dos pedidos (com cruzamento CPF e Telefone para evitar duplicatas)
     (rawOrdersData || []).forEach(o => {
-      const isCancelled = isOrderCancelled(o);
-      const cleanCpf = o.customer_cpf ? String(o.customer_cpf).replace(/\D/g, '') : '';
-      const cleanPhone = o.customer_phone ? String(o.customer_phone).replace(/\D/g, '') : '';
-      const key = cleanCpf || cleanPhone || (o.customer_name ? o.customer_name.trim().toLowerCase() : '');
+      if (isTestOrder(o)) return;
 
-      if (key) {
-        if (!allCustomersMap.has(key)) {
-          allCustomersMap.set(key, {
-            name: o.customer_name || 'Cliente',
-            phone: o.customer_phone || '',
-            cpf: cleanCpf,
-            hasOrders: !isCancelled
-          });
-        }
-        if (!isCancelled) {
-          buyersSet.add(key);
-          const entry = allCustomersMap.get(key);
-          if (entry) entry.hasOrders = true;
-        }
+      const cleanCpf = cleanDigits(o.customer_cpf);
+      const phone = o.customer_phone || '';
+      const name = (o.customer_name || '').trim();
+      const isCancelled = isOrderCancelled(o);
+
+      let entry = findCustomer(cleanCpf, phone, name);
+      if (!entry) {
+        entry = {
+          name: name || 'Cliente',
+          cpf: cleanCpf,
+          phone,
+          hasOrders: !isCancelled
+        };
+        unifiedCustomers.push(entry);
+      } else {
+        if (!entry.cpf && cleanCpf) entry.cpf = cleanCpf;
+        if (!entry.phone && phone) entry.phone = phone;
+        if (entry.name === 'Cliente' && name) entry.name = name;
+        if (!isCancelled) entry.hasOrders = true;
       }
     });
 
-    const totalCustomers = Math.max(allCustomersMap.size, buyersSet.size);
-    const buyersCount = buyersSet.size;
+    const totalCustomers = unifiedCustomers.length;
+    const buyersCount = unifiedCustomers.filter(c => c.hasOrders).length;
     const rawRate = totalCustomers > 0 ? (buyersCount / totalCustomers) * 100 : 0;
     const conversionRate = Math.min(100, Math.max(0, Math.round(rawRate)));
 
@@ -1205,33 +1237,74 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!dashTopClientsList) return;
     if (dashCrmConversao) dashCrmConversao.textContent = `${conversionRate}%`;
 
-    // Agrupa compras por cliente (apenas pedidos válidos / não cancelados)
-    const clientsMap = new Map();
+    function isTestOrder(o) {
+      if (!o) return false;
+      const num = (o.order_number || '').toUpperCase();
+      const name = (o.customer_name || '').toLowerCase();
+      return num.startsWith('TEST-') || name.includes('teste sanitizado');
+    }
+
+    function cleanDigits(val) {
+      return val ? String(val).replace(/\D/g, '') : '';
+    }
+
+    function getPhoneKey(phone) {
+      const d = cleanDigits(phone);
+      if (!d) return '';
+      return d.length >= 8 ? d.slice(-8) : d;
+    }
+
+    // Agrupa compras por cliente (apenas pedidos válidos / não cancelados e com consolidação cruzada)
+    const buyersList = [];
+
+    function findBuyer(cpf, phone, name) {
+      const cleanCpf = cleanDigits(cpf);
+      const phoneKey = getPhoneKey(phone);
+
+      for (const b of buyersList) {
+        if (cleanCpf && b.cpf && cleanDigits(b.cpf) === cleanCpf) return b;
+        if (phoneKey && b.phone && getPhoneKey(b.phone) === phoneKey) return b;
+        if (!cleanCpf && !phoneKey && name && b.name && b.name.trim().toLowerCase() === name.trim().toLowerCase()) return b;
+      }
+      return null;
+    }
+
     rawOrdersData.forEach(o => {
-      if ((o.status || '').toLowerCase() === 'cancelado') return;
-      const key = o.customer_cpf ? String(o.customer_cpf).replace(/\D/g, '') : (o.customer_phone ? String(o.customer_phone).replace(/\D/g, '') : (o.customer_name || 'Desconhecido'));
-      if (!clientsMap.has(key)) {
-        clientsMap.set(key, {
-          name: o.customer_name || 'Cliente',
-          phone: o.customer_phone || '',
+      if (isOrderCancelled(o) || isTestOrder(o)) return;
+
+      const cleanCpf = cleanDigits(o.customer_cpf);
+      const phone = o.customer_phone || '';
+      const name = (o.customer_name || '').trim();
+
+      let client = findBuyer(cleanCpf, phone, name);
+      if (!client) {
+        client = {
+          name: name || 'Cliente',
+          cpf: cleanCpf,
+          phone: phone,
           ordersCount: 0,
           totalSpent: 0
-        });
+        };
+        buyersList.push(client);
+      } else {
+        if (!client.cpf && cleanCpf) client.cpf = cleanCpf;
+        if (!client.phone && phone) client.phone = phone;
+        if (client.name === 'Cliente' && name) client.name = name;
       }
-      const client = clientsMap.get(key);
+
       client.ordersCount++;
       client.totalSpent += (Number(o.total_amount) || 0);
     });
 
-    const buyersList = Array.from(clientsMap.values()).filter(c => c.totalSpent > 0);
-    buyersList.sort((a, b) => b.totalSpent - a.totalSpent);
+    const activeBuyers = buyersList.filter(c => c.totalSpent > 0);
+    activeBuyers.sort((a, b) => b.totalSpent - a.totalSpent);
 
-    const totalBuyers = buyersList.length;
-    const totalSpentAll = buyersList.reduce((acc, c) => acc + c.totalSpent, 0);
+    const totalBuyers = activeBuyers.length;
+    const totalSpentAll = activeBuyers.reduce((acc, c) => acc + c.totalSpent, 0);
     const avgLtv = totalBuyers > 0 ? (totalSpentAll / totalBuyers) : 0;
     if (dashCrmLtv) dashCrmLtv.textContent = formatBRL(avgLtv);
 
-    if (buyersList.length === 0) {
+    if (activeBuyers.length === 0) {
       dashTopClientsList.innerHTML = `
         <div style="text-align: center; padding: 1.25rem; color: var(--text-muted); font-size: 0.8rem;">
           Nenhuma compra registrada por clientes ainda.

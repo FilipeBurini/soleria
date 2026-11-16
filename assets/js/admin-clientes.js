@@ -158,102 +158,130 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /**
-   * Consolida métricas de compras por cliente
+   * Consolida métricas de compras por cliente com cruzamento inteligente de CPF e Telefone
    */
   function consolidateCustomerData() {
-    // Mapeamento de clientes por CPF e por Telefone
-    const ordersByCpf = new Map();
-    const ordersByPhone = new Map();
+    function isTestOrder(o) {
+      if (!o) return false;
+      const num = (o.order_number || '').toUpperCase();
+      const name = (o.customer_name || '').toLowerCase();
+      return num.startsWith('TEST-') || name.includes('teste sanitizado');
+    }
 
-    rawOrders.forEach(o => {
-      const cleanCpf = o.customer_cpf ? String(o.customer_cpf).replace(/\D/g, '') : '';
-      const cleanPhone = o.customer_phone ? String(o.customer_phone).replace(/\D/g, '').slice(-8) : '';
+    function cleanDigits(val) {
+      return val ? String(val).replace(/\D/g, '') : '';
+    }
 
-      if (cleanCpf) {
-        if (!ordersByCpf.has(cleanCpf)) ordersByCpf.set(cleanCpf, []);
-        ordersByCpf.get(cleanCpf).push(o);
+    function getPhoneKey(phone) {
+      const d = cleanDigits(phone);
+      if (!d) return '';
+      return d.length >= 8 ? d.slice(-8) : d;
+    }
+
+    const unifiedList = [];
+
+    function findCustomer(cpf, phone, name) {
+      const cleanCpf = cleanDigits(cpf);
+      const phoneKey = getPhoneKey(phone);
+
+      for (const c of unifiedList) {
+        if (cleanCpf && c.cpf && cleanDigits(c.cpf) === cleanCpf) return c;
+        if (phoneKey && c.phone && getPhoneKey(c.phone) === phoneKey) return c;
+        if (!cleanCpf && !phoneKey && name && c.name && c.name.trim().toLowerCase() === name.trim().toLowerCase()) return c;
       }
-      if (cleanPhone) {
-        if (!ordersByPhone.has(cleanPhone)) ordersByPhone.set(cleanPhone, []);
-        ordersByPhone.get(cleanPhone).push(o);
+      return null;
+    }
+
+    // 1. Processa clientes da tabela customers ou localStorage
+    (rawCustomers || []).forEach(c => {
+      const cleanCpf = cleanDigits(c.cpf);
+      const phone = c.phone || '';
+      const name = c.name || 'Cliente';
+      let entry = findCustomer(cleanCpf, phone, name);
+      if (!entry) {
+        entry = {
+          id: c.id || `cust-${cleanCpf || cleanDigits(phone) || Math.random()}`,
+          name,
+          cpf: cleanCpf,
+          phone,
+          email: c.email || '',
+          address: c.address || {},
+          created_at: c.created_at || new Date().toISOString(),
+          orders: [],
+          validOrders: []
+        };
+        unifiedList.push(entry);
       }
     });
 
-    const processedCpfs = new Set();
-    enrichedCustomers = [];
+    // 2. Processa pedidos e unifica de forma cruzada (CPF ou Telefone)
+    (rawOrders || []).forEach(o => {
+      if (isTestOrder(o)) return;
 
-    // 1. Processa clientes da tabela customers
-    rawCustomers.forEach(c => {
-      const cleanCpf = String(c.cpf || '').replace(/\D/g, '');
-      const cleanPhone = String(c.phone || '').replace(/\D/g, '').slice(-8);
+      const cleanCpf = cleanDigits(o.customer_cpf);
+      const phone = o.customer_phone || '';
+      const name = (o.customer_name || '').trim();
 
-      let custOrders = [];
-      if (cleanCpf && ordersByCpf.has(cleanCpf)) {
-        custOrders = ordersByCpf.get(cleanCpf);
-      } else if (cleanPhone && ordersByPhone.has(cleanPhone)) {
-        custOrders = ordersByPhone.get(cleanPhone);
+      let entry = findCustomer(cleanCpf, phone, name);
+      if (!entry) {
+        entry = {
+          id: `order-cust-${cleanCpf || cleanDigits(phone) || o.order_number}`,
+          name: name || 'Cliente Catálogo',
+          cpf: cleanCpf,
+          phone,
+          email: o.customer_email || '',
+          address: o.customer_address || {},
+          created_at: o.created_at || new Date().toISOString(),
+          orders: [],
+          validOrders: []
+        };
+        unifiedList.push(entry);
+      } else {
+        if (!entry.cpf && cleanCpf) entry.cpf = cleanCpf;
+        if (!entry.phone && phone) entry.phone = phone;
+        if ((!entry.name || entry.name === 'Cliente' || entry.name === 'Cliente Catálogo') && name) {
+          entry.name = name;
+        }
+        if (!entry.email && o.customer_email) entry.email = o.customer_email;
+        if ((!entry.address || Object.keys(entry.address).length === 0) && o.customer_address) {
+          entry.address = o.customer_address;
+        }
       }
 
-      // Elimina duplicatas de pedidos
-      const uniqueOrdersMap = new Map();
-      custOrders.forEach(ord => uniqueOrdersMap.set(ord.order_number, ord));
-      const clientOrders = Array.from(uniqueOrdersMap.values());
+      // Evita duplicar o mesmo pedido
+      if (!entry.orders.some(ord => ord.order_number === o.order_number)) {
+        entry.orders.push(o);
+      }
+      if ((o.status || '').toLowerCase() !== 'cancelado') {
+        if (!entry.validOrders.some(ord => ord.order_number === o.order_number)) {
+          entry.validOrders.push(o);
+        }
+      }
+    });
 
-      const validOrders = clientOrders.filter(o => o.status !== 'cancelado');
-      const totalSpent = validOrders.reduce((acc, o) => acc + (Number(o.total_amount) || 0), 0);
-
-      const sortedByDate = [...clientOrders].filter(x => x.created_at).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    // Enriquece os dados com LTV, contagem e data de cadastro auditada
+    enrichedCustomers = unifiedList.map(c => {
+      const validOrders = c.validOrders || [];
+      const totalSpent = validOrders.reduce((acc, ord) => acc + (Number(ord.total_amount) || 0), 0);
+      const sortedByDate = [...c.orders].filter(x => x.created_at).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
       const earliestOrderDate = sortedByDate[0] ? sortedByDate[0].created_at : null;
       const registrationDate = c.created_at || earliestOrderDate || new Date().toISOString();
 
-      enrichedCustomers.push({
+      return {
         id: c.id,
-        name: c.name || 'Cliente Sem Nome',
-        cpf: cleanCpf,
-        phone: c.phone || '',
-        email: c.email || '',
-        address: c.address || {},
+        name: c.name,
+        cpf: c.cpf,
+        phone: c.phone,
+        email: c.email,
+        address: c.address,
         created_at: registrationDate,
-        orders: clientOrders,
-        orderCount: clientOrders.length,
+        orders: c.orders,
+        orderCount: c.orders.length,
         validOrderCount: validOrders.length,
         ltv: totalSpent,
         isVip: totalSpent >= 500,
         isFrequent: validOrders.length >= 3
-      });
-
-      if (cleanCpf) processedCpfs.add(cleanCpf);
-    });
-
-    // 2. Se houver pedidos de clientes que ainda não estavam em customers, cria registros virtuais
-    rawOrders.forEach(o => {
-      const cleanCpf = o.customer_cpf ? String(o.customer_cpf).replace(/\D/g, '') : '';
-      if (cleanCpf && !processedCpfs.has(cleanCpf)) {
-        const custOrders = ordersByCpf.get(cleanCpf) || [o];
-        const validOrders = custOrders.filter(ord => ord.status !== 'cancelado');
-        const totalSpent = validOrders.reduce((acc, ord) => acc + (Number(ord.total_amount) || 0), 0);
-
-        const sortedByDate = [...custOrders].filter(x => x.created_at).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        const earliestOrderDate = sortedByDate[0] ? sortedByDate[0].created_at : o.created_at;
-        const registrationDate = earliestOrderDate || new Date().toISOString();
-
-        enrichedCustomers.push({
-          id: `order-cust-${cleanCpf}`,
-          name: o.customer_name || 'Cliente Catálogo',
-          cpf: cleanCpf,
-          phone: o.customer_phone || '',
-          email: o.customer_email || '',
-          address: o.customer_address || {},
-          created_at: registrationDate,
-          orders: custOrders,
-          orderCount: custOrders.length,
-          validOrderCount: validOrders.length,
-          ltv: totalSpent,
-          isVip: totalSpent >= 500,
-          isFrequent: validOrders.length >= 3
-        });
-        processedCpfs.add(cleanCpf);
-      }
+      };
     });
 
     // Ordena por maior LTV e pedidos mais recentes
