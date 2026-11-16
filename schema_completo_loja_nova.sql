@@ -65,6 +65,10 @@ CREATE INDEX IF NOT EXISTS idx_products_category ON public.products(category);
 CREATE INDEX IF NOT EXISTS idx_products_status ON public.products(status);
 CREATE INDEX IF NOT EXISTS idx_products_is_promo ON public.products(is_promo);
 
+-- Garante compatibilidade incremental caso a tabela já existisse antes
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS is_promo BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS promo_price NUMERIC(10,2);
+
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "allow_anon_read_products" ON public.products;
@@ -277,6 +281,9 @@ CREATE INDEX IF NOT EXISTS idx_orders_customer_cpf ON public.orders(customer_cpf
 CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON public.orders(payment_status);
 CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders(created_at DESC);
+
+-- Garante compatibilidade incremental caso a tabela já existisse antes
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS stock_reserved_in_db BOOLEAN DEFAULT false;
 
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 
