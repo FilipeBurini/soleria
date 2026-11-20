@@ -449,7 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="product-card-content">
           <h2 class="product-card-title">${product.name}</h2>
-          <p class="product-card-desc">${product.description || ''}</p>
+          <p class="product-card-desc">${stripHtml(product.description || '')}</p>
           ${sizesPreviewHtml}
           <div class="product-card-footer">
             <div class="product-card-pricing-block">
@@ -474,6 +474,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function stripHtml(html) {
+    if (!html) return '';
+    return String(html).replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function renderProductDescription(rawDesc) {
+    if (!rawDesc) {
+      return 'Semijoia de alta qualidade com banho nobre, verniz protetor e acabamento primoroso de joia.';
+    }
+    const str = String(rawDesc).trim();
+    if (/<[a-z][\s\S]*>/i.test(str)) {
+      return str;
+    }
+    return str.split(/\r?\n\r?\n/).map(p => `<p style="margin-bottom: 0.65rem;">${p.replace(/\r?\n/g, '<br>')}</p>`).join('');
+  }
+
   /**
    * Abre o modal exibindo detalhes completos e galeria
    */
@@ -486,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     modalTitle.textContent = product.name;
     modalCategory.textContent = product.category || 'Semijoias';
-    modalDesc.textContent = product.description || 'Semijoia de alta qualidade com banho nobre, verniz protetor e acabamento primoroso de joia.';
+    modalDesc.innerHTML = renderProductDescription(product.description);
 
     // Exibe SKU discreto abaixo do nome do item
     const modalSku = document.getElementById('modal-sku');

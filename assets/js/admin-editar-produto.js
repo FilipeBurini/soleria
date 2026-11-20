@@ -381,7 +381,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (descInput) {
-      descInput.value = prod.description ?? prod.desc ?? prod.descricao ?? '';
+      const val = prod.description ?? prod.desc ?? prod.descricao ?? '';
+      descInput.value = val;
+      if (typeof window.setRichEditorContent === 'function') {
+        window.setRichEditorContent(val);
+      }
     }
 
     // Custos e Preços

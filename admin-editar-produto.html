@@ -223,8 +223,43 @@
         </div>
 
         <div class="form-group col-12">
-          <label class="form-label" for="prod-description">Descrição Completa</label>
-          <textarea id="prod-description" rows="4" class="form-textarea" placeholder="Descreva os materiais nobres, acabamento, banho, dimensões e cuidados com a semijoia..."></textarea>
+          <label class="form-label" for="prod-description-editor">Descrição Completa</label>
+          <div class="rich-editor-wrapper">
+            <div class="rich-editor-toolbar" role="toolbar" aria-label="Ferramentas de Formatação">
+              <button type="button" class="rich-btn" data-cmd="bold" title="Negrito (Ctrl+B)">
+                <strong>B</strong>
+              </button>
+              <button type="button" class="rich-btn" data-cmd="italic" title="Itálico (Ctrl+I)">
+                <em>I</em>
+              </button>
+              <button type="button" class="rich-btn" data-cmd="underline" title="Sublinhado (Ctrl+U)">
+                <u>U</u>
+              </button>
+              <span class="rich-divider"></span>
+              <button type="button" class="rich-btn" data-cmd="formatBlock" data-val="h3" title="Subtítulo / Seção">
+                <span style="font-size: 0.82rem; font-weight: 700;">H3</span>
+              </button>
+              <button type="button" class="rich-btn" data-cmd="formatBlock" data-val="p" title="Parágrafo Normal">
+                <span style="font-size: 0.82rem;">P</span>
+              </button>
+              <span class="rich-divider"></span>
+              <button type="button" class="rich-btn" data-cmd="insertUnorderedList" title="Lista com Marcadores">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+              </button>
+              <button type="button" class="rich-btn" data-cmd="insertOrderedList" title="Lista Numerada">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="10" y1="6" x2="21" y2="6"></line><line x1="10" y1="12" x2="21" y2="12"></line><line x1="10" y1="18" x2="21" y2="18"></line><text x="2" y="8" font-size="8" fill="currentColor" stroke="none" font-weight="700">1</text><text x="2" y="19" font-size="8" fill="currentColor" stroke="none" font-weight="700">2</text></svg>
+              </button>
+              <span class="rich-divider"></span>
+              <button type="button" class="rich-btn" data-cmd="removeFormat" title="Limpar Formatação">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div id="prod-description-editor" class="rich-editor-content" contenteditable="true" data-placeholder="Descreva detalhes, materiais nobres, acabamento, dimensões e recomendações de uso..."></div>
+            <textarea id="prod-description" rows="4" class="form-textarea" style="display: none;"></textarea>
+          </div>
+          <small style="display: block; font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem;">
+            ✦ Use a barra para aplicar <strong>negrito</strong>, <em>itálico</em>, subtítulos e listas com marcadores.
+          </small>
         </div>
       </div>
 
@@ -486,6 +521,7 @@
 
   <!-- Scripts -->
   <script src="assets/js/supabase.js?v=6.0"></script>
+  <script src="assets/js/rich-editor.js"></script>
   <script src="assets/js/admin-editar-produto.js?v=6.5"></script>
 </body>
 </html>

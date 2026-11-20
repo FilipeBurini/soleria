@@ -1199,6 +1199,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Reseta formulário mantendo a categoria
       const lastCat = categoryInput.value;
       form.reset();
+      if (typeof window.setRichEditorContent === 'function') {
+        window.setRichEditorContent('');
+      }
       categoryInput.value = lastCat;
       linkedSupplies = [];
       pendingImageFiles = [];

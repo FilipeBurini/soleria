@@ -5862,6 +5862,166 @@ body > main.container {
   margin-bottom: 0.5rem;
 }
 
+/* ==========================================================================
+   SOLÉRIA — RICH TEXT EDITOR (WYSIWYG PARA DESCRIÇÃO DE PRODUTOS)
+   ========================================================================== */
+.rich-editor-wrapper {
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+  overflow: hidden;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.rich-editor-wrapper:focus-within {
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 0 3px rgba(197, 164, 101, 0.18);
+}
+
+.rich-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.65rem;
+  background: #FAF8F5;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.rich-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 30px;
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.92rem;
+  transition: all var(--transition-fast);
+  padding: 0;
+}
+
+.rich-btn:hover {
+  background: #F5EFEB;
+  border-color: var(--gold-primary);
+  color: var(--brand-terracotta);
+}
+
+.rich-btn.active {
+  background: var(--brand-terracotta);
+  border-color: var(--brand-terracotta);
+  color: #FFFFFF !important;
+}
+
+.rich-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-medium);
+  margin: 0 0.35rem;
+}
+
+.rich-editor-content {
+  min-height: 190px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding: 0.85rem 1rem;
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  line-height: 1.65;
+  outline: none;
+  font-family: inherit;
+  background: #ffffff;
+}
+
+.rich-editor-content:empty:before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+  display: block;
+  font-style: italic;
+}
+
+.rich-editor-content b,
+.rich-editor-content strong {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.rich-editor-content i,
+.rich-editor-content em {
+  font-style: italic;
+}
+
+.rich-editor-content u {
+  text-decoration: underline;
+}
+
+.rich-editor-content h3 {
+  font-family: var(--font-serif);
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: var(--brand-terracotta);
+  margin: 0.85rem 0 0.35rem 0;
+}
+
+.rich-editor-content ul,
+.rich-editor-content ol {
+  margin: 0.35rem 0 0.6rem 1.35rem;
+  padding: 0;
+}
+
+.rich-editor-content li {
+  margin-bottom: 0.25rem;
+}
+
+.rich-editor-content p {
+  margin: 0 0 0.6rem 0;
+}
+
+/* Formatação rica na exibição do modal da vitrine/catálogo */
+.modal-description-text b,
+.modal-description-text strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.modal-description-text i,
+.modal-description-text em {
+  font-style: italic;
+}
+
+.modal-description-text u {
+  text-decoration: underline;
+}
+
+.modal-description-text h3,
+.modal-description-text h4 {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--brand-terracotta);
+  margin: 1.15rem 0 0.4rem 0;
+}
+
+.modal-description-text ul,
+.modal-description-text ol {
+  margin: 0.4rem 0 0.75rem 1.35rem;
+  padding: 0;
+}
+
+.modal-description-text li {
+  margin-bottom: 0.3rem;
+}
+
+.modal-description-text p {
+  margin-bottom: 0.65rem;
+}
+
+
 
 
 
