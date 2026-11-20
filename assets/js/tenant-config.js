@@ -185,15 +185,50 @@ window.TENANT_PROMISE = (async function initTenant() {
 
     // D) Aplica Logos, Títulos e Textos Customizáveis (Executa com segurança de ciclo de vida)
     function applyDOMChanges() {
-      // 1. Atualiza o Título da Página e Nome da Marca
+      // 1. Atualiza o Título da Aba no Navegador, Metatags e Nome da Marca
       if (tenant.client_name) {
-        document.title = document.title.replace(/Soléria/gi, tenant.client_name);
+        const currentTitle = document.title;
+        let finalTitle = currentTitle;
+
+        const isHomePage = /^(Soléria|.*)\s*—\s*Joias que contam sua luz$/i.test(currentTitle.trim()) ||
+                           window.location.pathname === '/' ||
+                           window.location.pathname.endsWith('/index.html') ||
+                           window.location.pathname.endsWith('/index') ||
+                           window.location.pathname === '';
+
+        if (isHomePage) {
+          if (tenant.brand_subtitle && tenant.brand_subtitle.trim()) {
+            finalTitle = `${tenant.client_name} — ${tenant.brand_subtitle.trim()}`;
+          } else {
+            finalTitle = tenant.client_name;
+          }
+        } else {
+          finalTitle = currentTitle
+            .replace(/\|\s*Joias que contam sua luz/gi, '')
+            .replace(/—\s*Joias que contam sua luz/gi, '')
+            .replace(/Joias que contam sua luz/gi, '')
+            .replace(/Soléria Semijoias/gi, tenant.client_name)
+            .replace(/Soléria/gi, tenant.client_name)
+            .trim()
+            .replace(/[\s—|-]+$/, '')
+            .trim();
+        }
+
+        document.title = finalTitle;
         document.querySelectorAll('.brand-title').forEach(el => el.textContent = tenant.client_name);
+
+        // Atualiza metatags OpenGraph / WhatsApp / Twitter
+        document.querySelectorAll('meta[property="og:title"], meta[name="twitter:title"]').forEach(meta => {
+          meta.setAttribute('content', finalTitle);
+        });
       }
 
       // 2. Atualiza Slogan / Subtítulo da Marca
       if (tenant.brand_subtitle) {
         document.querySelectorAll('.brand-subtitle').forEach(el => el.textContent = tenant.brand_subtitle);
+        if (tenant.client_name && document.title === tenant.client_name && tenant.brand_subtitle.trim()) {
+          document.title = `${tenant.client_name} — ${tenant.brand_subtitle.trim()}`;
+        }
       }
 
       // 3. Atualiza Destaque Superior do Banner (Eyebrow)
