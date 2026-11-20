@@ -26,6 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const inpAttendant = document.getElementById('cust-attendant');
   const inpLogoUrl = document.getElementById('cust-logo-url');
   const inpIconUrl = document.getElementById('cust-icon-url');
+  const inpPixKey = document.getElementById('cust-pix-key');
+  const inpPixName = document.getElementById('cust-pix-name');
+  const inpPixCity = document.getElementById('cust-pix-city');
 
   function openModal() {
     const config = window.TENANT_CONFIG || {};
@@ -39,6 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (inpAttendant) inpAttendant.value = config.attendant_name || 'Carla';
     if (inpLogoUrl) inpLogoUrl.value = config.logo_url || '';
     if (inpIconUrl) inpIconUrl.value = config.icon_url || '';
+    if (inpPixKey) inpPixKey.value = config.pix_key || '';
+    if (inpPixName) inpPixName.value = config.pix_name || '';
+    if (inpPixCity) inpPixCity.value = config.pix_city || 'BRASIL';
 
     modal.classList.add('active');
     modal.style.display = 'flex';
@@ -103,7 +109,10 @@ document.addEventListener('DOMContentLoaded', () => {
       whatsapp_number: inpWhatsapp?.value.trim() || null,
       attendant_name: inpAttendant?.value.trim() || 'Carla',
       logo_url: inpLogoUrl?.value.trim() || null,
-      icon_url: inpIconUrl?.value.trim() || null
+      icon_url: inpIconUrl?.value.trim() || null,
+      pix_key: inpPixKey?.value.trim() || null,
+      pix_name: inpPixName?.value.trim() || null,
+      pix_city: inpPixCity?.value.trim() || 'BRASIL'
     };
 
     try {

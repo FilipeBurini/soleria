@@ -629,8 +629,12 @@
 
           if (btnWaRecovery) {
             const raw = e.target.value.trim();
-            const msg = `Olá, Carla! Esqueci minha senha de acesso à Área da Cliente Soléria. Meu CPF cadastrado é ${raw || 'informado no chat'}.`;
-            btnWaRecovery.href = `https://wa.me/5516997990729?text=${encodeURIComponent(msg)}`;
+            const tenantCfg = (typeof window !== 'undefined' && window.TENANT_CONFIG) || {};
+            const phone = tenantCfg.whatsapp_number || (typeof window !== 'undefined' && window.TENANT_WHATSAPP) || '5516997990729';
+            const attendant = tenantCfg.attendant_name || 'Carla';
+            const storeName = tenantCfg.client_name || 'da loja';
+            const msg = `Olá, ${attendant}! Esqueci minha senha de acesso à Área da Cliente ${storeName}. Meu CPF cadastrado é ${raw || 'informado no chat'}.`;
+            btnWaRecovery.href = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
           }
         });
       }

@@ -59,6 +59,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const inpAboutText = document.getElementById('lic-about-text');
   const inpWhatsapp = document.getElementById('lic-whatsapp');
   const inpAttendant = document.getElementById('lic-attendant');
+  const inpPixKey = document.getElementById('lic-pix-key');
+  const inpPixName = document.getElementById('lic-pix-name');
+  const inpPixCity = document.getElementById('lic-pix-city');
+  const btnTestSupabase = document.getElementById('btn-test-supabase');
+  const testFeedback = document.getElementById('supabase-test-feedback');
   const inpMonthlyFee = document.getElementById('lic-monthly-fee');
   const inpValidUntil = document.getElementById('lic-valid-until');
   const inpStatus = document.getElementById('lic-status');
@@ -338,6 +343,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (inpAboutText) inpAboutText.value = lic.about_text || '';
       inpWhatsapp.value = lic.whatsapp_number || '';
       inpAttendant.value = lic.attendant_name || 'Carla';
+      if (inpPixKey) inpPixKey.value = lic.pix_key || '';
+      if (inpPixName) inpPixName.value = lic.pix_name || '';
+      if (inpPixCity) inpPixCity.value = lic.pix_city || 'BRASIL';
       inpMonthlyFee.value = lic.monthly_fee !== undefined ? lic.monthly_fee : 97.00;
       inpValidUntil.value = lic.valid_until || '';
       inpStatus.value = lic.status || 'active';
@@ -362,6 +370,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (inpAboutText) inpAboutText.value = '';
       inpWhatsapp.value = '';
       inpAttendant.value = 'Carla';
+      if (inpPixKey) inpPixKey.value = '';
+      if (inpPixName) inpPixName.value = '';
+      if (inpPixCity) inpPixCity.value = 'BRASIL';
       inpMonthlyFee.value = '97.00';
       inpStatus.value = 'active';
 
@@ -369,6 +380,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       const defaultExp = new Date();
       defaultExp.setDate(defaultExp.getDate() + 30);
       inpValidUntil.value = defaultExp.toISOString().split('T')[0];
+    }
+
+    if (testFeedback) {
+      testFeedback.style.display = 'none';
+      testFeedback.innerHTML = '';
     }
 
     // Exibe o modal garantindo classe active e estilos visíveis
@@ -424,6 +440,66 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   searchInput?.addEventListener('input', () => renderTable(licensesData));
 
+  // Botão Testar Conexão Supabase da Cliente
+  if (btnTestSupabase) {
+    btnTestSupabase.addEventListener('click', async () => {
+      const url = inpSupabaseUrl.value.trim().replace(/\/$/, '');
+      const anonKey = inpSupabaseAnon.value.trim();
+
+      if (!url || !anonKey) {
+        if (testFeedback) {
+          testFeedback.style.display = 'block';
+          testFeedback.style.background = '#FEF2F2';
+          testFeedback.style.color = '#991B1B';
+          testFeedback.style.border = '1px solid #FCA5A5';
+          testFeedback.innerHTML = '⚠️ Preencha a <strong>Project URL</strong> e a <strong>Anon Key</strong> antes de testar.';
+        }
+        return;
+      }
+
+      btnTestSupabase.disabled = true;
+      btnTestSupabase.textContent = '⏳ Testando...';
+      if (testFeedback) {
+        testFeedback.style.display = 'block';
+        testFeedback.style.background = '#EFF6FF';
+        testFeedback.style.color = '#1E40AF';
+        testFeedback.style.border = '1px solid #BFDBFE';
+        testFeedback.innerHTML = 'Conectando ao Supabase da cliente...';
+      }
+
+      try {
+        const resp = await fetch(`${url}/rest/v1/products?select=id&limit=1`, {
+          method: 'GET',
+          headers: {
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`
+          }
+        });
+
+        if (resp.ok) {
+          testFeedback.style.background = '#ECFDF5';
+          testFeedback.style.color = '#065F46';
+          testFeedback.style.border = '1px solid #A7F3D0';
+          testFeedback.innerHTML = '✅ <strong>Conexão bem-sucedida!</strong> O banco de dados Supabase da cliente está acessível e respondendo perfeitamente.';
+        } else {
+          const errBody = await resp.json().catch(() => ({}));
+          testFeedback.style.background = '#FEF2F2';
+          testFeedback.style.color = '#991B1B';
+          testFeedback.style.border = '1px solid #FCA5A5';
+          testFeedback.innerHTML = `❌ <strong>Falha na conexão (HTTP ${resp.status}):</strong> ${errBody.message || 'Verifique se a URL e a Anon Key estão corretas ou se o script do banco já foi executado.'}`;
+        }
+      } catch (err) {
+        testFeedback.style.background = '#FEF2F2';
+        testFeedback.style.color = '#991B1B';
+        testFeedback.style.border = '1px solid #FCA5A5';
+        testFeedback.innerHTML = `❌ <strong>Erro de rede:</strong> ${err.message || 'Não foi possível alcançar o servidor Supabase. Verifique a URL informada.'}`;
+      } finally {
+        btnTestSupabase.disabled = false;
+        btnTestSupabase.innerHTML = '<span>⚡</span> Testar Conexão Supabase';
+      }
+    });
+  }
+
   // Salvar Loja (Insert ou Update)
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -450,6 +526,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       about_text: inpAboutText?.value.trim() || null,
       whatsapp_number: inpWhatsapp.value.trim() || null,
       attendant_name: inpAttendant.value.trim() || 'Carla',
+      pix_key: inpPixKey?.value.trim() || null,
+      pix_name: inpPixName?.value.trim() || null,
+      pix_city: inpPixCity?.value.trim() || 'BRASIL',
       monthly_fee: parseFloat(inpMonthlyFee.value) || 0,
       valid_until: inpValidUntil.value,
       status: inpStatus.value

@@ -350,10 +350,12 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     });
 
-    const phone = '5516997990729'; // WhatsApp Soléria (Carla)
-    const waHelpMsg = `Olá, Carla! Gostaria de informações sobre meu pedido *${order.order_number}* em nome de ${order.customer_name}.`;
+    const tenantCfg = (typeof window !== 'undefined' && window.TENANT_CONFIG) || {};
+    const phone = tenantCfg.whatsapp_number || (typeof window !== 'undefined' && window.TENANT_WHATSAPP) || '5516997990729';
+    const attendant = tenantCfg.attendant_name || 'Carla';
+    const waHelpMsg = `Olá, ${attendant}! Gostaria de informações sobre meu pedido *${order.order_number}* em nome de ${order.customer_name}.`;
     const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(waHelpMsg)}`;
-    const waPixMsg = `Olá, Carla! Gostaria de combinar o pagamento via PIX do meu pedido *${order.order_number}* no valor de ${formatMoney(order.total_amount)}.`;
+    const waPixMsg = `Olá, ${attendant}! Gostaria de combinar o pagamento via PIX do meu pedido *${order.order_number}* no valor de ${formatMoney(order.total_amount)}.`;
     const waPixUrl = `https://wa.me/${phone}?text=${encodeURIComponent(waPixMsg)}`;
 
     resultBox.innerHTML = `

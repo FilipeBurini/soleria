@@ -368,6 +368,69 @@ function generateCategoryPrefix(categoryName) {
 }
 
 /**
+ * Otimiza e comprime fotos de joias no próprio navegador antes do upload.
+ * Reduz arquivos pesados de celular (5MB - 12MB) para ~150KB em WebP de alta definição,
+ * economizando mais de 90% da cota gratuita do Supabase Storage.
+ */
+async function compressImageFile(file, maxWidth = 1400, quality = 0.85) {
+  if (!file || !file.type || !file.type.startsWith('image/')) {
+    return file;
+  }
+  // Não comprime vetores (SVG) ou animações (GIF)
+  if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
+    return file;
+  }
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onerror = () => resolve(file);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => resolve(file);
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        // Se a imagem for maior que maxWidth, reduz mantendo a proporção
+        if (width > maxWidth || height > maxWidth) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxWidth) / height);
+            height = maxWidth;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(file);
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob((blob) => {
+          if (!blob || blob.size >= file.size) {
+            return resolve(file);
+          }
+          const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || 'foto';
+          const compressedFile = new File([blob], `${baseName}.webp`, {
+            type: 'image/webp',
+            lastModified: Date.now()
+          });
+          resolve(compressedFile);
+        }, 'image/webp', quality);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
  * Upload de imagem para o bucket do Supabase Storage ('Fotos Produtos')
  * Organiza os arquivos em subpastas pelo SKU do produto (ex: Fotos Produtos/AN5032/foto.jpg)
  */
@@ -383,9 +446,17 @@ async function uploadImageToStorage(file, folderName = '', bucket = 'Fotos Produ
     .replace(/[\\/:\*\?"<>\|]/g, '-')
     .replace(/\s+/g, '-');
 
+  // Comprime e otimiza a foto no navegador antes do upload
+  let fileToUpload = file;
+  try {
+    fileToUpload = await compressImageFile(file);
+  } catch (compErr) {
+    console.warn('[Image Optimizer] Fallback para arquivo original:', compErr);
+  }
+
   // Gera nome único para o arquivo
-  const fileExt = file.name.split('.').pop().toLowerCase();
-  const fileBaseName = file.name.substring(0, file.name.lastIndexOf('.')).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const fileExt = fileToUpload.name.split('.').pop().toLowerCase();
+  const fileBaseName = fileToUpload.name.substring(0, fileToUpload.name.lastIndexOf('.')).replace(/[^a-zA-Z0-9_-]/g, '_');
   const fileName = `${Date.now()}_${fileBaseName}.${fileExt}`;
   
   // Caminho final dentro do bucket: SKU/arquivo.ext
@@ -393,8 +464,9 @@ async function uploadImageToStorage(file, folderName = '', bucket = 'Fotos Produ
 
   const { data, error } = await client.storage
     .from(bucket)
-    .upload(filePath, file, {
+    .upload(filePath, fileToUpload, {
       cacheControl: '3600',
+      contentType: fileToUpload.type || 'image/webp',
       upsert: true
     });
 

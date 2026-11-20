@@ -1528,7 +1528,14 @@
     const isCreditCard = order.payment_method === 'credit_card';
     const isWhatsApp = order.payment_method === 'whatsapp';
 
-    const whatsappText = `Olá, Carla! Acabei de fazer o pedido *${order.order_number}* no catálogo:\n\n` +
+    const tenantCfg = (typeof window !== 'undefined' && window.TENANT_CONFIG) || {};
+    const tenantPhone = tenantCfg.whatsapp_number || (typeof window !== 'undefined' && window.TENANT_WHATSAPP) || '5516997990729';
+    const tenantAttendant = tenantCfg.attendant_name || 'Carla';
+    const tenantPixKey = tenantCfg.pix_key || 'carlamotasemijoias@gmail.com';
+    const tenantPixName = tenantCfg.pix_name || tenantCfg.client_name || 'SOLERIA JOIAS';
+    const tenantPixCity = tenantCfg.pix_city || 'FRANCA';
+
+    const whatsappText = `Olá, ${tenantAttendant}! Acabei de fazer o pedido *${order.order_number}* no catálogo:\n\n` +
       `*Cliente:* ${order.customer_name}\n` +
       `*Peças:*\n${itemsSummary}\n` +
       `${discountSummary}` +
@@ -1539,14 +1546,14 @@
         ? `Meu pagamento já foi aprovado no cartão via PagBank! Gostaria de acompanhar a preparação e envio das minhas peças.`
         : `Gostaria de confirmar o pedido e combinar o pagamento e envio das peças.`);
 
-    const phone = '5516997990729'; // WhatsApp Soléria (Carla)
+    const phone = tenantPhone;
     const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(whatsappText)}`;
 
     // Geração do Código PIX Copia e Cola Oficial Bacen e QR Code (se método for PIX)
     const pixPayload = generatePixPayload({
-      key: 'carlamotasemijoias@gmail.com',
-      name: 'SOLERIA JOIAS',
-      city: 'FRANCA',
+      key: tenantPixKey,
+      name: tenantPixName,
+      city: tenantPixCity,
       amount: order.total_amount,
       txid: '***'
     });
@@ -1625,7 +1632,7 @@
         </div>
 
         <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 0.75rem; line-height: 1.4;">
-          ✦ Chave PIX (E-mail): <strong>carlamotasemijoias@gmail.com</strong> (Carla Mota)<br>
+          ✦ Chave PIX: <strong>${tenantPixKey}</strong> (${tenantPixName})<br>
           Após o pagamento, envie o comprovante no WhatsApp abaixo para priorizarmos seu envio.
         </div>
       </div>
@@ -1658,7 +1665,7 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.63c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.4-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.12-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.78 2.71 4.3 3.8 2.53 1.09 2.53.73 2.99.69.45-.05 1.47-.6 1.68-1.18.21-.59.21-1.09.15-1.19-.06-.1-.23-.17-.48-.29z"/>
         </svg>
-        ${isCreditCard ? 'Falar com a Carla no WhatsApp' : 'Enviar Pedido / Comprovante no WhatsApp'}
+        ${isCreditCard ? `Falar com ${tenantAttendant} no WhatsApp` : 'Enviar Pedido / Comprovante no WhatsApp'}
       </a>
 
       <a href="rastreio.html?pedido=${order.order_number}" class="btn-secondary" style="width: 100%; display: block; text-align: center; text-decoration: none; font-size: 0.82rem; padding: 0.65rem; margin-top: 0.6rem;">
@@ -1775,19 +1782,26 @@
     const orderNum = order.order_number || 'SOL-PEDIDO';
     const customerName = order.customer_name || 'Cliente Soléria';
 
+    const tenantCfg = (typeof window !== 'undefined' && window.TENANT_CONFIG) || {};
+    const tenantPhone = tenantCfg.whatsapp_number || (typeof window !== 'undefined' && window.TENANT_WHATSAPP) || '5516997990729';
+    const tenantAttendant = tenantCfg.attendant_name || 'Carla';
+    const tenantPixKey = tenantCfg.pix_key || 'carlamotasemijoias@gmail.com';
+    const tenantPixName = tenantCfg.pix_name || tenantCfg.client_name || 'SOLERIA JOIAS';
+    const tenantPixCity = tenantCfg.pix_city || 'FRANCA';
+
     // Geração do Código PIX Copia e Cola Oficial Bacen
     const pixPayload = generatePixPayload({
-      key: 'carlamotasemijoias@gmail.com',
-      name: 'SOLERIA JOIAS',
-      city: 'FRANCA',
+      key: tenantPixKey,
+      name: tenantPixName,
+      city: tenantPixCity,
       amount: totalAmount,
       txid: '***'
     });
 
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=6&data=${encodeURIComponent(pixPayload)}`;
 
-    const waMsg = `Olá, Carla! Segue o comprovante de pagamento do pedido *${orderNum}* no valor de ${formatMoney(totalAmount)}.`;
-    const waUrl = `https://wa.me/5516997990729?text=${encodeURIComponent(waMsg)}`;
+    const waMsg = `Olá, ${tenantAttendant}! Segue o comprovante de pagamento do pedido *${orderNum}* no valor de ${formatMoney(totalAmount)}.`;
+    const waUrl = `https://wa.me/${tenantPhone}?text=${encodeURIComponent(waMsg)}`;
 
     const content = modal.querySelector('#pix-payment-modal-content');
     content.innerHTML = `
@@ -1836,7 +1850,7 @@
         </div>
 
         <div style="font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 0.85rem; line-height: 1.35;">
-          ✦ Chave PIX (E-mail): <strong>carlamotasemijoias@gmail.com</strong> (Carla Mota)<br>
+          ✦ Chave PIX: <strong>${tenantPixKey}</strong> (${tenantPixName})<br>
           Após o pagamento, envie o comprovante no WhatsApp abaixo para priorizarmos o envio das suas peças.
         </div>
 

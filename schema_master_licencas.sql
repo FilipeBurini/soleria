@@ -34,6 +34,11 @@ CREATE TABLE IF NOT EXISTS public.licenses (
   whatsapp_number TEXT,                                      -- Ex: '5511999999999'
   attendant_name TEXT DEFAULT 'Carla',                       -- Nome da atendente (ex: 'Ana', 'Mariana')
   
+  -- Recebimento via PIX (Checkout da Loja Parceira)
+  pix_key TEXT,                                              -- Chave PIX da cliente (E-mail, CPF, CNPJ, Celular ou Aleatória)
+  pix_name TEXT,                                             -- Nome do titular / Razão Social na conta PIX
+  pix_city TEXT DEFAULT 'BRASIL',                            -- Cidade do titular da conta PIX (para QR Code Bacen)
+
   -- Controle de Mensalidade & Faturamento
   monthly_fee NUMERIC(10, 2) DEFAULT 97.00,
   valid_until DATE NOT NULL,                                 -- Data de expiração da mensalidade
@@ -52,6 +57,9 @@ ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS hero_eyebrow TEXT;
 ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS hero_title TEXT;
 ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS hero_desc TEXT;
 ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS about_text TEXT;
+ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS pix_key TEXT;
+ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS pix_name TEXT;
+ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS pix_city TEXT DEFAULT 'BRASIL';
 
 -- Índices de busca rápida por chave e por domínio
 CREATE INDEX IF NOT EXISTS idx_licenses_license_key ON public.licenses(license_key);

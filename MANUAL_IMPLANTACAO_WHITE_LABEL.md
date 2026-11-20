@@ -89,7 +89,18 @@ Com o sistema de **Multi-Tenant e Licenças Master**, você **NÃO precisa edita
 Tudo é configurado centralmente no seu próprio painel administrativo: [admin-licencas.html](./admin-licencas.html).
 
 ### Passo 2.1: Rodar a Tabela Master de Licenças (Uma única vez)
-No seu próprio Supabase Master (o da Soléria ou central), execute o script [schema_master_licencas.sql](./schema_master_licencas.sql) no **SQL Editor**. Esse script cria a tabela `public.licenses` com todos os campos de controle, cores, credenciais e RLS de leitura segura.
+No seu próprio Supabase Master (o da Soléria ou central), execute o script [schema_master_licencas.sql](./schema_master_licencas.sql) no **SQL Editor**. Esse script cria a tabela `public.licenses` com todos os campos de controle, cores, credenciais, recebimento PIX e RLS de leitura segura.
+
+> [!NOTE]
+> **Se a sua tabela `licenses` já existia no Master**, basta rodar este comando de migração rápida no SQL Editor do seu Master:
+> ```sql
+> ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS pix_key TEXT;
+> ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS pix_name TEXT;
+> ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS pix_city TEXT DEFAULT 'BRASIL';
+> ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS brand_subtitle TEXT;
+> ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS icon_url TEXT;
+> ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS logo_url TEXT;
+> ```
 
 ### Passo 2.2: Acessar a tela "Lojas & Licenças" no seu Painel Master
 1. Abra o painel da sua loja Master em [admin.html](./admin.html) e clique no botão **"🔑 Lojas & Licenças"** no cabeçalho do painel 360° (ou acesse diretamente [admin-licencas.html](./admin-licencas.html)).
@@ -105,23 +116,32 @@ Na tela que se abre, preencha os dados da contratante:
 2. **Banco de Dados Dedicado da Cliente (Supabase Isolado):**
    - **Supabase URL do Cliente:** Cole a URL coletada no Passo 1.5 (ex: `https://xyzabcdefg.supabase.co`).
    - **Supabase Anon Key:** Cole a chave pública `anon` da cliente coletada no Passo 1.5.
+   - **⚡ Testar Conexão Supabase:** Clique neste botão para validar instantaneamente se o banco da cliente está online e respondendo antes de salvar.
 3. **Identidade Visual e Cores:**
    - **URL da Logo:** Link da imagem da logo horizontal da cliente (ex: link hospedado, Supabase Storage público ou Imgur).
-   - **URL do Ícone / Favicon:** Link do símbolo da marca da cliente.
+   - **URL do Ícone / Favicon:** Link do símbolo da marca da cliente (substitui a estrelinha da Soléria na aba do navegador).
    - **Cor Primária:** Escolha visualmente no seletor de cores ou digite o hexadecimal (ex: `#C48259`).
    - **Cor Secundária / Acento:** Escolha visualmente no seletor (ex: `#D4AF37`).
 4. **Textos da Vitrine & Página Inicial (Sincronizado):**
-   - **Slogan / Subtítulo da Marca:** Ex: `Pratas 925 com Alma e Luz` ou `Semijoias que contam sua luz`.
+   - **Frase da Aba do Navegador & Slogan:** Ex: `Semijoias Finas & Autorais` (aparece na aba do navegador e abaixo da logo).
    - **Destaque Superior do Banner (Eyebrow):** Ex: `Pratas 925 & Pedras Naturais`.
    - **Título Principal do Banner:** Ex: `O Brilho Autêntico da Prata`.
    - **Texto Descritivo do Banner:** Frase de apresentação do catálogo no topo da página inicial.
    - **Texto Sobre a Marca (Rodapé):** Breve parágrafo institucional exibido no rodapé da loja.
-5. **Atendimento & Cobrança:**
-   - **WhatsApp de Atendimento:** Número oficial com DDD (ex: `5511999999999`).
+5. **Atendimento & WhatsApp:**
+   - **WhatsApp de Atendimento:** Número oficial com DDD (ex: `5511999999999`). Usado em todos os botões do site e no envio dos pedidos.
    - **Nome da Atendente:** Ex: `Ana` ou `Mariana`.
+6. **Recebimento via PIX da Loja (Checkout Dinâmico):**
+   - **Chave PIX da Cliente:** Chave oficial da loja (e-mail, celular, CPF/CNPJ ou aleatória).
+   - **Nome do Titular:** Nome ou Razão Social que aparece no comprovante bancário (ex: `JOIAS DA ANA LTDA`).
+   - **Cidade:** Cidade da conta (ex: `SAO PAULO`). O checkout gera automaticamente o QR Code e o código Copia e Cola oficial do Banco Central para o dinheiro cair direto na conta dela!
+7. **Faturamento & Mensalidade:**
    - **Valor da Mensalidade (R$):** Ex: `97.00` ou `147.00`.
    - **Válido até:** Defina a data da primeira mensalidade (ex: daqui a 30 dias).
-6. Clique em **"Salvar Parâmetros da Loja"**.
+8. Clique em **"Salvar Parâmetros da Loja"**.
+
+> 📸 **Otimização Automática de Imagens (Economia de Storage):**
+> O sistema agora conta com **compressão automática WebP no navegador**: quando o lojista sobe fotos tiradas pelo celular (geralmente de 5MB a 12MB cada), o sistema comprime e redimensiona antes do envio para ~150KB com alta nitidez visual. Isso permite que a loja tenha **mais de 6.000 fotos de joias** sem estourar o plano gratuito de 1GB do Supabase!
 
 > 🔄 **Sincronização Bidirecional em Tempo Real:**
 > - Você pode alterar qualquer texto ou parâmetro pelo seu Master em [admin-licencas.html](./admin-licencas.html).
