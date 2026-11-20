@@ -56,6 +56,10 @@ Cada cliente ganha seu próprio banco no plano gratuito do Supabase. Dessa forma
      - 🛍️ **Vendas & Caixa:** `orders` com baixa parcial (`amount_paid` e `balance_due`) e triggers automáticos de estoque com proteção de metadados;
      - 👥 **CRM & Fidelização:** `customers` com data auditada de cadastro (`created_at`), histórico de compras, LTV acumulado, autenticação segura e `coupons` com validação RPC.
 
+> [!TIP]
+> **Vai atualizar o banco de uma cliente que JÁ está rodando?**
+> Em vez deste script de nova loja, use o script **[schema_atualizacao_loja_existente.sql](./schema_atualizacao_loja_existente.sql)**. Ele é 100% blindado contra duplicação de cadastros, não apaga nenhum dado e adiciona todas as novas colunas com comandos `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
+
 ### Passo 1.3: Armazenamento de Fotos (Criado Automaticamente pelo SQL! 🎉)
 O próprio script [schema_completo_loja_nova.sql](./schema_completo_loja_nova.sql) executado no Passo 1.2 já cuida de tudo no Storage:
 - ✅ Cria o bucket `Fotos Produtos` como **público**;
