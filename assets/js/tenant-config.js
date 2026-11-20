@@ -179,14 +179,20 @@ window.TENANT_PROMISE = (async function initTenant() {
       const rows = await response.json();
       if (rows && rows[0]) {
         window.TENANT_CONFIG = { ...window.TENANT_CONFIG, ...rows[0] };
+        try {
+          sessionStorage.setItem('soleria_cfg_' + currentDomain, JSON.stringify(window.TENANT_CONFIG));
+        } catch (e) {}
+        applyDOMChanges();
       }
       return rows;
     };
 
     // D) Aplica Logos, Títulos e Textos Customizáveis (Executa com segurança de ciclo de vida)
     function applyDOMChanges() {
+      const activeTenant = window.TENANT_CONFIG || tenant || {};
+
       // 1. Atualiza o Título da Aba no Navegador, Metatags e Nome da Marca
-      if (tenant.client_name) {
+      if (activeTenant.client_name) {
         const currentTitle = document.title;
         let finalTitle = currentTitle;
 
@@ -197,25 +203,25 @@ window.TENANT_PROMISE = (async function initTenant() {
                            window.location.pathname === '';
 
         if (isHomePage) {
-          if (tenant.brand_subtitle && tenant.brand_subtitle.trim()) {
-            finalTitle = `${tenant.client_name} — ${tenant.brand_subtitle.trim()}`;
+          if (activeTenant.brand_subtitle && activeTenant.brand_subtitle.trim()) {
+            finalTitle = `${activeTenant.client_name} — ${activeTenant.brand_subtitle.trim()}`;
           } else {
-            finalTitle = tenant.client_name;
+            finalTitle = activeTenant.client_name;
           }
         } else {
           finalTitle = currentTitle
             .replace(/\|\s*Joias que contam sua luz/gi, '')
             .replace(/—\s*Joias que contam sua luz/gi, '')
             .replace(/Joias que contam sua luz/gi, '')
-            .replace(/Soléria Semijoias/gi, tenant.client_name)
-            .replace(/Soléria/gi, tenant.client_name)
+            .replace(/Soléria Semijoias/gi, activeTenant.client_name)
+            .replace(/Soléria/gi, activeTenant.client_name)
             .trim()
             .replace(/[\s—|-]+$/, '')
             .trim();
         }
 
         document.title = finalTitle;
-        document.querySelectorAll('.brand-title').forEach(el => el.textContent = tenant.client_name);
+        document.querySelectorAll('.brand-title').forEach(el => el.textContent = activeTenant.client_name);
 
         // Atualiza metatags OpenGraph / WhatsApp / Twitter
         document.querySelectorAll('meta[property="og:title"], meta[name="twitter:title"]').forEach(meta => {
@@ -224,55 +230,55 @@ window.TENANT_PROMISE = (async function initTenant() {
       }
 
       // 2. Atualiza Slogan / Subtítulo da Marca
-      if (tenant.brand_subtitle) {
-        document.querySelectorAll('.brand-subtitle').forEach(el => el.textContent = tenant.brand_subtitle);
-        if (tenant.client_name && document.title === tenant.client_name && tenant.brand_subtitle.trim()) {
-          document.title = `${tenant.client_name} — ${tenant.brand_subtitle.trim()}`;
+      if (activeTenant.brand_subtitle) {
+        document.querySelectorAll('.brand-subtitle').forEach(el => el.textContent = activeTenant.brand_subtitle);
+        if (activeTenant.client_name && document.title === activeTenant.client_name && activeTenant.brand_subtitle.trim()) {
+          document.title = `${activeTenant.client_name} — ${activeTenant.brand_subtitle.trim()}`;
         }
       }
 
       // 3. Atualiza Destaque Superior do Banner (Eyebrow)
-      if (tenant.hero_eyebrow) {
+      if (activeTenant.hero_eyebrow) {
         const el = document.querySelector('.catalog-hero-eyebrow');
-        if (el) el.textContent = tenant.hero_eyebrow;
+        if (el) el.textContent = activeTenant.hero_eyebrow;
       }
 
       // 4. Atualiza Título Principal do Banner
-      if (tenant.hero_title) {
+      if (activeTenant.hero_title) {
         const el = document.querySelector('.catalog-hero-title');
-        if (el) el.textContent = tenant.hero_title;
+        if (el) el.textContent = activeTenant.hero_title;
       }
 
       // 5. Atualiza Texto Descritivo do Banner
-      if (tenant.hero_desc) {
+      if (activeTenant.hero_desc) {
         const el = document.querySelector('.catalog-hero-desc');
-        if (el) el.textContent = tenant.hero_desc;
+        if (el) el.textContent = activeTenant.hero_desc;
       }
 
       // 6. Atualiza Texto "Sobre a Loja" no Rodapé
-      if (tenant.about_text) {
+      if (activeTenant.about_text) {
         const el = document.querySelector('.site-footer .footer-top p');
-        if (el) el.textContent = tenant.about_text;
+        if (el) el.textContent = activeTenant.about_text;
       }
 
       // 7. Atualiza Nome da Atendente no botão do WhatsApp e rodapé
-      if (tenant.attendant_name) {
+      if (activeTenant.attendant_name) {
         const btnWa = document.getElementById('modal-whatsapp-btn');
         if (btnWa && btnWa.textContent.includes('Carla')) {
-          btnWa.innerHTML = btnWa.innerHTML.replace(/Carla/g, tenant.attendant_name);
+          btnWa.innerHTML = btnWa.innerHTML.replace(/Carla/g, activeTenant.attendant_name);
         }
         const footerAtt = document.querySelector('.footer-bottom');
         if (footerAtt && footerAtt.textContent.includes('Carla')) {
-          footerAtt.innerHTML = footerAtt.innerHTML.replace(/com a Carla/g, `com a ${tenant.attendant_name}`);
+          footerAtt.innerHTML = footerAtt.innerHTML.replace(/com a Carla/g, `com a ${activeTenant.attendant_name}`);
         }
       }
 
       // 8. Atualiza Imagem da Logo ou esconde logo genérica se cliente não tiver imagem ainda
-      if (tenant.logo_url) {
+      if (activeTenant.logo_url) {
         document.querySelectorAll('.header-brand-symbol, .header-logo-img, .admin-logo-img, img[alt*="Soléria"]').forEach(img => {
-          img.src = tenant.logo_url;
+          img.src = activeTenant.logo_url;
         });
-      } else if (tenant.client_name) {
+      } else if (activeTenant.client_name) {
         // Se a cliente não tem logo personalizada ainda, remove o símbolo do sol da Soléria
         document.querySelectorAll('.header-brand-symbol, .hero-emblem-wrap').forEach(el => {
           el.style.display = 'none';
@@ -280,10 +286,10 @@ window.TENANT_PROMISE = (async function initTenant() {
       }
 
       // 9. Atualiza Ícone / Favicon
-      if (tenant.icon_url) {
+      if (activeTenant.icon_url) {
         document.querySelectorAll('link[rel="icon"], .admin-logo-icon').forEach(el => {
-          if (el.tagName === 'LINK') el.href = tenant.icon_url;
-          if (el.tagName === 'IMG') el.src = tenant.icon_url;
+          if (el.tagName === 'LINK') el.href = activeTenant.icon_url;
+          if (el.tagName === 'IMG') el.src = activeTenant.icon_url;
         });
       }
 

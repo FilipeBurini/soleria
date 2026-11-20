@@ -545,8 +545,9 @@
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-bottom: 0.85rem;">
               <div class="form-group">
-                <label class="form-label">Slogan / Subtítulo da Marca</label>
-                <input type="text" id="cust-brand-subtitle" class="form-input" placeholder="Ex: Semijoias que contam sua luz">
+                <label class="form-label">Frase da Aba do Navegador & Slogan</label>
+                <input type="text" id="cust-brand-subtitle" class="form-input" placeholder="Ex: Semijoias Finas & Autorais">
+                <small style="display: block; font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.25rem;">Aparece no título da aba do navegador (ex: Nome da Loja — Sua Frase) e abaixo da logo.</small>
               </div>
               <div class="form-group">
                 <label class="form-label">Destaque Superior do Banner (Eyebrow)</label>
@@ -587,9 +588,16 @@
               </div>
             </div>
 
-            <div class="form-group">
-              <label class="form-label">Link da Imagem da Logo Horizontal (Opcional)</label>
-              <input type="url" id="cust-logo-url" class="form-input" placeholder="https://.../logo.png">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem;">
+              <div class="form-group">
+                <label class="form-label">Link da Logo Horizontal (Opcional)</label>
+                <input type="url" id="cust-logo-url" class="form-input" placeholder="https://.../logo.png">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Link do Ícone / Favicon da Aba (Opcional)</label>
+                <input type="url" id="cust-icon-url" class="form-input" placeholder="https://.../icone.png">
+                <small style="display: block; font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.25rem;">Substitui o símbolo da Soléria na aba do navegador.</small>
+              </div>
             </div>
           </div>
 

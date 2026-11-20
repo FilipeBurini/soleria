@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS public.licenses (
 
 -- Migração segura (caso a tabela licenses já exista no Supabase Master):
 ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS brand_subtitle TEXT;
+ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS icon_url TEXT;
+ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS logo_url TEXT;
 ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS hero_eyebrow TEXT;
 ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS hero_title TEXT;
 ALTER TABLE public.licenses ADD COLUMN IF NOT EXISTS hero_desc TEXT;

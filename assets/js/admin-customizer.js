@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const inpWhatsapp = document.getElementById('cust-whatsapp');
   const inpAttendant = document.getElementById('cust-attendant');
   const inpLogoUrl = document.getElementById('cust-logo-url');
+  const inpIconUrl = document.getElementById('cust-icon-url');
 
   function openModal() {
     const config = window.TENANT_CONFIG || {};
@@ -37,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (inpWhatsapp) inpWhatsapp.value = config.whatsapp_number || '';
     if (inpAttendant) inpAttendant.value = config.attendant_name || 'Carla';
     if (inpLogoUrl) inpLogoUrl.value = config.logo_url || '';
+    if (inpIconUrl) inpIconUrl.value = config.icon_url || '';
 
     modal.classList.add('active');
     modal.style.display = 'flex';
@@ -100,7 +102,8 @@ document.addEventListener('DOMContentLoaded', () => {
       about_text: inpAboutText?.value.trim() || null,
       whatsapp_number: inpWhatsapp?.value.trim() || null,
       attendant_name: inpAttendant?.value.trim() || 'Carla',
-      logo_url: inpLogoUrl?.value.trim() || null
+      logo_url: inpLogoUrl?.value.trim() || null,
+      icon_url: inpIconUrl?.value.trim() || null
     };
 
     try {
